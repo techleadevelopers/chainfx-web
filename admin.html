@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Swappy Admin</title>
+  <link rel="icon" href="https://res.cloudinary.com/limpeja/image/upload/v1771076927/iconnn-Photoroom_wdsmis.png" type="image/png">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f2;
+      --panel: #ffffff;
+      --panel-soft: #f0f3ea;
+      --ink: #1b1f1d;
+      --muted: #66716b;
+      --line: #dfe4da;
+      --green: #1f7a4d;
+      --green-soft: #e6f4ec;
+      --amber: #a76310;
+      --amber-soft: #fff2db;
+      --red: #a6362f;
+      --red-soft: #fdecea;
+      --teal: #0b7b83;
+      --shadow: 0 12px 32px rgba(37, 44, 35, 0.08);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    button, input, select {
+      font: inherit;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 248px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 20px 14px;
+      background: #101512;
+      color: #f4f7f0;
+      border-right: 1px solid #202820;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px 22px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 16px;
+    }
+
+    .brand img {
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+    }
+
+    .brand strong {
+      display: block;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+
+    .brand span {
+      display: block;
+      font-size: 12px;
+      color: #a9b7ad;
+      margin-top: 2px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 4px;
+    }
+
+    .nav button {
+      width: 100%;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: 8px;
+      color: #dbe4dd;
+      background: transparent;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .nav button:hover,
+    .nav button.active {
+      color: #ffffff;
+      background: rgba(255,255,255,0.1);
+    }
+
+    .nav svg {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+    }
+
+    .sidebar-foot {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 18px;
+      padding: 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: #b8c5bc;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    main {
+      min-width: 0;
+      padding: 22px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .subhead {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .btn {
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--ink);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn.primary {
+      border-color: var(--green);
+      background: var(--green);
+      color: white;
+    }
+
+    .btn.warn {
+      border-color: #e4cda8;
+      background: var(--amber-soft);
+      color: #6c3d03;
+    }
+
+    .btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .kpis {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-bottom: 14px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .kpi {
+      padding: 16px;
+      min-height: 110px;
+    }
+
+    .kpi label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .kpi strong {
+      display: block;
+      margin-top: 14px;
+      font-size: 26px;
+      line-height: 1;
+    }
+
+    .kpi span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--amber);
+    }
+
+    .status-dot.ok { background: var(--green); }
+    .status-dot.bad { background: var(--red); }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1.1fr 160px 160px auto auto;
+      gap: 8px;
+      padding: 12px;
+      align-items: end;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    input, select {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      padding: 0 10px;
+      outline: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(11, 123, 131, 0.12);
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: grid;
+      gap: 14px;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-head h2 {
+      margin: 0;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+
+    .panel-head p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+      font-size: 13px;
+    }
+
+    th, td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--panel-soft);
+      color: #39443d;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    td code {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+      color: #34443a;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: var(--panel-soft);
+      color: #445047;
+    }
+
+    .badge.ok { background: var(--green-soft); color: var(--green); }
+    .badge.warn { background: var(--amber-soft); color: var(--amber); }
+    .badge.bad { background: var(--red-soft); color: var(--red); }
+    .badge.info { background: #e6f5f6; color: var(--teal); }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 14px;
+    }
+
+    .audit-list {
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+      max-height: 560px;
+      overflow: auto;
+    }
+
+    .audit-item {
+      display: grid;
+      grid-template-columns: 12px minmax(0, 1fr);
+      gap: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .audit-pin {
+      width: 10px;
+      height: 10px;
+      margin-top: 5px;
+      border-radius: 999px;
+      background: var(--teal);
+    }
+
+    .audit-item strong {
+      display: block;
+      font-size: 13px;
+    }
+
+    .audit-item span,
+    .audit-item code {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .report-body {
+      padding: 14px 16px 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .report-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric-box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fff;
+    }
+
+    .metric-box label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .metric-box strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 20px;
+    }
+
+    .notice {
+      padding: 12px;
+      border: 1px solid #e7d2a8;
+      border-radius: 8px;
+      color: #684006;
+      background: var(--amber-soft);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .telemetry {
+      padding: 14px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .pre {
+      margin: 0;
+      min-height: 220px;
+      max-height: 520px;
+      overflow: auto;
+      padding: 14px;
+      border-radius: 8px;
+      background: #111612;
+      color: #d8f2df;
+      font: 12px/1.6 "SFMono-Regular", Consolas, monospace;
+      white-space: pre-wrap;
+    }
+
+    .empty {
+      padding: 30px 16px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      max-width: min(420px, calc(100vw - 36px));
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      box-shadow: var(--shadow);
+      color: var(--ink);
+      font-size: 13px;
+      transform: translateY(20px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    @media (max-width: 980px) {
+      .shell { grid-template-columns: 1fr; }
+      .sidebar {
+        position: relative;
+        height: auto;
+      }
+      .sidebar-foot { position: static; margin-top: 16px; }
+      .topbar,
+      .split,
+      .toolbar,
+      .telemetry,
+      .report-grid,
+      .kpis {
+        grid-template-columns: 1fr;
+      }
+      main { padding: 14px; }
+      .top-actions { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="https://res.cloudinary.com/limpeja/image/upload/v1770993671/swap_1_mvctri.png" alt="Swappy">
+        <div>
+          <strong>Swappy Admin</strong>
+          <span>Backoffice financeiro</span>
+        </div>
+      </div>
+      <nav class="nav" aria-label="Admin">
+        <button class="active" data-section="overview" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z"/></svg>
+          Visao geral
+        </button>
+        <button data-section="transactions" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+          Transacoes
+        </button>
+        <button data-section="audit" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Auditoria
+        </button>
+        <button data-section="reports" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
+          Relatorios
+        </button>
+        <button data-section="telemetry" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+          Telemetria
+        </button>
+      </nav>
+      <div class="sidebar-foot">
+        <strong>API</strong>
+        <div id="apiBaseLabel">http://localhost:3000</div>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div>
+          <h1>Operacao financeira, auditoria e relatorios</h1>
+          <p class="subhead">Registros carregados do backend, exportacao fiscal e rastreabilidade operacional.</p>
+        </div>
+        <div class="top-actions">
+          <button class="btn" id="configureApiBtn" type="button">API</button>
+          <button class="btn" id="refreshBtn" type="button">Atualizar</button>
+          <button class="btn primary" id="exportCsvBtn" type="button">Exportar CSV</button>
+        </div>
+      </header>
+
+      <section class="grid kpis">
+        <div class="panel kpi">
+          <label>Backend <i class="status-dot" id="backendDot"></i></label>
+          <strong id="backendStatus">--</strong>
+          <span id="backendDetail">Aguardando verificacao</span>
+        </div>
+        <div class="panel kpi">
+          <label>Volume BRL</label>
+          <strong id="kpiBrl">R$ 0,00</strong>
+          <span id="kpiCount">0 transacoes</span>
+        </div>
+        <div class="panel kpi">
+          <label>USDT liquidado</label>
+          <strong id="kpiUsdt">0.000000</strong>
+          <span id="kpiSent">0 envios</span>
+        </div>
+        <div class="panel kpi">
+          <label>Alertas</label>
+          <strong id="kpiAlerts">0</strong>
+          <span id="kpiAlertText">Sem alertas locais</span>
+        </div>
+      </section>
+
+      <section class="section active" id="overview">
+        <div class="split">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Resumo operacional</h2>
+                <p>Estado consolidado dos registros carregados nesta sessao.</p>
+              </div>
+              <span class="badge info" id="lastSync">sem sync</span>
+            </div>
+            <div class="report-body">
+              <div class="report-grid">
+                <div class="metric-box"><label>Compras</label><strong id="metricBuys">0</strong></div>
+                <div class="metric-box"><label>Vendas</label><strong id="metricSells">0</strong></div>
+                <div class="metric-box"><label>Erros</label><strong id="metricErrors">0</strong></div>
+              </div>
+              <div class="notice" id="opsNotice">Conecte o backend ou busque uma ordem por ID para iniciar a conciliacao.</div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Saude dos rails</h2>
+                <p>Leitura de `/readyz`.</p>
+              </div>
+            </div>
+            <pre class="pre" id="readyJson">{}</pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="transactions">
+        <div class="panel">
+          <div class="toolbar">
+            <div class="field">
+              <label for="lookupId">ID da ordem</label>
+              <input id="lookupId" type="text" placeholder="UUID buy/order">
+            </div>
+            <div class="field">
+              <label for="lookupType">Tipo</label>
+              <select id="lookupType">
+                <option value="buy">Buy</option>
+                <option value="order">Sell</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="statusFilter">Status</label>
+              <select id="statusFilter">
+                <option value="">Todos</option>
+                <option value="aguardando">Aguardando</option>
+                <option value="pago">Pago</option>
+                <option value="enviado">Enviado</option>
+                <option value="concluida">Concluida</option>
+                <option value="erro">Erro</option>
+              </select>
+            </div>
+            <button class="btn primary" id="loadOrderBtn" type="button">Carregar</button>
+            <button class="btn" id="clearDataBtn" type="button">Limpar</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Tipo</th>
+                  <th>ID</th>
+                  <th>Status</th>
+                  <th>Fiat</th>
+                  <th>USDT</th>
+                  <th>Taxa</th>
+                  <th>Rail</th>
+                  <th>Wallet / Deposito</th>
+                  <th>TX</th>
+                </tr>
+              </thead>
+              <tbody id="transactionsBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="transactionsEmpty">Nenhuma transacao carregada.</div>
+        </div>
+      </section>
+
+      <section class="section" id="audit">
+        <div class="split">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Trilha de auditoria</h2>
+                <p>Status, request IDs, provider IDs e hashes conhecidos.</p>
+              </div>
+              <button class="btn" id="exportAuditBtn" type="button">JSON</button>
+            </div>
+            <div class="audit-list" id="auditList"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Registro bruto</h2>
+                <p>Objeto selecionado.</p>
+              </div>
+            </div>
+            <pre class="pre" id="rawJson">{}</pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="reports">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Relatorio fiscal e conciliacao</h2>
+              <p>Base exportavel para contabilidade, compliance e Receita Federal.</p>
+            </div>
+            <div class="top-actions">
+              <button class="btn" id="exportJsonBtn" type="button">JSON</button>
+              <button class="btn primary" id="exportTaxCsvBtn" type="button">CSV fiscal</button>
+            </div>
+          </div>
+          <div class="report-body">
+            <div class="report-grid">
+              <div class="metric-box"><label>Periodo inicial</label><strong id="reportStart">--</strong></div>
+              <div class="metric-box"><label>Periodo final</label><strong id="reportEnd">--</strong></div>
+              <div class="metric-box"><label>Registros auditaveis</label><strong id="reportRows">0</strong></div>
+              <div class="metric-box"><label>Valor bruto BRL</label><strong id="reportGross">R$ 0,00</strong></div>
+              <div class="metric-box"><label>Taxas BRL</label><strong id="reportFees">R$ 0,00</strong></div>
+              <div class="metric-box"><label>Valor liquido BRL</label><strong id="reportNet">R$ 0,00</strong></div>
+            </div>
+            <div class="notice">
+              O arquivo fiscal evita expor CPF, telefone ou wallet completa quando o backend entregar apenas dados minimizados. Para entrega oficial, valide layout, periodicidade e campos obrigatorios com contador/advogado tributario.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="telemetry">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Telemetria</h2>
+              <p>Latencia, disponibilidade e eventos locais do console administrativo.</p>
+            </div>
+            <button class="btn" id="exportTelemetryBtn" type="button">Exportar</button>
+          </div>
+          <div class="telemetry">
+            <pre class="pre" id="telemetryJson">[]</pre>
+            <pre class="pre" id="alertsJson">[]</pre>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    (() => {
+      const DEFAULT_API = window.SWAPPED_API_BASE_URL || localStorage.getItem('SWAPPED_API_BASE_URL') || 'http://localhost:3000';
+      const state = {
+        apiBase: DEFAULT_API.replace(/\/$/, ''),
+        transactions: loadLocal('swappy.admin.transactions', []),
+        telemetry: loadLocal('swappy.admin.telemetry', []),
+        alerts: []
+      };
+
+      const $ = (id) => document.getElementById(id);
+      const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+      const num = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 8 });
+
+      const icons = {
+        ok: 'ok',
+        warn: 'warn',
+        bad: 'bad',
+        info: 'info'
+      };
+
+      document.addEventListener('DOMContentLoaded', () => {
+        $('apiBaseLabel').textContent = state.apiBase;
+        bindNavigation();
+        bindActions();
+        renderAll();
+        refreshBackend();
+        tryFetchAdminCollections();
+      });
+
+      function bindNavigation() {
+        document.querySelectorAll('.nav button').forEach((button) => {
+          button.addEventListener('click', () => {
+            document.querySelectorAll('.nav button').forEach((item) => item.classList.remove('active'));
+            document.querySelectorAll('.section').forEach((section) => section.classList.remove('active'));
+            button.classList.add('active');
+            $(button.dataset.section).classList.add('active');
+          });
+        });
+      }
+
+      function bindActions() {
+        $('configureApiBtn').addEventListener('click', () => {
+          const next = prompt('API base URL', state.apiBase);
+          if (!next) return;
+          state.apiBase = next.replace(/\/$/, '');
+          localStorage.setItem('SWAPPED_API_BASE_URL', state.apiBase);
+          $('apiBaseLabel').textContent = state.apiBase;
+          refreshBackend();
+        });
+
+        $('refreshBtn').addEventListener('click', () => {
+          refreshBackend();
+          tryFetchAdminCollections();
+        });
+
+        $('loadOrderBtn').addEventListener('click', loadOrderById);
+        $('lookupId').addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') loadOrderById();
+        });
+        $('statusFilter').addEventListener('change', renderTransactions);
+        $('clearDataBtn').addEventListener('click', () => {
+          state.transactions = [];
+          persist();
+          renderAll();
+          toast('Registros locais limpos.');
+        });
+
+        $('exportCsvBtn').addEventListener('click', () => download('swappy-transacoes.csv', toCsv(reportRows()), 'text/csv'));
+        $('exportTaxCsvBtn').addEventListener('click', () => download('swappy-relatorio-fiscal.csv', toCsv(reportRows()), 'text/csv'));
+        $('exportJsonBtn').addEventListener('click', () => download('swappy-transacoes.json', JSON.stringify(state.transactions, null, 2), 'application/json'));
+        $('exportAuditBtn').addEventListener('click', () => download('swappy-auditoria.json', JSON.stringify(auditRows(), null, 2), 'application/json'));
+        $('exportTelemetryBtn').addEventListener('click', () => download('swappy-telemetria.json', JSON.stringify({ telemetry: state.telemetry, alerts: state.alerts }, null, 2), 'application/json'));
+      }
+
+      async function refreshBackend() {
+        const started = performance.now();
+        try {
+          const ready = await request('/readyz');
+          $('backendStatus').textContent = ready.ok ? 'Online' : 'Parcial';
+          $('backendDetail').textContent = ready.mode ? `Modo ${ready.mode}` : 'Backend respondeu';
+          $('backendDot').className = `status-dot ${ready.ok ? 'ok' : 'bad'}`;
+          $('readyJson').textContent = JSON.stringify(ready, null, 2);
+          if (Array.isArray(ready.warnings) && ready.warnings.length) {
+            state.alerts = ready.warnings.map((item) => ({ type: 'readyz', item, at: new Date().toISOString() }));
+          } else {
+            state.alerts = [];
+          }
+          logTelemetry('/readyz', 'ok', performance.now() - started);
+        } catch (error) {
+          $('backendStatus').textContent = 'Offline';
+          $('backendDetail').textContent = error.message;
+          $('backendDot').className = 'status-dot bad';
+          $('readyJson').textContent = JSON.stringify({ error: error.message }, null, 2);
+          state.alerts = [{ type: 'backend', item: error.message, at: new Date().toISOString() }];
+          logTelemetry('/readyz', 'error', performance.now() - started, error.message);
+        }
+        renderAll();
+      }
+
+      async function tryFetchAdminCollections() {
+        const endpoints = ['/api/admin/transactions?limit=100', '/api/admin/audit?limit=100', '/api/admin/telemetry'];
+        for (const endpoint of endpoints) {
+          const started = performance.now();
+          try {
+            const data = await request(endpoint);
+            if (Array.isArray(data)) mergeTransactions(data.map(normalizeRecord).filter(Boolean));
+            if (Array.isArray(data.transactions)) mergeTransactions(data.transactions.map(normalizeRecord).filter(Boolean));
+            logTelemetry(endpoint, 'ok', performance.now() - started);
+          } catch (error) {
+            logTelemetry(endpoint, 'unavailable', performance.now() - started, error.message);
+          }
+        }
+        persist();
+        renderAll();
+      }
+
+      async function loadOrderById() {
+        const id = $('lookupId').value.trim();
+        const type = $('lookupType').value;
+        if (!id) {
+          toast('Informe um ID.');
+          return;
+        }
+        const endpoint = type === 'buy' ? `/api/buy/${encodeURIComponent(id)}` : `/api/order/${encodeURIComponent(id)}`;
+        const started = performance.now();
+        try {
+          const data = await request(endpoint);
+          const record = normalizeRecord(data, type);
+          if (!record) throw new Error('Resposta sem formato de ordem.');
+          mergeTransactions([record]);
+          $('rawJson').textContent = JSON.stringify(data, null, 2);
+          logTelemetry(endpoint, 'ok', performance.now() - started);
+          persist();
+          renderAll();
+          toast('Registro carregado.');
+        } catch (error) {
+          logTelemetry(endpoint, 'error', performance.now() - started, error.message);
+          toast(error.message);
+          renderTelemetry();
+        }
+      }
+
+      async function request(path) {
+        const response = await fetch(`${state.apiBase}${path}`, { headers: { 'Accept': 'application/json' } });
+        const text = await response.text();
+        let data = {};
+        if (text) {
+          try { data = JSON.parse(text); } catch { data = { raw: text }; }
+        }
+        if (!response.ok) {
+          throw new Error(data.error || `${response.status} ${response.statusText}`);
+        }
+        return data;
+      }
+
+      function normalizeRecord(input, forcedType) {
+        if (!input || !input.id) return null;
+        const type = forcedType || (input.dest_address || input.crypto_amount ? 'buy' : 'order');
+        const fiat = Number(input.amount_fiat ?? input.amountFiat ?? input.amount_brl ?? input.amountBRL ?? 0);
+        const brl = Number(input.amount_brl ?? input.amountBRL ?? (input.fiat_currency === 'BRL' ? fiat : 0));
+        const fee = Number(input.fee_brl ?? input.feeBRL ?? 0);
+        const payout = Number(input.payout_brl ?? input.payoutBRL ?? Math.max(brl - fee, 0));
+        const crypto = Number(input.crypto_amount ?? input.amount_usdt ?? input.amountUSDT ?? input.btcAmount ?? 0);
+        return {
+          id: input.id,
+          type,
+          status: String(input.status || ''),
+          createdAt: input.created_at || input.createdAt || input.created || new Date().toISOString(),
+          updatedAt: input.updated_at || input.updatedAt || '',
+          fiatCurrency: input.fiat_currency || input.fiatCurrency || 'BRL',
+          paymentMethod: input.payment_method || input.paymentMethod || (type === 'buy' ? 'pix' : 'onchain'),
+          amountFiat: fiat,
+          amountBRL: brl,
+          feeBRL: fee,
+          payoutBRL: payout,
+          cryptoAmount: crypto,
+          asset: input.asset || 'USDT',
+          address: input.dest_address || input.destAddress || input.address || input.tron_address || '',
+          txHash: valueOrString(input.tx_hash_out || input.txHashOut || input.tx_hash || input.txHash || input.deposit_tx || input.depositTx),
+          providerPaymentId: valueOrString(input.provider_payment_id || input.providerPaymentId),
+          rate: Number(input.rate_locked || input.rate || 0),
+          requestId: valueOrString(input.request_id || input.requestId),
+          raw: input
+        };
+      }
+
+      function mergeTransactions(records) {
+        const map = new Map(state.transactions.map((record) => [record.type + ':' + record.id, record]));
+        records.forEach((record) => map.set(record.type + ':' + record.id, record));
+        state.transactions = Array.from(map.values()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      }
+
+      function renderAll() {
+        renderKpis();
+        renderTransactions();
+        renderAudit();
+        renderReports();
+        renderTelemetry();
+      }
+
+      function renderKpis() {
+        const rows = state.transactions;
+        const totalBRL = rows.reduce((sum, row) => sum + Number(row.amountBRL || 0), 0);
+        const totalUSDT = rows.reduce((sum, row) => sum + Number(row.cryptoAmount || 0), 0);
+        const sent = rows.filter((row) => /enviado|delivered|confirmado|concluida/.test(row.status)).length;
+        const errors = rows.filter((row) => /erro|failed|rejeit/.test(row.status)).length;
+        $('kpiBrl').textContent = money.format(totalBRL);
+        $('kpiCount').textContent = `${rows.length} transacoes`;
+        $('kpiUsdt').textContent = num.format(totalUSDT);
+        $('kpiSent').textContent = `${sent} liquidadas`;
+        $('kpiAlerts').textContent = String(state.alerts.length + errors);
+        $('kpiAlertText').textContent = errors ? `${errors} transacoes com erro` : 'Sem erros carregados';
+        $('metricBuys').textContent = rows.filter((row) => row.type === 'buy').length;
+        $('metricSells').textContent = rows.filter((row) => row.type === 'order').length;
+        $('metricErrors').textContent = String(errors);
+        $('opsNotice').textContent = rows.length
+          ? 'Base local pronta para conciliacao, auditoria e exportacao.'
+          : 'Conecte o backend ou busque uma ordem por ID para iniciar a conciliacao.';
+      }
+
+      function renderTransactions() {
+        const filter = $('statusFilter').value;
+        const rows = state.transactions.filter((row) => !filter || row.status.includes(filter));
+        $('transactionsBody').innerHTML = rows.map((row) => `
+          <tr data-key="${escapeHtml(row.type + ':' + row.id)}">
+            <td>${formatDate(row.createdAt)}</td>
+            <td><span class="badge info">${row.type === 'buy' ? 'BUY' : 'SELL'}</span></td>
+            <td><code>${escapeHtml(row.id)}</code></td>
+            <td><span class="badge ${badgeClass(row.status)}">${escapeHtml(row.status || '--')}</span></td>
+            <td>${escapeHtml(row.fiatCurrency)} ${formatAmount(row.amountFiat || row.amountBRL)}</td>
+            <td>${formatAmount(row.cryptoAmount)} ${escapeHtml(row.asset)}</td>
+            <td>${money.format(row.feeBRL || 0)}</td>
+            <td>${escapeHtml(row.paymentMethod || '--')}</td>
+            <td><code>${escapeHtml(shorten(row.address))}</code></td>
+            <td><code>${escapeHtml(shorten(row.txHash || row.providerPaymentId || ''))}</code></td>
+          </tr>
+        `).join('');
+        $('transactionsEmpty').style.display = rows.length ? 'none' : 'block';
+        document.querySelectorAll('#transactionsBody tr').forEach((rowEl) => {
+          rowEl.addEventListener('click', () => {
+            const record = state.transactions.find((item) => item.type + ':' + item.id === rowEl.dataset.key);
+            if (record) $('rawJson').textContent = JSON.stringify(record.raw || record, null, 2);
+          });
+        });
+      }
+
+      function renderAudit() {
+        const rows = auditRows();
+        $('auditList').innerHTML = rows.length ? rows.map((row) => `
+          <div class="audit-item">
+            <i class="audit-pin"></i>
+            <div>
+              <strong>${escapeHtml(row.event)}</strong>
+              <span>${escapeHtml(row.at)} | ${escapeHtml(row.type)} | ${escapeHtml(row.status)}</span>
+              <code>${escapeHtml(row.id)}${row.tx ? ' | tx ' + escapeHtml(shorten(row.tx)) : ''}</code>
+            </div>
+          </div>
+        `).join('') : '<div class="empty">Nenhum evento auditavel carregado.</div>';
+      }
+
+      function renderReports() {
+        const rows = state.transactions.slice().sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        const totalBRL = rows.reduce((sum, row) => sum + Number(row.amountBRL || 0), 0);
+        const totalFees = rows.reduce((sum, row) => sum + Number(row.feeBRL || 0), 0);
+        const totalNet = rows.reduce((sum, row) => sum + Number(row.payoutBRL || 0), 0);
+        $('reportStart').textContent = rows[0] ? formatDate(rows[0].createdAt) : '--';
+        $('reportEnd').textContent = rows[rows.length - 1] ? formatDate(rows[rows.length - 1].createdAt) : '--';
+        $('reportRows').textContent = String(rows.length);
+        $('reportGross').textContent = money.format(totalBRL);
+        $('reportFees').textContent = money.format(totalFees);
+        $('reportNet').textContent = money.format(totalNet);
+        $('lastSync').textContent = new Date().toLocaleTimeString('pt-BR');
+      }
+
+      function renderTelemetry() {
+        $('telemetryJson').textContent = JSON.stringify(state.telemetry.slice(-60), null, 2);
+        $('alertsJson').textContent = JSON.stringify(state.alerts, null, 2);
+      }
+
+      function reportRows() {
+        return state.transactions.map((row) => ({
+          data_operacao: row.createdAt,
+          tipo: row.type,
+          id: row.id,
+          status: row.status,
+          moeda_fiat: row.fiatCurrency,
+          valor_fiat: row.amountFiat,
+          valor_brl: row.amountBRL,
+          taxa_brl: row.feeBRL,
+          liquido_brl: row.payoutBRL,
+          ativo: row.asset,
+          quantidade_cripto: row.cryptoAmount,
+          rail: row.paymentMethod,
+          provider_payment_id: row.providerPaymentId,
+          tx_hash: row.txHash,
+          wallet_mask: shorten(row.address),
+          request_id: row.requestId
+        }));
+      }
+
+      function auditRows() {
+        return state.transactions.flatMap((row) => {
+          const base = [{ event: 'transaction.loaded', at: row.createdAt, type: row.type, status: row.status, id: row.id, tx: row.txHash }];
+          if (row.providerPaymentId) base.push({ event: 'provider.payment.linked', at: row.updatedAt || row.createdAt, type: row.type, status: row.status, id: row.id, tx: row.providerPaymentId });
+          if (row.txHash) base.push({ event: 'blockchain.tx.linked', at: row.updatedAt || row.createdAt, type: row.type, status: row.status, id: row.id, tx: row.txHash });
+          return base;
+        }).sort((a, b) => new Date(b.at) - new Date(a.at));
+      }
+
+      function logTelemetry(endpoint, status, ms, error) {
+        state.telemetry.push({ at: new Date().toISOString(), endpoint, status, latency_ms: Math.round(ms), error });
+        state.telemetry = state.telemetry.slice(-200);
+        persist();
+      }
+
+      function persist() {
+        localStorage.setItem('swappy.admin.transactions', JSON.stringify(state.transactions));
+        localStorage.setItem('swappy.admin.telemetry', JSON.stringify(state.telemetry));
+      }
+
+      function loadLocal(key, fallback) {
+        try {
+          const raw = localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : fallback;
+        } catch {
+          return fallback;
+        }
+      }
+
+      function toCsv(rows) {
+        if (!rows.length) return '';
+        const headers = Object.keys(rows[0]);
+        const escapeCell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+        return [headers.join(','), ...rows.map((row) => headers.map((key) => escapeCell(row[key])).join(','))].join('\n');
+      }
+
+      function download(filename, content, type) {
+        const blob = new Blob([content], { type });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      function toast(message) {
+        const el = $('toast');
+        el.textContent = message;
+        el.classList.add('show');
+        clearTimeout(el._timer);
+        el._timer = setTimeout(() => el.classList.remove('show'), 2800);
+      }
+
+      function badgeClass(status) {
+        if (/erro|failed|rejeit/.test(status)) return icons.bad;
+        if (/aguardando|validacao|pending/.test(status)) return icons.warn;
+        if (/pago|enviado|delivered|concluida|confirmado/.test(status)) return icons.ok;
+        return icons.info;
+      }
+
+      function formatDate(value) {
+        if (!value) return '--';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return String(value);
+        return date.toLocaleString('pt-BR');
+      }
+
+      function formatAmount(value) {
+        return num.format(Number(value || 0));
+      }
+
+      function shorten(value) {
+        value = String(value || '');
+        if (value.length <= 18) return value;
+        return `${value.slice(0, 8)}...${value.slice(-6)}`;
+      }
+
+      function valueOrString(value) {
+        if (value == null) return '';
+        if (typeof value === 'string') return value;
+        return String(value);
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[char]));
+      }
+    })();
+  </script>
+</body>
+</html>
