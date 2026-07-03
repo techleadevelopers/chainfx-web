@@ -1,3 +1,4 @@
+import { resolve } from 'path';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
@@ -6,6 +7,12 @@ export default defineConfig({
     allowedHosts: true
   },
   build: {
-    outDir: 'dist'  // 👈 força a saída para a pasta dist
+    outDir: 'dist',
+    rollupOptions: {
+      input: {
+        index: resolve(__dirname, 'index.html'),
+        admin: resolve(__dirname, 'admin.html')
+      }
+    }
   }
 });
