@@ -204,9 +204,12 @@ void main() {
         <div class="content-left">
             <div class="hero-section">
                 <div class="hero-title">
-                    <span class="title-text" id="premiumTitle" data-text-en="Securely buy and sell crypto instantly via PIX" data-text-ar="Securely buy and sell crypto instantly via PIX">
-                        Securely buy and sell crypto instantly via PIX
-                    </span>
+                  <span class="title-text"
+      id="premiumTitle"
+      data-text-en="Pay instantly with PIX and receive Bitcoin, USDT or Digital Euro directly in your wallet."
+      data-text-ar="Pay instantly with PIX and receive Bitcoin, USDT or Digital Euro directly in your wallet.">
+    Pay instantly with PIX and receive Bitcoin, USDT or Digital Euro directly in your wallet.
+</span>
                 </div>
                 <p class="hero-subtitle">Swap seamlessly with 30+ local payment methods. Experience crypto without the complexity.</p>
 
@@ -275,8 +278,8 @@ void main() {
                   <div class="input-group">
                       <input type="number" id="receiveAmount" placeholder="0.00" readonly />
                       <button class="currency-selector" id="receiveCurrency">
-                          <img src="https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/btc.png" alt="BTC" />
-                          <span>BTC</span>
+                          <img src="https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/usdt.png" alt="USDT" />
+                          <span>USDT</span>
                           <svg class="arrow-icon" viewBox="0 0 24 24">
                               <path d="M7 10l5 5 5-5z"/>
                           </svg>
@@ -293,9 +296,9 @@ void main() {
                   <p>Receber: <strong id="displayReceiveAmountStep2"></strong></p>
               </div>
               <div class="wallet-input" id="walletGroup">
-                  <label for="walletAddress">Wallet Address (ETH ou BTC)</label>
+                  <label for="walletAddress">Wallet Address (TRON / USDT)</label>
                   <div class="input-group">
-                      <input type="text" id="walletAddress" placeholder="Cole um endereço 0x... ou bc1..." />
+                      <input type="text" id="walletAddress" placeholder="Cole um endereco TRON T..." />
                   </div>
               </div>
 
@@ -335,6 +338,24 @@ void main() {
                   </div>
               </div>
           </div>
+          <div class="step-3 step-content hidden" id="step3">
+              <div class="order-summary-step2 order-summary-step3">
+                  <p>Pagar: <strong id="displayPayAmountStep3"></strong></p>
+                  <p>Receber: <strong id="displayReceiveAmountStep3"></strong></p>
+              </div>
+              <div class="step3-payment-card" id="step3PixPanel">
+                  <div class="step3-payment-head">
+                      <img src="/images/pix.png" alt="PIX" />
+                      <span>PIX</span>
+                  </div>
+                  <img class="step3-pix-qr" id="step3PixQr" src="/images/qrcode.png" alt="QR Code PIX" />
+                  <p class="step3-total">Total: <strong id="displayTotalStep3"></strong></p>
+              </div>
+              <button type="button" class="step3-bypass-btn hidden" id="step3BypassBtn" aria-label="Liberar confirmação">
+                  <span>→</span>
+              </button>
+              <p class="step3-card-message hidden" id="step3CardMessage">Volte e pague com Pix.</p>
+          </div>
             <button type="button" class="continue-btn btn-premium-glow" id="continueBtn">
                 Continue
                 <svg viewBox="0 0 24 24">
@@ -346,12 +367,11 @@ void main() {
                 By buying, you agree to our <a href="#">terms of service</a>
             </div>
 
-            <div class="payment-info hidden" id="paymentInfoSection">
-                <p class="payment-summary-text" id="paymentSummary">
-                    <strong>Amount:</strong> <span id="paymentAmount"></span><br>
-                    <strong>Payment Method:</strong> <span id="paymentMethod"></span><br>
-                    <span id="walletRow"><strong>Wallet:</strong> <span id="paymentWallet"></span><br></span>
-                    <strong>Chave PIX:</strong> <span id="pixKey"></span>
+            <div class="payment-info step-content step-5 hidden" id="paymentInfoSection">
+                <p class="payment-summary-text payment-summary-final" id="paymentSummary">
+                    <strong>Status:</strong> <span id="paymentStatusLabel">Pagamento identificado</span><br>
+                    <strong>Total USDT:</strong> <span id="paymentBtcAmount"></span><br>
+                    <span id="walletRow"><strong>Enviar para:</strong> <span id="paymentWallet"></span></span>
                 </p>
                 <div id="sellDepositBlock" class="hidden">
                     <label for="sellDepositAddressInput">Endereço para enviar</label>
@@ -365,7 +385,7 @@ void main() {
                         <option value="trc20">Tron (TRC20)</option>
                     </select>
                 </div>
-                <img id="qrCodeImg" src="" alt="QR Code PIX" />
+                <img id="qrCodeImg" class="hidden" src="" alt="QR Code PIX" />
                 <div id="countdownBlock" class="hidden countdown">
                     <div class="countdown-circle">
                         <div class="countdown-display">
@@ -432,6 +452,11 @@ void main() {
      });
    </script>
 
+   <script>
+     (() => {
+       window.SWAPPED_API_BASE_URL = window.SWAPPED_API_BASE_URL || 'http://localhost:3000';
+     })();
+   </script>
    <script src="main.js"></script>
    <script type="module">
     import * as THREE from 'three';
@@ -629,3 +654,4 @@ void main() {
 
 </body>
 </html>
+
