@@ -228,7 +228,6 @@ body::after {
   
 }
 
-/
 
 /* Ajuste para o layout do card se necessário */
 
@@ -777,6 +776,93 @@ body::after {
   color: #666;
 }
 
+.order-summary-step3 {
+  margin-top: 4px;
+  margin-bottom: 14px;
+}
+
+#step3 {
+  position: relative;
+}
+
+.step3-payment-card {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: white;
+  padding: 14px;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+
+.step3-payment-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-color);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.step3-payment-head img {
+  width: 24px;
+  height: 24px;
+}
+
+.step3-pix-qr {
+  width: 92px;
+  height: 92px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.step3-total,
+.step3-card-message {
+  width: 100%;
+  margin: 0;
+  font-size: 0.9em;
+  color: #333;
+}
+
+.step3-total strong,
+.step3-card-message {
+  color: #6c63ff;
+  font-weight: 500;
+}
+
+.step3-card-message {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: white;
+  padding: 14px;
+  text-align: center;
+}
+
+.step3-bypass-btn {
+  position: absolute;
+  right: -8px;
+  top: 52%;
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(17, 80, 168, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--primary-color);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.step3-bypass-btn:hover {
+  border-color: var(--primary-color);
+  background: white;
+}
+
 .continue-btn {
   width: 100%;
   padding: 16px;
@@ -961,9 +1047,9 @@ body::after {
 
 /* Estilos para a seção de informações de pagamento (Ultra Moderno e Robusto - Ajustado) */
 .payment-info {
-  margin-top: 20px;
-  padding: 24px 0;
-  min-height: 280px;
+  margin-top: 12px;
+  padding: 0;
+  min-height: 0;
   width: 100%;
   border-radius: 0;
   background: transparent;
@@ -973,14 +1059,22 @@ body::after {
 }
 
 .payment-summary-text {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: #333;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 .payment-summary-text strong {
   color: #6c63ff;
   font-weight: 600;
+}
+
+.payment-summary-final {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: white;
+  padding: 12px;
+  margin: 0;
 }
 
 .countdown {
@@ -1120,6 +1214,7 @@ body::after {
   display: inline-block;
   max-width: 100%;
   overflow-wrap: break-word;
+  vertical-align: top;
 }
 
 
