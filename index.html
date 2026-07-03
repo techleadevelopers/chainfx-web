@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Buy & Sell Crypto Simply</title>
+    <link rel="icon" href="https://res.cloudinary.com/limpeja/image/upload/v1771076927/iconnn-Photoroom_wdsmis.png" type="image/png">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" defer></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Estilos para ocultar elementos */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Estilo para indicar o método de pagamento selecionado */
+        .payment-method.selected {
+            border: 2px solid #6c63ff; /* Cor roxa primária */
+            box-shadow: 0 0 8px rgba(108, 99, 255, 0.7);
+        }
+
+        /* Estilos para a seção de informações de pagamento (Ultra Moderno e Robusto) */
+        .payment-info {
+            margin-top: 20px;
+            padding: 0;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+            text-align: left;
+        }
+
+        .payment-info h3 {
+            color: #444;
+            margin-bottom: 16px;
+            font-size: 1.4em;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+        }
+
+        .qr-code-container {
+            background-color: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 5px 5px 10px #d1d1d1, -5px -5px 10px #fff;
+            display: inline-block;
+            margin-bottom: 25px;
+        }
+
+        .qr-code-image {
+            max-width: 200px;
+            height: auto;
+            border-radius: 8px;
+        }
+
+        .payment-summary-text {
+            color: #555;
+            line-height: 1.7;
+            font-size: 1.1em;
+            
+        }
+
+        .payment-summary-text strong {
+            font-weight: 600;
+            color: #333;
+            z-index: -10;
+        }
+
+        .confirm-payment-btn {
+            background-color: #6c63ff; /* Cor roxa primária */
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            margin-top: 25px;
+            box-shadow: 3px 3px 6px #b3b1b1, -3px -3px 6px #fff;
+        }
+
+        .confirm-payment-btn:hover {
+            background-color: #564bff;
+            box-shadow: 5px 5px 10px #b3b1b1, -5px -5px 10px #fff;
+        }
+
+        /* Esconde a seção de entrada e métodos de pagamento quando a info de pagamento é visível */
+        .input-section.hidden,
+        .step-2.hidden,
+        .continue-btn.hidden,
+        .terms.hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Canvas de fundo original -->
+    <canvas id="bgShader"></canvas>
+    <!-- Novo canvas com shader azul/cyan translúcido -->
+    <canvas id="canvas"></canvas>
+    <script type="x-shader/x-fragment" id="blueShaderSource">#version 300 es
+/*********
+* made by Matthias Hurrle (@atzedent)
+*/
+precision highp float;
+out vec4 O;
+uniform float time;
+uniform vec2 resolution;
+#define FC gl_FragCoord.xy
+#define R resolution
+#define T time
+#define MN min(R.x,R.y)
+#define S smoothstep
+#define SE(v,a) S(fwidth(a),-.35,v-a)
+#define PI radians(180.)
+#define lum(a) dot(a,vec3(.21,.71,.07))
+#define hue(a)(.5+.5*sin(PI*(a)+vec3(1,2,3)))
+vec3 watermark() {
+	vec3 col=vec3(0);
+	float rel=R.x/R.y;
+	vec2 z=FC/R;
+	z.x*=rel;
+	z.x-=rel;
+	z+=vec2(.1,-.1);
+	float j=.025, id=round(z.y/j);
+	z.y-=clamp(round(z.y/j),-1.,1.)*j;
+	float bx=max(abs(z.x),abs(z.y)), rect=step(bx,.01), frame=rect-step(bx,.008);
+	return clamp(mix(col,rect*hue(cos(T*.2)-id*PI*2.),mix(frame,rect,.5)),.0,1.);
+}
+void main() {
+	vec3 wm=watermark();
+	O=vec4(wm,0);
+	vec3 bg=vec3(.08);
+	vec2 uv=2.*FC-R, st=(FC-.5*R)/MN;
+	float bs=MN*.05;
+	if ((R.x>R.y) && (abs(st.x)>1. || abs(st.y)>.5)) {
+		O=max(O,vec4(bg,0));
+		return;
+	}
+	uv*=mat2(cos(sin(T*.2)-vec4(0,11,33,0)))*exp(cos(T)*.321)*(.7+.5*cos(T*.5));
+	float d=length(uv)/MN;
+	uv=vec2(log(d),.205+atan(uv.x,uv.y))*8./PI;
+	vec2 p=uv;
+	uv.x+=floor(uv.y*.5)*.5-T*1.5;
+	uv=mod(uv,2.)-1.;
+	p+=sin(T*10.-p*vec2(10,30))*.01;
+	uv*=uv*uv*uv;
+	float l=dot(uv,uv);
+	l=abs(d-SE(l,.2));
+	vec3 col=hue(l*l-T*.5);
+	col=tanh(col*col)/(.01+.25*lum(vec3(distance(cos((p.x-T)*12.),sin(p.y*42.)))));
+	col=sqrt(col);
+	l=dot(abs(uv)/dot(p,4.5*p)-.9,st);
+	col=mix(2.*sqrt(hue(.1+l)/max(l*l*l*l,.1)),col,S(-.5,.5,length((FC-.5*R)/MN)));
+	col/=4.;
+	col=mix(vec3(.85),col,mix(.6,1.,fract(sin(dot(st, vec2(12.9898,78.233))*345678.))));
+	col=max(col,.1);
+	col=mix(col,vec3(1),S(1e-5,-1e-2,dot(st,st)));
+	// vignette
+	vec2 c=FC/R;
+	c*=1.-c.yx;
+	float vig=c.x*c.y*25.;
+	vig=S(.0,1.,pow(vig,.3));
+	col=mix(vec3(lum(col)),col,vig);
+	col=mix(vec3(0),col,vig);
+	col*=vec3(1.2*lum(col));
+	col=sqrt(col);
+	if (R.x>R.y) {
+		if (FC.x > R.x-bs || FC.x < bs || FC.y > R.y-bs || FC.y < bs) {
+			O=max(O,vec4(bg,0));
+			return;
+		}
+	}
+	col=max(col,wm);
+  O=vec4(col,1);
+}</script>
+    <div class="background-glow"></div>
+    <div class="floating-particles" id="particles-container"></div>
+    <div id="three-background"></div>
+    <nav class="navbar">
+            <div class="nav-content">
+            <div class="logo"><img src="https://res.cloudinary.com/limpeja/image/upload/v1770993671/swap_1_mvctri.png" alt="NexSwap logo" /></div>
+            <div class="nav-links">
+                <a href="#" class="active">Trade</a>
+                <a href="#">Markets</a>
+                <a href="#">Wallet</a>
+                <a href="#">About</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="background-grid"></div>
+
+    <div id="app">
+        <div class="content-left">
+            <div class="hero-section">
+                <div class="hero-title">
+                    <span class="title-text" id="premiumTitle" data-text-en="Securely buy and sell crypto instantly via PIX" data-text-ar="Securely buy and sell crypto instantly via PIX">
+                        Securely buy and sell crypto instantly via PIX
+                    </span>
+                </div>
+                <p class="hero-subtitle">Swap seamlessly with 30+ local payment methods. Experience crypto without the complexity.</p>
+
+                <div class="trust-badges">
+                    <div class="trust-badge">
+                        <svg viewBox="0 0 24 24" fill="currentColor" class="badge-icon">
+                            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63L2 9.24l5.64 4.73L5.82 21z"/>
+                        </svg>
+                        <span>Trusted by <strong>950,000+</strong> users</span>
+                    </div>
+                    <div class="trust-badge">
+                        <svg viewBox="0 0 24 24" fill="currentColor" class="badge-icon">
+                            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+                        </svg>
+                        <span><strong>30+</strong> local payment options</span>
+                    </div>
+                    <div class="trust-badge">
+                        <svg viewBox="0 0 24 24" fill="currentColor" class="badge-icon">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+                            <path d="M13 7h-2v4H7v2h6V7z"/>
+                        </svg>
+                        <span>Access over <strong>100+</strong> cryptocurrencies</span>
+                    </div>
+                </div>
+
+                <div class="security-info">
+                    
+                        <path d="M12 1L3 5v6c0 5.55 3.84 10.17 9 12 5.16-1.83 9-6.45 9-12V5l-9-4zm0 10.7c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3z"/>
+                    </svg>
+                    <span>Secure and seamless transactions. Your peace of mind is our priority.</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="swap-card">
+            <div class="card-header">
+                <div class="toggle-container">
+                    <button class="toggle-btn active" data-action="buy">Buy</button>
+                    <button class="toggle-btn" data-action="sell">Sell</button>
+                </div>
+            </div>
+
+            <div class="input-section step-content step-1" id="inputSection">
+              <div class="currency-input">
+                  <label for="payAmount">Pay</label>
+                  <div class="input-group">
+                      <input type="number" id="payAmount" placeholder="0.00" />
+                      <button class="currency-selector" id="payCurrency">
+                          <img src="/images/brl.png" alt="BRL" width="24" />
+                          <span>BRL</span>
+                          <svg class="arrow-icon" viewBox="0 0 24 24">
+                              <path d="M7 10l5 5 5-5z"/>
+                          </svg>
+                      </button>
+                      <div id="payDropdown" class="dropdown-options hidden"></div>
+                  </div>
+              </div>
+          
+              <div class="exchange-rate">
+                  <span class="rate-text">Carregando cotação...</span>
+                  <div class="loading-spinner"></div>
+              </div>
+          
+              <div class="currency-input">
+                  <label for="receiveAmount">Receive</label>
+                  <div class="input-group">
+                      <input type="number" id="receiveAmount" placeholder="0.00" readonly />
+                      <button class="currency-selector" id="receiveCurrency">
+                          <img src="https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/btc.png" alt="BTC" />
+                          <span>BTC</span>
+                          <svg class="arrow-icon" viewBox="0 0 24 24">
+                              <path d="M7 10l5 5 5-5z"/>
+                          </svg>
+                      </button>
+                      <div id="receiveDropdown" class="dropdown-options hidden"></div>
+                  </div>
+              </div>
+          </div>
+          
+
+          <div class="step-2 step-content hidden" id="step2">
+              <div class="order-summary-step2">
+                  <p>Pagar: <strong id="displayPayAmountStep2"></strong></p>
+                  <p>Receber: <strong id="displayReceiveAmountStep2"></strong></p>
+              </div>
+              <div class="wallet-input" id="walletGroup">
+                  <label for="walletAddress">Wallet Address (ETH ou BTC)</label>
+                  <div class="input-group">
+                      <input type="text" id="walletAddress" placeholder="Cole um endereço 0x... ou bc1..." />
+                  </div>
+              </div>
+
+              <div class="sell-info hidden" id="sellInfo">
+                  <div class="wallet-input">
+                      <label for="pixCpf">Seu CPF (para PIX)</label>
+                      <div class="input-group">
+                          <input type="text" id="pixCpf" placeholder="000.000.000-00" />
+                      </div>
+                  </div>
+                  <div class="wallet-input">
+                      <label for="pixPhone">Chave (PIX)</label>
+                      <div class="input-group">
+                          <input type="text" id="pixPhone" placeholder="(11) 99999-9999" />
+                      </div>
+                  </div>
+              </div>
+
+              <div class="payment-methods" id="paymentMethodsSection">
+                  <h3>Choose payment method</h3>
+                  <div class="methods-grid">
+                      <button class="payment-method" data-method="pix">
+                          <img src="/images/pix.png" alt="PIX" />
+                          <span>PIX</span>
+                          <span class="fee">Fee: 1.7%</span>
+                      </button>
+                      <button class="payment-method" data-method="visa">
+                          <img src="/images/visa.png" alt="VISA" />
+                          <span>VISA</span>
+                          <span class="fee">Fee: 1.5%</span>
+                      </button>
+                      <button class="payment-method" data-method="mastercard">
+                          <img src="/images/mastercard.png" alt="Mastercard" />
+                          <span>Mastercard</span>
+                          <span class="fee">Fee: 1.7%</span>
+                      </button>
+                  </div>
+              </div>
+          </div>
+            <button type="button" class="continue-btn btn-premium-glow" id="continueBtn">
+                Continue
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+                </svg>
+            </button>
+
+            <div class="terms">
+                By buying, you agree to our <a href="#">terms of service</a>
+            </div>
+
+            <div class="payment-info hidden" id="paymentInfoSection">
+                <p class="payment-summary-text" id="paymentSummary">
+                    <strong>Amount:</strong> <span id="paymentAmount"></span><br>
+                    <strong>Payment Method:</strong> <span id="paymentMethod"></span><br>
+                    <span id="walletRow"><strong>Wallet:</strong> <span id="paymentWallet"></span><br></span>
+                    <strong>Chave PIX:</strong> <span id="pixKey"></span>
+                </p>
+                <div id="sellDepositBlock" class="hidden">
+                    <label for="sellDepositAddressInput">Endereço para enviar</label>
+                    <div class="input-group">
+                        <input type="text" id="sellDepositAddressInput" readonly />
+                    </div>
+                    <label for="sellNetwork">Rede</label>
+                    <select id="sellNetwork">
+                        <option value="btc">Bitcoin</option>
+                        <option value="erc20">Ethereum (ERC20)</option>
+                        <option value="trc20">Tron (TRC20)</option>
+                    </select>
+                </div>
+                <img id="qrCodeImg" src="" alt="QR Code PIX" />
+                <div id="countdownBlock" class="hidden countdown">
+                    <div class="countdown-circle">
+                        <div class="countdown-display">
+                            <div class="cd-group">
+                                <span class="cd-time" id="cdMinutes">15</span>
+                                <span class="cd-label">MIN</span>
+                            </div>
+                            <span class="cd-divider">:</span>
+                            <div class="cd-group">
+                                <span class="cd-time" id="cdSeconds">00</span>
+                                <span class="cd-label">SEC</span>
+                            </div>
+                            <span class="cd-divider">.</span>
+                            <div class="cd-group">
+                                <span class="cd-time" id="cdCentis">00</span>
+                                <span class="cd-label">MS</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="statusMessage"></div>
+                <button class="confirm-payment-btn" id="confirmPaymentBtn">Confirm Payment</button>
+            </div>
+
+            <div class="payment-info hidden" id="orderInfoBox" style="margin-top:20px;">
+                <h3>Ordem TRON/USDT</h3>
+                <p class="payment-summary-text">
+                    <strong>Endereço TRON:</strong><br>
+                    <code id="depositAddress">—</code><br>
+                    <strong>Status:</strong> <span id="orderStatus">—</span><br>
+                    <strong>Ordem:</strong> <span id="orderId">—</span>
+                </p>
+                <p class="payment-summary-text" id="orderNotice">Rede TRON / USDT (TRC20). Envie também 5–10 TRX para fee do sweep.</p>
+                <p class="payment-summary-text" id="orderError" style="color:#c0392b; display:none;"></p>
+                <button class="confirm-payment-btn" id="createOrderBtn" type="button">Criar ordem TRON/USDT</button>
+            </div>
+            
+            
+   <!-- ... (todo o conteúdo anterior do seu HTML permanece igual) ... -->
+
+   <script src="main.js"></script>
+   <script type="module">
+    import * as THREE from 'three';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+    const container = document.getElementById('three-background');
+    if (container) {
+      const scene = new THREE.Scene();
+      // transparent background
+      scene.background = null;
+
+      const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+      const baseZ = 34;
+      const updateCameraForAspect = () => {
+        const aspect = window.innerWidth / window.innerHeight;
+        camera.aspect = aspect;
+        camera.position.z = baseZ * Math.max(1, aspect); // push back on ultrawide to keep scale similar
+        camera.updateProjectionMatrix();
+      };
+      updateCameraForAspect();
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setClearColor(0x000000, 0); // fully transparent
+      renderer.toneMapping = THREE.ReinhardToneMapping;
+      renderer.domElement.style.position = 'fixed';
+      renderer.domElement.style.inset = '0';
+      renderer.domElement.style.pointerEvents = 'none';
+      container.appendChild(renderer.domElement);
+
+      // Post-processing
+      const renderPass = new RenderPass(scene, camera);
+      const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.4, 0.35, 0.85);
+      const composer = new EffectComposer(renderer);
+      composer.addPass(renderPass);
+      composer.addPass(bloomPass);
+
+      // Material & geometry helpers
+      const params = {
+        lineColor: '#5c5c5c',
+        dotColor: '#33ccff',
+        speed: 0.12,
+        dotLength: 0.02,
+        dotDensity: 2.0
+      };
+
+      const vertexShader = `
+        attribute float lineDistance;
+        varying float vDistance;
+        void main() {
+          vDistance = lineDistance;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `;
+
+      const fragmentShader = `
+        uniform vec3 colorLine;
+        uniform vec3 colorDot;
+        uniform float uTime;
+        uniform float uSpeed;
+        uniform float uDotLength;
+        uniform float uDotRepeat;
+        varying float vDistance;
+        void main() {
+          float alpha = 0.2;
+          float distanceState = vDistance - uTime * uSpeed * 10.0;
+          float flow = mod(distanceState, uDotRepeat * 10.0);
+          float lengthVal = (uDotRepeat * 10.0) * uDotLength;
+          float signal = smoothstep((uDotRepeat * 10.0) - lengthVal, (uDotRepeat * 10.0), flow);
+          if(flow < (uDotRepeat * 10.0) - lengthVal) signal = 0.0;
+          vec3 finalColor = mix(colorLine, colorDot, signal);
+          float finalAlpha = max(alpha, signal * 0.9);
+          gl_FragColor = vec4(finalColor, finalAlpha);
+        }
+      `;
+
+      const material = new THREE.ShaderMaterial({
+        vertexShader,
+        fragmentShader,
+        uniforms: {
+          colorLine: { value: new THREE.Color(params.lineColor) },
+          colorDot: { value: new THREE.Color(params.dotColor) },
+          uTime: { value: 0 },
+          uSpeed: { value: params.speed },
+          uDotLength: { value: params.dotLength },
+          uDotRepeat: { value: params.dotDensity }
+        },
+        transparent: true,
+        depthTest: false,
+        blending: THREE.NormalBlending,
+        side: THREE.DoubleSide
+      });
+
+      const gridParams = () => {
+        const baseStep = 2;
+        const densityFactor = Math.max(0.7, Math.min(1.4, 1920 / window.innerWidth)); // keep similar visual density
+        const step = baseStep * densityFactor;
+        const range = 26 * densityFactor * 2; // expand search range when step shrinks
+        const maxSegments = Math.round(4800 * densityFactor);
+        return { step, range, maxSegments };
+      };
+
+      function isPointInside(v, range) {
+        const r = range;
+        return Math.abs(v.x) < r && Math.abs(v.y) < r && Math.abs(v.z) < r;
+      }
+
+      function isSurface(v, step, range) {
+        if (!isPointInside(v, range)) return false;
+        const dirs = [
+          new THREE.Vector3(step,0,0), new THREE.Vector3(-step,0,0),
+          new THREE.Vector3(0,step,0), new THREE.Vector3(0,-step,0),
+          new THREE.Vector3(0,0,step), new THREE.Vector3(0,0,-step)
+        ];
+        for (let d of dirs) {
+          const n = v.clone().add(d);
+          if (!isPointInside(n, range)) return true;
+        }
+        return false;
+      }
+
+      function createGeometry() {
+        const { step, range, maxSegments } = gridParams();
+        const positions = [];
+        const attributes = [];
+
+        const findStart = () => {
+          for (let k = 0; k < 200; k++) {
+            const p = new THREE.Vector3(
+              (Math.random()-0.5)*range,
+              (Math.random()-0.5)*range,
+              (Math.random()-0.5)*range
+            ).round();
+            p.x = Math.round(p.x/step)*step;
+            p.y = Math.round(p.y/step)*step;
+            p.z = Math.round(p.z/step)*step;
+            if (isSurface(p, step, range)) return p;
+          }
+          return new THREE.Vector3(0,0,0);
+        };
+
+        let currentPos = findStart();
+        let currentDist = 0;
+
+        for (let i = 0; i < maxSegments; i++) {
+          const dirs = [
+            new THREE.Vector3(step, 0, 0), new THREE.Vector3(-step, 0, 0),
+            new THREE.Vector3(0, step, 0), new THREE.Vector3(0, -step, 0),
+            new THREE.Vector3(0, 0, step), new THREE.Vector3(0, 0, -step)
+          ];
+          const dir = dirs[Math.floor(Math.random() * 6)];
+          const next = currentPos.clone().add(dir);
+
+          if (isSurface(next, step, range)) {
+            positions.push(currentPos.x, currentPos.y, currentPos.z, next.x, next.y, next.z);
+            attributes.push(currentDist, currentDist + step);
+            currentDist += step;
+            currentPos.copy(next);
+          } else {
+            currentDist += 30;
+            currentPos = findStart();
+          }
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geometry.setAttribute('lineDistance', new THREE.Float32BufferAttribute(attributes, 1));
+        return geometry;
+      }
+
+      let mesh = new THREE.LineSegments(createGeometry(), material);
+      scene.add(mesh);
+
+      const clock = new THREE.Clock();
+      function animate() {
+        requestAnimationFrame(animate);
+        material.uniforms.uTime.value = clock.getElapsedTime();
+        composer.render();
+      }
+      animate();
+
+      window.addEventListener('resize', () => {
+        updateCameraForAspect();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        composer.setSize(window.innerWidth, window.innerHeight);
+      });
+   }
+   </script>
+
+
+
+</body>
+</html>
