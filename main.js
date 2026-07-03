@@ -3,7 +3,7 @@ const state = {
   action: 'buy',
   payAmount: 0, // Will be updated from input
   payCurrency: 'BRL',
-  receiveCurrency: 'BTC',
+  receiveCurrency: 'USDT',
   selectedPaymentMethod: null, // Will store the DOM element
   exchangeRate: 0, // Will be fetched
   currentStep: 1,
@@ -11,7 +11,7 @@ const state = {
   connected: false, // Simulated wallet connection state
   transactionFee: 0.015,
   walletBalance: { // Simulated balances
-      BTC: 0,
+      USDT: 0,
       ETH: 0,
       BRL: 100000
   },
@@ -19,7 +19,7 @@ const state = {
 };
 
 const LIQUIDITY_POOLS = { // Simulated liquidity
-  BTC: { reserve: 100, price: 250000 }, // price will be updated by fetched rate
+  USDT: { reserve: 100000, price: 5 }, // price will be updated by fetched rate
   ETH: { reserve: 1000, price: 15000 }
 };
 
@@ -27,19 +27,17 @@ const steps = { // Step definitions
   1: 'Valor', // Amount in Portuguese
   2: 'Carteira + Pagamento', // Wallet
   3: 'Método de Pagamento', // Payment Method
-  4: 'Confirmar' // Confirm
+  4: 'Aguardando PIX',
+  5: 'Pagamento confirmado'
 };
 
 // Helper functions (mostly from second block)
 
 const validateWalletAddress = (address) => {
-  // Permite TRON (T...), ETH (0x...) e BTC (1/3/bc1) com checagem leve só para UX.
+  // O payment-gateway entrega USDT na rede TRON.
   if (!address) return false;
   const a = address.trim();
-  if (a.startsWith('T') && a.length >= 30) return true;           // TRON base58 típica ~34
-  if (a.startsWith('0x') && a.length === 42) return true;         // ETH/evm
-  if ((a.startsWith('1') || a.startsWith('3') || a.startsWith('bc1')) && a.length >= 26) return true; // BTC simples
-  return a.length >= 10; // fallback permissivo para não travar o fluxo
+  return a.startsWith('T') && a.length >= 30;
 };
 
 const calculateFees = (amount) => amount * state.transactionFee;
@@ -58,13 +56,13 @@ const connectWallet = async () => {
 const executeTransaction = async () => {
   // Simulate transaction execution
   const amountBrl = state.payAmount;
-  const amountBtc = parseFloat(document.getElementById('receiveAmount').value); // Use the calculated received amount
+  const amountCrypto = parseFloat(document.getElementById('receiveAmount').value); // Use the calculated received amount
   const fee = calculateFees(amountBrl);
   const totalBrl = amountBrl + fee; // Assuming buying, fee is added to BRL cost
 
   const pool = LIQUIDITY_POOLS[state.receiveCurrency];
 
-  if (!pool || pool.reserve < amountBtc) { // Check BTC reserve
+  if (!pool || pool.reserve < amountCrypto) {
       throw new Error('Liquidez insuficiente de Bitcoin.'); // Portuguese
   }
 
@@ -78,15 +76,15 @@ const executeTransaction = async () => {
       }
 
       state.walletBalance[state.payCurrency] -= totalBrl;
-      state.walletBalance[state.receiveCurrency] += amountBtc; // Add the received BTC
-      pool.reserve -= amountBtc; // Decrease BTC reserve
+      state.walletBalance[state.receiveCurrency] += amountCrypto;
+      pool.reserve -= amountCrypto;
   }
   // Sell logic would be different but is not used in this flow
 
   const receipt = {
       txHash: '0x' + Math.random().toString(16).slice(2), // Simulate transaction hash
       amountPaid: amountBrl,
-      amountReceived: amountBtc,
+      amountReceived: amountCrypto,
       fee: fee,
       totalPaid: totalBrl,
       price: finalPrice, // Price with slippage
@@ -380,11 +378,76 @@ const updateReceiveAmount = () => {
 
   // Only calculate if exchange rate is available and input is a valid positive number
   if (!isNaN(brlValue) && brlValue > 0 && state.exchangeRate > 0) {
-      const btcValue = brlValue / state.exchangeRate;
-      receiveAmountInput.value = btcValue.toFixed(8); // Use more precision for crypto
+      const cryptoValue = brlValue / state.exchangeRate;
+      receiveAmountInput.value = cryptoValue.toFixed(6); // USDT precision
   } else {
       receiveAmountInput.value = '';
   }
+};
+
+const formatBrl = (value) => {
+  const amount = Number(value) || 0;
+  return amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+};
+
+const getReceiveDisplayValue = () => {
+  const receiveAmountInput = document.getElementById('receiveAmount');
+  let amount = receiveAmountInput?.value || '';
+  if (!amount && state.payAmount > 0 && state.exchangeRate > 0) {
+      amount = (state.payAmount / state.exchangeRate).toFixed(8);
+      if (receiveAmountInput) receiveAmountInput.value = amount;
+  }
+  return amount ? `${amount} ${state.receiveCurrency}` : `0 ${state.receiveCurrency}`;
+};
+
+const updateOrderSummaries = () => {
+  const payText = `${formatBrl(state.payAmount)} ${state.payCurrency}`;
+  const receiveText = getReceiveDisplayValue();
+
+  document.querySelectorAll('#displayPayAmountStep2, #displayPayAmountStep3').forEach(el => {
+      el.textContent = payText;
+  });
+  document.querySelectorAll('#displayReceiveAmountStep2, #displayReceiveAmountStep3').forEach(el => {
+      el.textContent = receiveText;
+  });
+
+  const displayTotalStep3 = document.getElementById('displayTotalStep3');
+  if (displayTotalStep3) displayTotalStep3.textContent = payText;
+};
+
+const updateStep3PaymentPreview = (showCardWarning = false) => {
+  const pixPanel = document.getElementById('step3PixPanel');
+  const cardMessage = document.getElementById('step3CardMessage');
+  const bypassBtn = document.getElementById('step3BypassBtn');
+  const continueBtn = document.getElementById('continueBtn');
+  const selectedMethod = state.selectedPaymentMethod?.dataset?.method;
+  const isPix = selectedMethod === 'pix';
+
+  if (pixPanel) pixPanel.classList.toggle('hidden', !isPix);
+  if (bypassBtn) bypassBtn.classList.toggle('hidden', !isPix);
+  if (continueBtn && state.currentStep === 3) continueBtn.classList.toggle('hidden', isPix);
+  if (cardMessage) {
+      cardMessage.classList.toggle('hidden', isPix || !showCardWarning);
+      if (!isPix && showCardWarning) cardMessage.textContent = 'Volte e pague com Pix.';
+  }
+};
+
+const updateFinalPaymentStatus = (status) => {
+  const paymentStatusLabel = document.getElementById('paymentStatusLabel');
+  if (!paymentStatusLabel) return;
+
+  const normalized = String(status || '').toLowerCase();
+  const isComplete = ['complete', 'completed', 'paid', 'pago', 'confirmed', 'enviado', 'finalizado', 'concluido', 'concluído'].some(value => normalized.includes(value));
+  paymentStatusLabel.textContent = isComplete ? 'Pagamento completo' : 'Pagamento identificado';
+};
+
+const resolveApiBase = () => {
+  const configured = window.SWAPPED_API_BASE_URL || localStorage.getItem('SWAPPED_API_BASE_URL') || 'http://localhost:3000';
+  return String(configured).trim().replace(/\/+$/, '');
+};
+
+const extractBrlRate = (data) => {
+  return data?.brl ?? data?.BRL ?? data?.priceBRL ?? data?.rate ?? data?.tether?.brl ?? data?.usdt?.brl;
 };
 
 const updateStep = (step) => {
@@ -416,8 +479,13 @@ const updateStep = (step) => {
   // Update continue button text based on the step
   const continueBtn = document.getElementById('continueBtn');
   if (continueBtn) {
+      continueBtn.classList.remove('hidden');
       if (step === 4) {
           continueBtn.innerText = 'Processar Pagamento'; // Portuguese
+      } else if (step === 3) {
+          continueBtn.innerText = 'Avançar';
+      } else if (step === 5) {
+          continueBtn.innerText = 'Finalizar';
       } else {
           continueBtn.innerText = 'Buy Now'; // Portuguese
       }
@@ -427,7 +495,7 @@ const updateStep = (step) => {
    // Manage card header visibility - Hide it on the confirmation step (step 4)
    const cardHeader = document.querySelector('.card-header');
    if(cardHeader) {
-       if (step === 4) {
+       if (step === 5) {
            cardHeader.classList.add('hidden');
        } else {
            cardHeader.classList.remove('hidden');
@@ -436,6 +504,7 @@ const updateStep = (step) => {
 
   // Optional: Perform actions specific to entering a step
   if (step === 2) {
+       updateOrderSummaries();
        // Maybe focus the wallet input or show a connect button
        const walletInput = document.getElementById('walletAddress');
        if (walletInput && !state.connected) {
@@ -443,13 +512,18 @@ const updateStep = (step) => {
             // walletInput.focus();
             // Or update UI to show 'Connect Wallet' button if not connected
        }
-  } else if (step === 4) {
+  } else if (step === 3) {
+      updateOrderSummaries();
+      updateStep3PaymentPreview(false);
+  } else if (step === 5) {
       // Populate the confirmation details (already done in continueBtn handler, but could be here)
-      const paymentAmountDisplay = document.getElementById('paymentAmount');
+      const paymentBtcAmountDisplay = document.getElementById('paymentBtcAmount');
       const paymentMethodDisplay = document.getElementById('paymentMethod');
       const paymentWalletDisplay = document.getElementById('paymentWallet');
+      const paymentStatusLabel = document.getElementById('paymentStatusLabel');
 
-      if (paymentAmountDisplay) paymentAmountDisplay.textContent = `${state.payAmount} ${state.payCurrency}`;
+      if (paymentStatusLabel) paymentStatusLabel.textContent = 'Pagamento identificado';
+      if (paymentBtcAmountDisplay) paymentBtcAmountDisplay.textContent = getReceiveDisplayValue();
       if (paymentMethodDisplay && state.selectedPaymentMethod) paymentMethodDisplay.textContent = state.selectedPaymentMethod.dataset.method.toUpperCase();
       if (paymentWalletDisplay) paymentWalletDisplay.textContent = state.walletAddress;
   }
@@ -458,13 +532,15 @@ const updateStep = (step) => {
 // --- DOMContentLoaded Listener (combining setup and initial logic) ---
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const API_BASE = 'https://swappy-financial-backend-cripto-production.up.railway.app';
+  const API_BASE = resolveApiBase();
   let buySse = null;
   let currentBuyId = null;
+  let buyOrderPromise = null;
   const PARTICLE_ICON = 'https://res.cloudinary.com/limpeja/image/upload/v1771076927/iconnn-Photoroom_wdsmis.png';
 
   // Get DOM element references
   const continueBtn = document.getElementById('continueBtn');
+  const step3BypassBtn = document.getElementById('step3BypassBtn');
   
   const orderInfoBox = document.getElementById('orderInfoBox');
   const payAmountInput = document.getElementById('payAmount');
@@ -481,6 +557,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const pixPhoneInput = document.getElementById('pixPhone');
   const pixKeyDisplay = document.getElementById('pixKey');
   const qrCodeImg = document.getElementById('qrCodeImg');
+  const step3PixQr = document.getElementById('step3PixQr');
   const statusMessage = document.getElementById('statusMessage');
   const particlesContainer = document.getElementById('particles-container');
   const premiumTitleEl = document.getElementById('premiumTitle');
@@ -533,6 +610,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       buySse.onmessage = (ev) => {
         try {
           const data = JSON.parse(ev.data);
+          updateFinalPaymentStatus(data.status);
           if (orderStatusEl) orderStatusEl.textContent = data.status || '—';
           if (statusMessage) statusMessage.textContent = `Status: ${data.status || '—'}`;
         } catch (e) { /* ignore */ }
@@ -544,36 +622,64 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function createBuyOrder() {
-    setOrderError('');
-    const amount = parseFloat(payAmountInput?.value || '0');
-    const destAddr = walletAddressInput?.value?.trim();
-    const phone = pixPhoneInput?.value?.replace(/\D/g, '') || '';
-    const cpf = pixCpfInput?.value?.replace(/\D/g, '') || '';
-    if (!amount || amount <= 0) return setOrderError('Informe um valor válido.');
-    if (!destAddr) return setOrderError('Informe o endereço TRON de destino.');
-    try {
-      const resp = await fetch(`${API_BASE}/api/buy`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amountBRL: amount, asset: 'USDT', address: destAddr, pixPhone: phone, pixCpf: cpf })
-      });
-      if (!resp.ok) {
-        const data = await resp.json().catch(() => ({}));
-        const msg = data.error || (resp.status === 429 ? 'Limite diário atingido.' : 'Erro ao criar compra');
-        return setOrderError(msg);
+    if (currentBuyId) return { buyId: currentBuyId };
+    if (buyOrderPromise) return buyOrderPromise;
+
+    buyOrderPromise = (async () => {
+      setOrderError('');
+      const amount = parseFloat(payAmountInput?.value || '0');
+      const destAddr = walletAddressInput?.value?.trim();
+      const phone = pixPhoneInput?.value?.replace(/\D/g, '') || '';
+      const cpf = pixCpfInput?.value?.replace(/\D/g, '') || '';
+
+      if (!amount || amount <= 0) return setOrderError('Informe um valor valido.');
+      if (!destAddr || !validateWalletAddress(destAddr)) return setOrderError('Informe um endereco TRON valido.');
+
+      try {
+        const resp = await fetch(`${API_BASE}/api/buy`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amountBRL: amount,
+            amountFiat: amount,
+            fiatCurrency: 'BRL',
+            paymentMethod: 'pix',
+            asset: 'USDT',
+            address: destAddr,
+            pixPhone: phone,
+            pixCpf: cpf
+          })
+        });
+
+        if (!resp.ok) {
+          const data = await resp.json().catch(() => ({}));
+          const msg = data.error || (resp.status === 429 ? 'Limite diario atingido.' : 'Erro ao criar compra');
+          setOrderError(msg);
+          return null;
+        }
+
+        const data = await resp.json();
+        currentBuyId = data.buyId || data.id;
+        if (orderIdEl) orderIdEl.textContent = currentBuyId || '-';
+        if (orderStatusEl) orderStatusEl.textContent = data.status || 'aguardando_pix';
+        updateFinalPaymentStatus(data.status);
+        if (pixKeyDisplay) pixKeyDisplay.textContent = data.pixKey || data.payment?.pixKey || 'chavepix@nexswap.com';
+        const qrUrl = data.qrCodeUrl || data.payment?.qrCodeUrl;
+        if (qrCodeImg && qrUrl) qrCodeImg.src = qrUrl;
+        if (step3PixQr && qrUrl) step3PixQr.src = qrUrl;
+        if (statusMessage) statusMessage.textContent = 'Pague o PIX para liberar o envio.';
+        if (currentBuyId) startBuyStream(currentBuyId);
+        return data;
+      } catch (err) {
+        console.error(err);
+        setOrderError('Backend indisponivel. Mantendo QR local para teste.');
+        return null;
+      } finally {
+        buyOrderPromise = null;
       }
-      const data = await resp.json();
-      currentBuyId = data.buyId;
-      if (orderIdEl) orderIdEl.textContent = data.buyId || '—';
-      if (orderStatusEl) orderStatusEl.textContent = data.status || 'aguardando_pix';
-      if (pixKeyDisplay) pixKeyDisplay.textContent = data.pixKey || 'chavepix@nexswap.com';
-      if (qrCodeImg && data.qrCodeUrl) qrCodeImg.src = data.qrCodeUrl;
-      if (statusMessage) statusMessage.textContent = 'Pague o PIX para liberar o envio.';
-      startBuyStream(currentBuyId);
-    } catch (err) {
-      console.error(err);
-      setOrderError('Falha de rede ao criar compra.');
-    }
+    })();
+
+    return buyOrderPromise;
   }
 
   // --- Initial Setup ---
@@ -583,33 +689,35 @@ document.addEventListener('DOMContentLoaded', async () => {
       const res = await fetch(`${API_BASE}/api/price`);
       if (!res.ok) throw new Error(`backend ${res.status}`);
       const data = await res.json();
-      return data?.brl;
+      return extractBrlRate(data);
     } catch (e) {
       // fallback para CoinGecko se backend falhar
       try {
-        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=brl');
+        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=brl');
         const data = await res.json();
-        return data?.bitcoin?.brl;
+        return data?.tether?.brl;
       } catch {
         throw e; // mantém o primeiro erro
       }
     }
   }
 
-  // Fetch BTC price and update the rate text and state
+  // Fetch USDT price and update the rate text and state
   try {
     const price = await fetchPriceWithFallback();
     if (!price) throw new Error('sem preço');
     state.exchangeRate = price;
-    LIQUIDITY_POOLS.BTC.price = price;
-    rateText.textContent = `1 BTC ≈ ${price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
-    console.log("BTC Rate fetched:", state.exchangeRate);
+    LIQUIDITY_POOLS.USDT.price = price;
+    rateText.textContent = `1 USDT ≈ ${price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+    console.log("USDT Rate fetched:", state.exchangeRate);
+    updateReceiveAmount();
+    updateOrderSummaries();
     if (rateSpinner) rateSpinner.classList.add('hidden');
   } catch (err) {
-    console.error("Erro ao buscar o preço do BTC:", err);
+    console.error("Erro ao buscar o preço do USDT:", err);
     rateText.textContent = "Erro ao buscar a taxa 😓";
     state.exchangeRate = 0;
-    LIQUIDITY_POOLS.BTC.price = 0;
+    LIQUIDITY_POOLS.USDT.price = 0;
     if (rateSpinner) rateSpinner.classList.add('hidden');
   }
 
@@ -620,7 +728,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Listen for input on the pay amount field to update the receive amount
   if (payAmountInput) {
-       payAmountInput.addEventListener('input', updateReceiveAmount);
+       payAmountInput.addEventListener('input', () => {
+           updateReceiveAmount();
+           if (state.currentStep > 1) {
+               state.payAmount = parseFloat(payAmountInput.value) || 0;
+               updateOrderSummaries();
+           }
+       });
   } else {
        console.warn("Element with id 'payAmount' not found.");
   }
@@ -635,6 +749,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                btn.classList.add('selected');
                // Store the selected method element in state
                state.selectedPaymentMethod = btn;
+               updateStep3PaymentPreview(false);
                console.log("Selected payment method:", btn.dataset.method);
            });
        });
@@ -642,6 +757,13 @@ document.addEventListener('DOMContentLoaded', async () => {
        console.warn("Elements with class 'payment-method' not found.");
   }
 
+  if (step3BypassBtn) {
+      step3BypassBtn.addEventListener('click', () => {
+          if (state.currentStep !== 3 || state.selectedPaymentMethod?.dataset?.method !== 'pix') return;
+          updateFinalPaymentStatus('completed');
+          updateStep(5);
+      });
+  }
 
   // Listen for clicks on the 'Continue' button
   if (continueBtn) {
@@ -654,24 +776,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                       return; // Stay on this step if validation fails
                   }
                   state.payAmount = payAmount; // Store validated amount in state
+                  updateReceiveAmount();
+                  updateOrderSummaries();
                   updateStep(2); // Move to Wallet Step
                   break;
 
               case 2: // Wallet Input/Connect Step
-                  // If wallet isn't connected (simulated), connect it
-                  if (!state.connected) {
-                       try {
-                           const address = await connectWallet(); // Simulate connection
-                           walletAddressInput.value = address; // Display connected address
-                           alert(`Carteira simulada conectada: ${address}`); // Notify user
-                       } catch (error) {
-                           console.error("Erro ao conectar carteira simulada:", error);
-                           alert("Erro ao conectar a carteira."); // Portuguese
-                           return; // Stay on step 2 if connection fails
-                       }
-                  }
-
-                  // Now validate the wallet address displayed/entered
+                  // Validate the wallet address entered by the user.
                   const wallet = walletAddressInput.value.trim();
                   if (!wallet || !validateWalletAddress(wallet)) {
                        alert("Por favor, insira um endereço de carteira válido."); // Portuguese
@@ -679,7 +790,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                        return; // Stay on step 2 if validation fails
                   }
                   state.walletAddress = wallet; // Store validated address in state
+                  if (!state.selectedPaymentMethod) {
+                      alert('Por favor, selecione um método de pagamento.'); // Portuguese
+                      return;
+                  }
                   updateStep(3); // Move to Payment Method Step
+                  if (state.selectedPaymentMethod.dataset.method === 'pix') {
+                      void createBuyOrder();
+                  }
                   break;
 
               case 3: // Payment Method Step
@@ -688,36 +806,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                       return; // Stay on step 3 if no method is selected
                   }
                   // No data to store in state here, selection is already in state.selectedPaymentMethod
-                  updateStep(4); // Move to Confirmation Step
-                  break;
-
-              case 4: // Confirmation and Processing Step
-                  // This is where the transaction process is initiated.
-                  // processTransaction includes showing modals and verification.
-                  if (state.action === 'buy') {
-                      await createBuyOrder();
-                  } else {
-                      await processTransaction();
+                  if (state.selectedPaymentMethod.dataset.method !== 'pix') {
+                      updateStep3PaymentPreview(true);
+                      return;
                   }
+                  return;
 
-                  // After processTransaction finishes (either succeeds, fails, or times out),
-                  // we reset the state and UI back to step 1.
+              case 5: // Confirmed payment Step
                   // Resetting state variables
                   state.payAmount = 0;
                   state.selectedPaymentMethod = null;
                   state.walletAddress = '';
                   state.connected = false; // Reset connection state
+                  currentBuyId = null;
+                  if (buySse) {
+                      buySse.close();
+                      buySse = null;
+                  }
 
                   // Resetting UI elements
                   if (payAmountInput) payAmountInput.value = '';
                   if (receiveAmountInput) receiveAmountInput.value = '';
                   if (walletAddressInput) walletAddressInput.value = '';
+                  if (step3PixQr) step3PixQr.src = '/images/qrcode.png';
                   // Deselect payment method buttons visually
                   paymentMethodButtons.forEach(b => {
                       b.classList.remove('selected');
                       // Also reset any custom styles like border color from the first snippet
                       b.style.borderColor = '';
                   });
+                  updateStep3PaymentPreview(false);
 
                   // Move back to the first step
                   updateStep(1);
@@ -875,4 +993,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.addEventListener('resize', resize);
   requestAnimationFrame(render);
 })();
+
+
 
