@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Buy & Sell Crypto Simply</title>
     <link rel="icon" href="https://res.cloudinary.com/limpeja/image/upload/v1771076927/iconnn-Photoroom_wdsmis.png" type="image/png">
+    <!-- Font Awesome para os ícones sociais -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" defer></script>
     <script type="importmap">
         {
@@ -403,6 +405,32 @@ void main() {
             
             
    <!-- ... (todo o conteúdo anterior do seu HTML permanece igual) ... -->
+    <!-- ============================================
+        EFEITO DA BOLINHA (ANIMAÇÃO PURA)
+        ============================================ -->
+   <div class="efeito-bolinha-container">
+     <div class="efeito-bolinha" id="bolinhaEfeito"></div>
+   </div>
+
+   <!-- ============================================
+        SCRIPT PARA REMOVER A BOLINHA
+        ============================================ -->
+   <script>
+     // Remove a bolinha depois que o efeito terminar
+     document.addEventListener('DOMContentLoaded', function() {
+       const bolinha = document.getElementById('bolinhaEfeito');
+       
+       // Aguarda o fim da animação (3.5 segundos) e remove a bolinha
+       setTimeout(function() {
+         if (bolinha) {
+           bolinha.classList.add('some');
+           setTimeout(function() {
+             bolinha.style.display = 'none';
+           }, 500);
+         }
+       }, 3500);
+     });
+   </script>
 
    <script src="main.js"></script>
    <script type="module">
