@@ -66,7 +66,7 @@ body::before {
 
 /* Ilustração fixa no rodapé do fundo */
 body::after {
-  content: 'Financial - Enterprise';
+  content: '';
   position: fixed;
   left: 74%;
   bottom: 16em; /* posiciona mais acima */
@@ -395,8 +395,8 @@ body::after {
 
 .logo img {
   position: absolute;
-  top: -22px; /* flutua sem empurrar layout */
-  height: 94px;
+  top: -9px; /* flutua sem empurrar layout */
+  height: 69px;
   max-height: 94px;
   width: auto;
   object-fit: contain;
@@ -1555,3 +1555,96 @@ body::after {
 
 
 /* Footer illustration — fixed and non-interactive */
+/* ============================================
+   EFEITO DA BOLINHA (ANIMAÇÃO PURA)
+   ============================================ */
+
+/* Container do efeito */
+.efeito-bolinha-container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  pointer-events: none;
+}
+
+/* A bolinha que vai expandir */
+.efeito-bolinha {
+  width: 56px;
+  height: 56px;
+  background: #6c63ff;
+  border-radius: 50%;
+  opacity: 0;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.16), 0px 3px 6px rgba(0, 0, 0, 0.23);
+  animation: init 0.0s 0.0s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards, 
+             moveDown 0.0s 0.0s cubic-bezier(0.6, -0.28, 0.735, 0.045) forwards, 
+             moveUp 0s 0s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, 
+             expandir 0.0s 0.0s cubic-bezier(0.86, 0, 0.07, 1) forwards;
+}
+
+/* A bolinha some depois de expandir */
+.efeito-bolinha.some {
+  animation: sumir 0.0s forwards;
+}
+
+/* ============================================
+   ANIMAÇÕES DA BOLINHA
+   ============================================ */
+
+@keyframes init {
+  0% { width: 0px; height: 0px; }
+  100% { width: 56px; height: 56px; opacity: 1; }
+}
+
+@keyframes moveDown {
+  0% { top: 50%; }
+  50% { top: 40%; }
+  100% { top: 100%; }
+}
+
+@keyframes moveUp {
+  0% { background: #6c63ff; top: 100%; }
+  50% { top: 40%; }
+  100% { top: 50%; background: #E0E0E0; }
+}
+
+@keyframes expandir {
+  0% { 
+    background: #6c63ff;
+    border-radius: 50%;
+    width: 56px;
+    height: 56px;
+  }
+  50% { 
+    border-radius: 4px;
+    background: #6c63ff;
+  }
+  100% { 
+    width: 100vw;
+    height: 100vh;
+    background: transparent;
+    border-radius: 0px;
+    opacity: 0;
+  }
+}
+
+@keyframes sumir {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Card da Swappy será revelado após o efeito */
+.swap-card {
+  opacity: 0;
+  animation: revelarCard 0.1s 0.2s ease forwards;
+}
+
+@keyframes revelarCard {
+  0% { opacity: 0; transform: scale(0.8); }
+  100% { opacity: 1; transform: scale(1); }
+}
