@@ -964,7 +964,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  if (window.location.hash === '#developers') {
+  if (window.location.hash === '#developers' || window.location.hash.startsWith('#api-')) {
     setPageView('developers');
   } else if (window.location.hash === '#markets') {
     setPageView('markets');
@@ -973,6 +973,77 @@ document.addEventListener('DOMContentLoaded', async () => {
   } else {
     setPageView('trade');
   }
+
+  const devSidebarLinks = document.querySelectorAll('[data-dev-link]');
+  const devPanels = document.querySelectorAll('.developer-panel[id]');
+
+  if (devSidebarLinks.length && devPanels.length) {
+    const setActiveDevLink = id => {
+      devSidebarLinks.forEach(link => {
+        link.classList.toggle('is-active', link.getAttribute('href') === `#${id}`);
+      });
+    };
+
+    if ('IntersectionObserver' in window) {
+      const devObserver = new IntersectionObserver(entries => {
+        const visible = entries
+          .filter(entry => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible) setActiveDevLink(visible.target.id);
+      }, { root: null, rootMargin: '-96px 0px -55% 0px', threshold: [0.1, 0.25, 0.5, 0.75] });
+
+      devPanels.forEach(panel => devObserver.observe(panel));
+      setActiveDevLink(devPanels[0].id);
+    }
+
+    devSidebarLinks.forEach(link => {
+      link.addEventListener('click', event => {
+        const id = link.getAttribute('href').slice(1);
+        const target = document.getElementById(id);
+        if (target) {
+          event.preventDefault();
+          setActiveDevLink(id);
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          history.replaceState(null, '', `#developers`);
+        }
+      });
+    });
+  }
+
+  const devHeroCta = document.querySelector('.developers-actions a[href="#api-buy"]');
+  if (devHeroCta) {
+    devHeroCta.addEventListener('click', event => {
+      const target = document.getElementById('api-buy');
+      if (target) {
+        event.preventDefault();
+        devSidebarLinks.forEach(link => {
+          link.classList.toggle('is-active', link.getAttribute('href') === '#api-buy');
+        });
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        history.replaceState(null, '', '#developers');
+      }
+    });
+  }
+
+  document.querySelectorAll('[data-copy-target]').forEach(button => {
+    button.addEventListener('click', async () => {
+      const codeWindow = button.closest('.code-window');
+      const codeEl = codeWindow ? codeWindow.querySelector('pre code') : null;
+      if (!codeEl) return;
+      try {
+        await navigator.clipboard.writeText(codeEl.textContent);
+        const original = button.textContent;
+        button.textContent = 'Copied';
+        button.classList.add('is-copied');
+        setTimeout(() => {
+          button.textContent = original;
+          button.classList.remove('is-copied');
+        }, 1600);
+      } catch (err) {
+        console.warn('Copy failed', err);
+      }
+    });
+  });
 
   marketFilterButtons.forEach(button => {
     button.addEventListener('click', () => {

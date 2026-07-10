@@ -582,13 +582,14 @@ void main() {
             </div>
 
             <div class="developers-layout">
-                <aside class="developers-sidebar">
-                    <a href="#api-overview">Overview</a>
-                    <a href="#api-buy">PIX to USDT</a>
-                    <a href="#api-sell">USDT to PIX</a>
-                    <a href="#api-webhooks">Webhooks</a>
-                    <a href="#api-pricing">Pricing</a>
-                    <a href="#api-roadmap">Roadmap</a>
+                <aside class="developers-sidebar" data-dev-sidebar>
+                    <span class="developers-sidebar-label">On this page</span>
+                    <a href="#api-overview" data-dev-link>Overview</a>
+                    <a href="#api-buy" data-dev-link>PIX to USDT</a>
+                    <a href="#api-sell" data-dev-link>USDT to PIX</a>
+                    <a href="#api-webhooks" data-dev-link>Webhooks</a>
+                    <a href="#api-pricing" data-dev-link>Pricing</a>
+                    <a href="#api-roadmap" data-dev-link>Roadmap</a>
                 </aside>
 
                 <div class="developers-content">
@@ -596,19 +597,25 @@ void main() {
                         <h2>Build automated payment flows</h2>
                         <p>Developers can request a quote, create a buy order, show the PIX QR Code to the payer, and listen for webhook confirmation. The API is designed for server-to-server usage with Bearer secret keys.</p>
                         <div class="endpoint-list">
-                            <code>GET /rates</code>
-                            <code>POST /quote</code>
-                            <code>POST /buy</code>
-                            <code>POST /sell</code>
-                            <code>GET /order/{id}</code>
-                            <code>POST /webhooks/test</code>
+                            <code><span class="http-method get">GET</span>/rates</code>
+                            <code><span class="http-method post">POST</span>/quote</code>
+                            <code><span class="http-method post">POST</span>/buy</code>
+                            <code><span class="http-method post">POST</span>/sell</code>
+                            <code><span class="http-method get">GET</span>/order/{id}</code>
+                            <code><span class="http-method post">POST</span>/webhooks/test</code>
                         </div>
                     </article>
 
                     <article id="api-buy" class="developer-panel">
                         <h2>PIX to USDT wallet</h2>
                         <p>To generate a real PIX QR Code, create a buy order with BRL amount, USDT asset, destination BSC wallet and optional customer audit fields. Each request creates a unique buy order and returns the PIX payload, QR Code, status URL and access token.</p>
-                        <pre><code>POST /buy
+                        <div class="code-window">
+                            <div class="code-window-bar">
+                                <span class="code-window-dots"><i></i><i></i><i></i></span>
+                                <span class="code-window-title">POST /buy</span>
+                                <button type="button" class="code-copy-btn" data-copy-target>Copy</button>
+                            </div>
+                            <pre><code>POST /buy
 Authorization: Bearer sk_live_xxx
 Content-Type: application/json
 
@@ -658,13 +665,20 @@ Response 201
   },
   "statusUrl": "/api/buy/buy_order_id?accessToken=customer_access_token"
 }</code></pre>
+                        </div>
                         <p class="developer-note">Consolidated with the backend path: /buy accepts customer name, email, CPF, phone, birth date and address, forwards those fields to the PIX provider when creating the PagBank charge, stores audit hashes locally, and returns the PIX QR payload. Current settlement supports USDT delivery on BSC; BTC and EURUSDT remain roadmap assets.</p>
                     </article>
 
                     <article id="api-sell" class="developer-panel">
                         <h2>USDT to PIX BRL</h2>
                         <p>For sell flows, the customer sends USDT to the generated deposit address and receives BRL via PIX after on-chain confirmation.</p>
-                        <pre><code>POST /sell
+                        <div class="code-window">
+                            <div class="code-window-bar">
+                                <span class="code-window-dots"><i></i><i></i><i></i></span>
+                                <span class="code-window-title">POST /sell</span>
+                                <button type="button" class="code-copy-btn" data-copy-target>Copy</button>
+                            </div>
+                            <pre><code>POST /sell
 Authorization: Bearer sk_live_xxx
 
 {
@@ -674,12 +688,19 @@ Authorization: Bearer sk_live_xxx
   "depositAddress": "0x174208255ECc40481f7fD7c34EE6a9A5B66B4339",
   "pixCpf": "12345678909"
 }</code></pre>
+                        </div>
                     </article>
 
                     <article id="api-webhooks" class="developer-panel">
                         <h2>Webhooks</h2>
                         <p>Use webhooks to automate fulfillment when a payment is completed or crypto is sent.</p>
-                        <pre><code>{
+                        <div class="code-window">
+                            <div class="code-window-bar">
+                                <span class="code-window-dots"><i></i><i></i><i></i></span>
+                                <span class="code-window-title">payment.completed</span>
+                                <button type="button" class="code-copy-btn" data-copy-target>Copy</button>
+                            </div>
+                            <pre><code>{
   "event": "payment.completed",
   "orderId": "ord_123",
   "status": "paid",
@@ -687,12 +708,13 @@ Authorization: Bearer sk_live_xxx
   "amount": "96.52",
   "timestamp": "2026-07-04T00:00:00Z"
 }</code></pre>
+                        </div>
                         <div class="webhook-events">
                             <span>payment.created</span>
-                            <span>payment.completed</span>
+                            <span class="is-highlight">payment.completed</span>
                             <span>payment.failed</span>
                             <span>order.confirmed</span>
-                            <span>crypto.sent</span>
+                            <span class="is-highlight">crypto.sent</span>
                             <span>crypto.confirmed</span>
                             <span>order.failed</span>
                         </div>
