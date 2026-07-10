@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Buy & Sell Crypto Simply</title>
-    <link rel="icon" href="https://res.cloudinary.com/limpeja/image/upload/v1771076927/iconnn-Photoroom_wdsmis.png" type="image/png">
+     <title>Instant Digital FX Payments</title>
+    <link rel="icon" href="https://res.cloudinary.com/limpeja/image/upload/v1783193228/iconn-removebg-preview_ywjkgu.png" type="image/png">
     <!-- Font Awesome para os ícones sociais -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" defer></script>
@@ -16,7 +16,13 @@
             }
         }
     </script>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/effects.css">
+    <link rel="stylesheet" href="css/theme.css">
+    <link rel="stylesheet" href="css/responsive.css">
     <style>
         /* Estilos para ocultar elementos */
         .hidden {
@@ -100,9 +106,30 @@
         .terms.hidden {
             display: none !important;
         }
+
+        .payment-method.selected {
+            border-color: #1150a8 !important;
+            box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.18), 0 12px 28px rgba(17, 80, 168, 0.12) !important;
+        }
+
+        .qr-code-container {
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+        }
+
+        .confirm-payment-btn {
+            background: linear-gradient(135deg, #1150a8, #06b6d4);
+            box-shadow: 0 12px 30px rgba(17, 80, 168, 0.16);
+            transition: filter 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .confirm-payment-btn:hover {
+            background: linear-gradient(135deg, #1150a8, #06b6d4);
+            filter: brightness(1.04);
+            box-shadow: 0 16px 36px rgba(6, 182, 212, 0.2);
+        }
     </style>
 </head>
-<body>
+<body class="index-page">
     <!-- Canvas de fundo original -->
     <canvas id="bgShader"></canvas>
     <!-- Novo canvas com shader azul/cyan translúcido -->
@@ -188,12 +215,17 @@ void main() {
     <div id="three-background"></div>
     <nav class="navbar">
             <div class="nav-content">
-            <div class="logo"><img src="https://res.cloudinary.com/limpeja/image/upload/v1770993671/swap_1_mvctri.png" alt="NexSwap logo" /></div>
-            <div class="nav-links">
-                <a href="#" class="active">Trade</a>
-                <a href="#">Markets</a>
-                <a href="#">Wallet</a>
-                <a href="#">About</a>
+            <button class="mobile-menu-toggle" type="button" aria-label="Open navigation menu" aria-controls="primaryNav" aria-expanded="false">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <div class="logo"><img src="https://res.cloudinary.com/limpeja/image/upload/v1783205208/ChatGPT_Image_4_de_jul._de_2026__19_38_11-removebg-preview_hskbjt.png" alt="NexSwap logo" /></div>
+            <div class="nav-links" id="primaryNav">
+                <a href="#trade" class="active" data-view="trade">Trade</a>
+                <a href="#markets" data-view="markets">Markets</a>
+                <a href="#developers" data-view="developers">Developers</a>
+                <a href="#pricing" data-view="pricing">Price</a>
             </div>
         </div>
     </nav>
@@ -206,32 +238,33 @@ void main() {
                 <div class="hero-title">
                   <span class="title-text"
       id="premiumTitle"
-      data-text-en="Pay instantly with PIX and receive Bitcoin, USDT or Digital Euro directly in your wallet."
-      data-text-ar="Pay instantly with PIX and receive Bitcoin, USDT or Digital Euro directly in your wallet.">
-    Pay instantly with PIX and receive Bitcoin, USDT or Digital Euro directly in your wallet.
+      data-text-en="Buy USDT with PIX and receive it directly in your wallet."
+      data-text-ar="Buy USDT with PIX and receive it directly in your wallet."
+      data-text-mobile="Buy USDT with PIX and receive it directly in your wallet.">
+    Buy USDT with PIX and receive it directly in your wallet.
 </span>
                 </div>
-                <p class="hero-subtitle">Swap seamlessly with 30+ local payment methods. Experience crypto without the complexity.</p>
+                <p class="hero-subtitle">Complete your payment and receive your digital assets directly in your wallet.</p>
 
                 <div class="trust-badges">
                     <div class="trust-badge">
                         <svg viewBox="0 0 24 24" fill="currentColor" class="badge-icon">
                             <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63L2 9.24l5.64 4.73L5.82 21z"/>
                         </svg>
-                        <span>Trusted by <strong>950,000+</strong> users</span>
+                        <span data-mobile-text="950k+ users">Trusted by <strong>950,000+</strong> users</span>
                     </div>
                     <div class="trust-badge">
                         <svg viewBox="0 0 24 24" fill="currentColor" class="badge-icon">
                             <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
                         </svg>
-                        <span><strong>30+</strong> local payment options</span>
+                        <span data-mobile-text="30+ payments"><strong>30+</strong> local payment options</span>
                     </div>
                     <div class="trust-badge">
                         <svg viewBox="0 0 24 24" fill="currentColor" class="badge-icon">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
                             <path d="M13 7h-2v4H7v2h6V7z"/>
                         </svg>
-                        <span>Access over <strong>100+</strong> cryptocurrencies</span>
+                        <span data-mobile-text="100+ crypto">Access over <strong>100+</strong> cryptocurrencies</span>
                     </div>
                 </div>
 
@@ -296,9 +329,9 @@ void main() {
                   <p>Receber: <strong id="displayReceiveAmountStep2"></strong></p>
               </div>
               <div class="wallet-input" id="walletGroup">
-                  <label for="walletAddress">Wallet Address (TRON / USDT)</label>
+                  <label for="walletAddress">Wallet Address (BSC / USDT BEP20)</label>
                   <div class="input-group">
-                      <input type="text" id="walletAddress" placeholder="Cole um endereco TRON T..." />
+                      <input type="text" id="walletAddress" placeholder="Cole um endereco BSC 0x..." />
                   </div>
               </div>
 
@@ -349,11 +382,20 @@ void main() {
                       <span>PIX</span>
                   </div>
                   <img class="step3-pix-qr" id="step3PixQr" src="/images/qrcode.png" alt="QR Code PIX" />
+                  <div class="step3-pix-copy-row">
+                      <input class="step3-pix-copy" id="step3PixCopy" readonly aria-label="Pix copia e cola" />
+                      <button class="step3-copy-btn" id="step3PixCopyBtn" type="button" aria-label="Copiar Pix copia e cola">
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                              <path d="M8 7a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-1v1a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3h1V7Zm3-1a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-6Zm-4 4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-1h-3a3 3 0 0 1-3-3v-3H7Z"/>
+                          </svg>
+                      </button>
+                  </div>
                   <p class="step3-total">Total: <strong id="displayTotalStep3"></strong></p>
               </div>
               <button type="button" class="step3-bypass-btn hidden" id="step3BypassBtn" aria-label="Liberar confirmação">
                   <span>→</span>
               </button>
+              <button type="button" class="confirm-payment-btn step3-confirm-payment-btn hidden" id="step3ConfirmPaymentBtn">Confirm Payment</button>
               <p class="step3-card-message hidden" id="step3CardMessage">Volte e pague com Pix.</p>
           </div>
             <button type="button" class="continue-btn btn-premium-glow" id="continueBtn">
@@ -362,75 +404,393 @@ void main() {
                     <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
                 </svg>
             </button>
-
-            <div class="terms">
+            <div class="terms checkout-terms" id="checkoutTerms">
                 By buying, you agree to our <a href="#">terms of service</a>
             </div>
 
-            <div class="payment-info step-content step-5 hidden" id="paymentInfoSection">
-                <p class="payment-summary-text payment-summary-final" id="paymentSummary">
-                    <strong>Status:</strong> <span id="paymentStatusLabel">Pagamento identificado</span><br>
-                    <strong>Total USDT:</strong> <span id="paymentBtcAmount"></span><br>
-                    <span id="walletRow"><strong>Enviar para:</strong> <span id="paymentWallet"></span></span>
-                </p>
-                <div id="sellDepositBlock" class="hidden">
-                    <label for="sellDepositAddressInput">Endereço para enviar</label>
-                    <div class="input-group">
-                        <input type="text" id="sellDepositAddressInput" readonly />
-                    </div>
-                    <label for="sellNetwork">Rede</label>
-                    <select id="sellNetwork">
-                        <option value="btc">Bitcoin</option>
-                        <option value="erc20">Ethereum (ERC20)</option>
-                        <option value="trc20">Tron (TRC20)</option>
-                    </select>
+            
+
+            <!-- Substitua a div .payment-info existente por esta versão ajustada -->
+<div class="payment-info step-content step-5 hidden" id="paymentInfoSection">
+
+    <div class="payment-step-brand" aria-label="Digital FX Payments">
+        <span></span>
+        <strong>DIGITAL FX PAYMENTS</strong>
+        <span></span>
+    </div>
+
+    <p class="payment-summary-text payment-summary-final" id="paymentSummary">
+        <strong>Status:</strong> <span id="paymentStatusLabel">Pagamento identificado</span><br>
+        <strong>Total USDT:</strong> <span id="paymentBtcAmount"></span><br>
+        <span id="walletRow"><strong>Enviado para:</strong> <span id="paymentWallet"></span></span><br>
+        <span id="txHashRow"><strong>Tx hash:</strong> <span id="paymentTxHash">Aguardando envio on-chain</span></span>
+    </p>
+    <div id="sellDepositBlock" class="hidden">
+        <label for="sellDepositAddressInput">Endereço para enviar</label>
+        <div class="input-group">
+            <input type="text" id="sellDepositAddressInput" readonly />
+        </div>
+        <label for="sellNetwork">Rede</label>
+        <select id="sellNetwork">
+            <option value="btc">Bitcoin</option>
+            <option value="erc20">Ethereum (ERC20)</option>
+            <option value="BEP20">BSC (BEP20)</option>
+        </select>
+    </div>
+    <img id="qrCodeImg" class="hidden" src="" alt="QR Code PIX" />
+    <div id="countdownBlock" class="hidden countdown">
+        <div class="countdown-circle">
+            <div class="countdown-display">
+                <div class="cd-group">
+                    <span class="cd-time" id="cdMinutes">15</span>
+                    <span class="cd-label">MIN</span>
                 </div>
-                <img id="qrCodeImg" class="hidden" src="" alt="QR Code PIX" />
-                <div id="countdownBlock" class="hidden countdown">
-                    <div class="countdown-circle">
-                        <div class="countdown-display">
-                            <div class="cd-group">
-                                <span class="cd-time" id="cdMinutes">15</span>
-                                <span class="cd-label">MIN</span>
-                            </div>
-                            <span class="cd-divider">:</span>
-                            <div class="cd-group">
-                                <span class="cd-time" id="cdSeconds">00</span>
-                                <span class="cd-label">SEC</span>
-                            </div>
-                            <span class="cd-divider">.</span>
-                            <div class="cd-group">
-                                <span class="cd-time" id="cdCentis">00</span>
-                                <span class="cd-label">MS</span>
-                            </div>
-                        </div>
-                    </div>
+                <span class="cd-divider">:</span>
+                <div class="cd-group">
+                    <span class="cd-time" id="cdSeconds">00</span>
+                    <span class="cd-label">SEC</span>
                 </div>
-                <div id="statusMessage"></div>
-                <button class="confirm-payment-btn" id="confirmPaymentBtn">Confirm Payment</button>
+                <span class="cd-divider">.</span>
+                <div class="cd-group">
+                    <span class="cd-time" id="cdCentis">00</span>
+                    <span class="cd-label">MS</span>
+                </div>
             </div>
+        </div>
+    </div>
+    <div id="statusMessage"></div>
+
+    <!-- Botão Início -->
+    <button class="confirm-payment-btn" id="confirmPaymentBtn">Início</button>
+
+    <!-- TERMS AQUI (logo abaixo do botão) -->
+    <div class="terms payment-terms-below">
+        By buying, you agree to our <a href="#">terms of service</a>
+    </div>
+</div>
 
             <div class="payment-info hidden" id="orderInfoBox" style="margin-top:20px;">
-                <h3>Ordem TRON/USDT</h3>
+                <h3>Ordem BSC/USDT</h3>
                 <p class="payment-summary-text">
-                    <strong>Endereço TRON:</strong><br>
+                    <strong>Endereço BSC:</strong><br>
                     <code id="depositAddress">—</code><br>
                     <strong>Status:</strong> <span id="orderStatus">—</span><br>
                     <strong>Ordem:</strong> <span id="orderId">—</span>
                 </p>
-                <p class="payment-summary-text" id="orderNotice">Rede TRON / USDT (TRC20). Envie também 5–10 TRX para fee do sweep.</p>
+                <p class="payment-summary-text" id="orderNotice">Rede BSC / USDT (BEP20). Envie também 0.003-0.01 BNB para fee do sweep.</p>
                 <p class="payment-summary-text" id="orderError" style="color:#c0392b; display:none;"></p>
-                <button class="confirm-payment-btn" id="createOrderBtn" type="button">Criar ordem TRON/USDT</button>
+                <button class="confirm-payment-btn" id="createOrderBtn" type="button">Criar ordem BSC/USDT</button>
             </div>
             
             
    <!-- ... (todo o conteúdo anterior do seu HTML permanece igual) ... -->
+        </div>
+    </div>
+
+    <section id="marketsView" class="markets-view hidden" aria-labelledby="marketsTitle">
+        <div class="markets-shell">
+            <div class="markets-header">
+                <div>
+                    <h1 id="marketsTitle">Markets</h1>
+                    <p>Live prices for supported digital assets.</p>
+                </div>
+                <div class="markets-filter" aria-label="Market filters">
+                    <button class="active" data-market-filter="all">All</button>
+                    <button data-market-filter="stablecoins">Stablecoins</button>
+                    <button data-market-filter="crypto">Crypto</button>
+                    <button data-market-filter="fiat">Fiat-backed</button>
+                </div>
+            </div>
+
+            <div class="markets-table" role="table" aria-label="Digital asset markets">
+                <div class="markets-row markets-head" role="row">
+                    <span>Asset</span>
+                    <span>Price</span>
+                    <span>Conversion</span>
+                    <span>24h</span>
+                    <span>Network</span>
+                    <span>Status</span>
+                    <span>Action</span>
+                </div>
+
+                <div class="markets-row" role="row" data-market-category="stablecoins fiat">
+                    <div class="market-asset">
+                        <img src="https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/usdt.png" alt="USDT" />
+                        <div><strong>USDT</strong><span>Tether USD</span></div>
+                    </div>
+                    <span class="market-price">R$ 5,48</span>
+                    <span>1 USDT = R$ 5,48</span>
+                    <span class="market-change positive">+0.12%</span>
+                    <span>BSC</span>
+                    <span><em class="market-status">Live</em></span>
+                    <div class="market-actions"><button data-market-action="buy">Buy</button><button data-market-action="sell">Sell</button></div>
+                </div>
+
+                <div class="markets-row" role="row" data-market-category="stablecoins fiat">
+                    <div class="market-asset">
+                        <img src="https://res.cloudinary.com/limpeja/image/upload/v1783198240/eur_r6gcvd.png" alt="EURUSD" />
+                        <div><strong>EURUSD</strong><span>Digital Euro Dollar</span></div>
+                    </div>
+                    <span class="market-price">R$ 6,42</span>
+                    <span>1 EURUSD = R$ 6,42</span>
+                    <span class="market-change negative">-0.32%</span>
+                    <span>BSC</span>
+                    <span><em class="market-status">Live</em></span>
+                    <div class="market-actions"><button data-market-action="buy">Buy</button><button data-market-action="sell">Sell</button></div>
+                </div>
+
+                <div class="markets-row" role="row" data-market-category="crypto">
+                    <div class="market-asset">
+                        <img src="https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/btc.png" alt="BTC" />
+                        <div><strong>BTC</strong><span>Bitcoin</span></div>
+                    </div>
+                    <span class="market-price">R$ 642.312</span>
+                    <span>1 BTC = R$ 642.312</span>
+                    <span class="market-change positive">+2.81%</span>
+                    <span>Bitcoin</span>
+                    <span><em class="market-status">Live</em></span>
+                    <div class="market-actions"><button data-market-action="buy">Buy</button><button data-market-action="sell">Sell</button></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="developersView" class="developers-view hidden" aria-labelledby="developersTitle">
+        <div class="developers-shell">
+            <div class="developers-hero">
+                <h1 id="developersTitle">Accept PIX. Deliver digital dollars.</h1>
+                <p>Use ChainFX to generate PIX payment flows by API, receive webhooks, and deliver USDT to your customer's wallet after payment confirmation.</p>
+                <div class="developers-actions">
+                    <a href="#api-buy" class="developer-primary-action">Start with PIX Buy</a>
+                    <a href="https://stablecoin-payment-gateway-production-3ee2.up.railway.app/openapi.json" target="_blank" rel="noopener">OpenAPI</a>
+                </div>
+            </div>
+
+            <div class="developers-status-grid">
+                <div><strong>REST API</strong><span>Rates, quotes, buy, sell and order status.</span></div>
+                <div><strong>Webhooks</strong><span>payment.completed, crypto.sent and order.failed.</span></div>
+                <div><strong>SDKs</strong><span>Node and Python available in the backend repo.</span></div>
+                <div><strong>Sandbox</strong><span>Fake PIX, fake QR, fake wallet and test keys.</span></div>
+            </div>
+
+            <div class="developers-layout">
+                <aside class="developers-sidebar">
+                    <a href="#api-overview">Overview</a>
+                    <a href="#api-buy">PIX to USDT</a>
+                    <a href="#api-sell">USDT to PIX</a>
+                    <a href="#api-webhooks">Webhooks</a>
+                    <a href="#api-pricing">Pricing</a>
+                    <a href="#api-roadmap">Roadmap</a>
+                </aside>
+
+                <div class="developers-content">
+                    <article id="api-overview" class="developer-panel">
+                        <h2>Build automated payment flows</h2>
+                        <p>Developers can request a quote, create a buy order, show the PIX QR Code to the payer, and listen for webhook confirmation. The API is designed for server-to-server usage with Bearer secret keys.</p>
+                        <div class="endpoint-list">
+                            <code>GET /rates</code>
+                            <code>POST /quote</code>
+                            <code>POST /buy</code>
+                            <code>POST /sell</code>
+                            <code>GET /order/{id}</code>
+                            <code>POST /webhooks/test</code>
+                        </div>
+                    </article>
+
+                    <article id="api-buy" class="developer-panel">
+                        <h2>PIX to USDT wallet</h2>
+                        <p>To generate a real PIX QR Code, create a buy order with BRL amount, USDT asset, destination BSC wallet and optional customer audit fields. Each request creates a unique buy order and returns the PIX payload, QR Code, status URL and access token.</p>
+                        <pre><code>POST /buy
+Authorization: Bearer sk_live_xxx
+Content-Type: application/json
+
+{
+  "fiat": "BRL",
+  "asset": "USDT",
+  "amount": 500,
+  "wallet": "0x174208255ECc40481f7fD7c34EE6a9A5B66B4339",
+  "paymentMethod": "pix",
+  "customer": {
+    "name": "Maria Silva",
+    "email": "maria@example.com",
+    "cpf": "12345678909",
+    "phone": "11999999999",
+    "birthDate": "1990-05-20",
+    "address": {
+      "line1": "Av Paulista",
+      "number": "1000",
+      "line2": "Apto 101",
+      "district": "Bela Vista",
+      "city": "Sao Paulo",
+      "state": "SP",
+      "postalCode": "01310100",
+      "country": "BR"
+    }
+  }
+}
+
+Response 201
+{
+  "id": "buy_order_id",
+  "buyId": "buy_order_id",
+  "accessToken": "customer_access_token",
+  "status": "aguardando_pix",
+  "fiatCurrency": "BRL",
+  "paymentMethod": "pix",
+  "totalFiat": 510.30,
+  "cryptoAmount": 96.52,
+  "asset": "USDT",
+  "network": "BSC",
+  "destAddress": "0x174208255ECc40481f7fD7c34EE6a9A5B66B4339",
+  "qrCodeUrl": "https://...",
+  "payment": {
+    "provider": "pagseguro",
+    "pixKey": "...",
+    "qrCodeUrl": "https://..."
+  },
+  "statusUrl": "/api/buy/buy_order_id?accessToken=customer_access_token"
+}</code></pre>
+                        <p class="developer-note">Consolidated with the backend path: /buy accepts customer name, email, CPF, phone, birth date and address, forwards those fields to the PIX provider when creating the PagBank charge, stores audit hashes locally, and returns the PIX QR payload. Current settlement supports USDT delivery on BSC; BTC and EURUSDT remain roadmap assets.</p>
+                    </article>
+
+                    <article id="api-sell" class="developer-panel">
+                        <h2>USDT to PIX BRL</h2>
+                        <p>For sell flows, the customer sends USDT to the generated deposit address and receives BRL via PIX after on-chain confirmation.</p>
+                        <pre><code>POST /sell
+Authorization: Bearer sk_live_xxx
+
+{
+  "asset": "USDT",
+  "network": "BSC",
+  "amount": 500,
+  "depositAddress": "0x174208255ECc40481f7fD7c34EE6a9A5B66B4339",
+  "pixCpf": "12345678909"
+}</code></pre>
+                    </article>
+
+                    <article id="api-webhooks" class="developer-panel">
+                        <h2>Webhooks</h2>
+                        <p>Use webhooks to automate fulfillment when a payment is completed or crypto is sent.</p>
+                        <pre><code>{
+  "event": "payment.completed",
+  "orderId": "ord_123",
+  "status": "paid",
+  "asset": "USDT",
+  "amount": "96.52",
+  "timestamp": "2026-07-04T00:00:00Z"
+}</code></pre>
+                        <div class="webhook-events">
+                            <span>payment.created</span>
+                            <span>payment.completed</span>
+                            <span>payment.failed</span>
+                            <span>order.confirmed</span>
+                            <span>crypto.sent</span>
+                            <span>crypto.confirmed</span>
+                            <span>order.failed</span>
+                        </div>
+                    </article>
+
+                    <article id="api-pricing" class="developer-panel pricing-panel">
+                        <h2>Pricing</h2>
+                        <div class="pricing-grid">
+                            <div><strong>API access</strong><span>Included for approved merchants</span></div>
+                            <div><strong>Transaction fee</strong><span>2% + network/payment rail costs</span></div>
+                            <div><strong>Sandbox</strong><span>Free test keys and simulated PIX</span></div>
+                        </div>
+                    </article>
+
+                    <article id="api-roadmap" class="developer-panel">
+                        <h2>Roadmap</h2>
+                        <p>Phase 4 will add MCP, n8n, Zapier, Make and OpenAI Agents examples. Phase 5 will expand assets, countries and payment rails. Bridge, pool, AMM, DEX and yield are intentionally out of scope.</p>
+                    </article>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="pricingView" class="pricing-view hidden" aria-labelledby="pricingTitle">
+        <div class="pricing-shell">
+            <div class="pricing-hero">
+                <h1 id="pricingTitle">Start free. Pay only when an order is completed.</h1>
+                <p>Production access starts with no activation fee. ChainFX earns from successful transactions through a fixed fee, percentage fee and FX spread.</p>
+            </div>
+
+            <div class="pricing-cards">
+                <article class="pricing-card">
+                    <span class="pricing-label">Sandbox</span>
+                    <h2>Free</h2>
+                    <p>Build and test your integration with fake PIX, fake QR Codes and test API keys.</p>
+                    <ul>
+                        <li>pk_test / sk_test keys</li>
+                        <li>Simulated PIX payments</li>
+                        <li>Webhook test events</li>
+                        <li>No production settlement</li>
+                    </ul>
+                    <button type="button" class="pricing-card-action">Start Sandbox</button>
+                </article>
+
+                <article class="pricing-card featured">
+                    <span class="pricing-label">Live Starter</span>
+                    <h2>Free activation</h2>
+                    <p>Designed for developers launching real PIX to USDT flows without upfront cost.</p>
+                    <div class="pricing-fee">2.5% + R$ 1,99</div>
+                    <ul>
+                        <li>Charged only on completed orders</li>
+                        <li>Initial limit: R$ 2.000/day</li>
+                        <li>USDT delivery on BSC</li>
+                        <li>FX spread included in quote</li>
+                    </ul>
+                    <button type="button" class="pricing-card-action">Start Live</button>
+                </article>
+
+                <article class="pricing-card">
+                    <span class="pricing-label">Growth</span>
+                    <h2>R$ 299/mo</h2>
+                    <p>Lower fees for teams with steady payment volume and operational needs.</p>
+                    <div class="pricing-fee">1.8% + R$ 0,99</div>
+                    <ul>
+                        <li>Higher transaction limits</li>
+                        <li>Webhook retry and logs</li>
+                        <li>Priority support</li>
+                        <li>Volume review available</li>
+                    </ul>
+                    <button type="button" class="pricing-card-action">Select Growth</button>
+                </article>
+            </div>
+
+            <div class="pricing-breakdown">
+                <div>
+                    <h2>How ChainFX charges</h2>
+                    <p>Fees are deducted inside the payment flow before crypto delivery. The developer does not need to pay invoices after each transaction.</p>
+                </div>
+                <pre><code>{
+  "fiatAmount": 500,
+  "feeRate": "2.5%",
+  "fixedFee": 1.99,
+  "feeAmount": 14.49,
+  "netFiatAmount": 485.51,
+  "rate": 5.48,
+  "cryptoAmount": 88.60
+}</code></pre>
+            </div>
+
+            <div class="pricing-enterprise">
+                <strong>Enterprise</strong>
+                <span>Custom limits, negotiated fees, SLA and dedicated operational support for high-volume partners.</span>
+            </div>
+        </div>
+    </section>
+
     <!-- ============================================
         EFEITO DA BOLINHA (ANIMAÇÃO PURA)
         ============================================ -->
    <div class="efeito-bolinha-container">
      <div class="efeito-bolinha" id="bolinhaEfeito"></div>
    </div>
+
+   <footer class="mobile-footer" aria-label="Gateway Payments footer">
+     <span>Gateway Payments</span>
+   </footer>
 
    <!-- ============================================
         SCRIPT PARA REMOVER A BOLINHA
@@ -454,10 +814,10 @@ void main() {
 
    <script>
      (() => {
-       window.SWAPPED_API_BASE_URL = window.SWAPPED_API_BASE_URL || 'http://localhost:3000';
+      window.SWAPPED_API_BASE_URL = window.SWAPPED_API_BASE_URL || 'https://stablecoin-payment-gateway-production-3ee2.up.railway.app';
      })();
    </script>
-   <script src="main.js"></script>
+   <script type="module" src="main.js"></script>
    <script type="module">
     import * as THREE from 'three';
     import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
