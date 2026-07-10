@@ -751,10 +751,10 @@
   body.index-page .checkout-terms {
     box-sizing: border-box;
     margin-top: 2px;
-    padding-top: 4px;
+    padding-top: 8px;
     padding-bottom: 4px;
     padding-inline: 10px;
-    transform: translateY(-5%);
+    transform: translateY(-2%);
   }
 
   body.index-page .mobile-footer {
