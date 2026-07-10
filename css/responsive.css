@@ -1,0 +1,794 @@
+﻿@media (max-width: 1199px) {
+  body.index-page .markets-view {
+    width: min(900px, calc(100vw - 40px));
+    padding-top: 94px;
+  }
+
+  body.index-page .pricing-view {
+    width: min(900px, calc(100vw - 40px));
+    padding-top: 94px;
+  }
+
+  body.index-page .pricing-cards {
+    grid-template-columns: 1fr;
+  }
+
+  body.index-page .pricing-card {
+    min-height: 0;
+  }
+
+  body.index-page .markets-header {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  body.index-page .markets-row {
+    grid-template-columns: minmax(180px, 1.4fr) minmax(110px, 0.8fr) minmax(150px, 1fr) 70px 80px 70px 116px;
+    gap: 10px;
+  }
+
+  body.index-page .developers-view {
+    width: min(860px, calc(100vw - 40px));
+    padding-top: 94px;
+  }
+
+  body.index-page .developers-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body.index-page .developers-layout {
+    grid-template-columns: 1fr;
+  }
+
+  body.index-page .developers-sidebar {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  body.index-page #app {
+    width: min(760px, calc(100vw - 40px));
+    min-height: 0;
+    grid-template-columns: 1fr;
+    gap: 34px;
+    padding-top: 84px;
+  }
+
+  body.index-page .content-left,
+  body.index-page .swap-card {
+    width: 100%;
+    max-width: 620px;
+    justify-self: center;
+  }
+
+  body.index-page .hero-section {
+    max-width: 680px;
+    text-align: center;
+  }
+
+  body.index-page .hero-title {
+    font-size: clamp(2.55rem, 7vw, 4.1rem);
+  }
+
+  body.index-page .hero-subtitle {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  body.index-page .trust-badges {
+    justify-content: center;
+  }
+
+  body.index-page .swap-card {
+    max-width: 440px;
+  }
+}
+
+@media (max-width: 768px) {
+  body.index-page {
+    padding-top: 72px;
+  }
+
+  body.index-page .markets-view {
+    width: min(100%, calc(100vw - 28px));
+    padding: 34px 0 38px;
+  }
+
+  body.index-page .pricing-view {
+    width: min(100%, calc(100vw - 28px));
+    padding: 34px 0 38px;
+  }
+
+  body.index-page .pricing-hero {
+    text-align: center;
+    padding: 0 20px;
+  }
+
+  body.index-page .pricing-hero h1 {
+    font-size: clamp(1.02rem, 5.6vw, 1.54rem);
+  }
+
+  body.index-page .pricing-shell {
+    gap: 16px;
+  }
+
+  body.index-page .pricing-cards {
+    gap: 12px;
+  }
+
+  body.index-page .pricing-card {
+    padding: 16px;
+    border-radius: 10px;
+    animation: pricingCardSlideIn 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    will-change: transform, opacity;
+  }
+
+  body.index-page .pricing-card:nth-child(1) {
+    animation-delay: 0.04s;
+  }
+
+  body.index-page .pricing-card:nth-child(2) {
+    animation-delay: 0.14s;
+  }
+
+  body.index-page .pricing-card:nth-child(3) {
+    animation-delay: 0.24s;
+  }
+
+  body.index-page .pricing-label {
+    min-height: 24px;
+    padding: 5px 9px;
+    font-size: 0.72rem;
+  }
+
+  body.index-page .pricing-card h2 {
+    margin: 14px 0 7px;
+    font-size: 1.18rem;
+  }
+
+  body.index-page .pricing-card p {
+    font-size: 0.86rem;
+    line-height: 1.45;
+  }
+
+  body.index-page .pricing-fee {
+    margin: 14px 0;
+    padding: 11px;
+    font-size: 0.92rem;
+  }
+
+  body.index-page .pricing-card ul {
+    gap: 7px;
+    margin-top: 14px;
+  }
+
+  body.index-page .pricing-card li {
+    font-size: 0.82rem;
+    line-height: 1.35;
+    padding-left: 16px;
+  }
+
+  body.index-page .pricing-card-action {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 42px;
+    margin-top: 16px;
+    border: 0;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #1767b7 0%, #10aec8 100%);
+    color: #fff;
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 14px 34px rgba(47, 142, 200, 0.16);
+  }
+
+  body.index-page .pricing-card-action::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+      45deg,
+      transparent,
+      rgba(255, 255, 255, 0.1),
+      transparent
+    );
+    transform: rotate(45deg);
+    animation: buttonGlow 2s infinite;
+  }
+
+  body.index-page .pricing-breakdown {
+    grid-template-columns: 1fr;
+    padding: 18px;
+  }
+
+  body.index-page .pricing-breakdown pre {
+    font-size: 0.72rem;
+  }
+
+  body.index-page .pricing-enterprise {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  @keyframes pricingCardSlideIn {
+    from {
+      opacity: 0;
+      transform: translateX(34px) translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0) translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body.index-page .pricing-card {
+      animation: none;
+    }
+  }
+
+  body.index-page .markets-header {
+    text-align: center;
+    align-items: center;
+  }
+
+  body.index-page .markets-header h1 {
+    font-size: clamp(1.25rem, 6.8vw, 1.93rem);
+  }
+
+  body.index-page .markets-filter {
+    width: 100%;
+    overflow-x: auto;
+    justify-content: center;
+  }
+
+  body.index-page .markets-filter button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  body.index-page .markets-table {
+    gap: 12px;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  body.index-page .markets-row.markets-head {
+    display: none;
+  }
+
+  body.index-page .markets-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 0;
+    gap: 10px 12px;
+    padding: 16px;
+    border: 1px solid rgba(148, 176, 205, 0.28);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.88);
+    box-shadow: 0 18px 48px rgba(42, 122, 181, 0.12);
+  }
+
+  body.index-page .market-asset {
+    grid-column: 1 / -1;
+  }
+
+  body.index-page .markets-row > span,
+  body.index-page .market-actions {
+    min-width: 0;
+  }
+
+  body.index-page .market-actions {
+    grid-column: 1 / -1;
+  }
+
+  body.index-page .market-actions button {
+    flex: 1 1 0;
+  }
+
+  body.index-page .developers-view {
+    width: min(100%, calc(100vw - 28px));
+    padding: 34px 0 38px;
+  }
+
+  body.index-page .developers-hero {
+    text-align: center;
+  }
+
+  body.index-page .developers-hero h1 {
+    font-size: clamp(1.2rem, 6vw, 1.8rem);
+  }
+
+  body.index-page .developers-actions {
+    justify-content: center;
+  }
+
+  body.index-page .pricing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  body.index-page .developers-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  body.index-page .developers-status-grid > div {
+    min-height: 112px;
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  body.index-page .developers-status-grid strong {
+    font-size: 0.82rem;
+    line-height: 1.2;
+  }
+
+  body.index-page .developers-status-grid span {
+    margin-top: 7px;
+    font-size: 0.72rem;
+    line-height: 1.35;
+  }
+
+  body.index-page .developers-sidebar {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 3px;
+    overflow: visible;
+    padding: 5px;
+    border-radius: 10px;
+  }
+
+  body.index-page .developers-sidebar a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    padding: 6px 2px;
+    white-space: normal;
+    text-align: center;
+    font-size: clamp(0.48rem, 1.95vw, 0.62rem);
+    line-height: 1.05;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.52);
+  }
+
+  body.index-page .developers-sidebar a:hover,
+  body.index-page .developers-sidebar a:focus-visible {
+    background: linear-gradient(135deg, rgba(17, 80, 168, 0.13), rgba(6, 182, 212, 0.12));
+  }
+
+  body.index-page .developer-panel {
+    padding: 16px;
+  }
+
+  body.index-page .developer-panel h2 {
+    font-size: 1.125rem;
+  }
+
+  body.index-page .developer-panel p {
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+
+  body.index-page .developer-panel pre {
+    font-size: 0.72rem;
+  }
+
+  body.index-page .endpoint-list code,
+  body.index-page .webhook-events span {
+    font-size: 0.72rem;
+  }
+
+  body.index-page::before {
+    opacity: 0.5;
+    animation: none;
+    background: url('https://res.cloudinary.com/limpeja/image/upload/v1783193641/ChatGPT_Image_4_de_jul._de_2026_16_32_44_angzza.png') 40% 10% / 162% auto no-repeat scroll;
+  }
+
+  body.index-page .navbar {
+    padding: 8px 0;
+  }
+
+  body.index-page .nav-content {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 0 18px;
+    position: relative;
+  }
+
+  body.index-page .logo {
+    margin: 0;
+    width: 168px;
+    height: 42px;
+    order: 1;
+    flex: 0 0 168px;
+  }
+
+  body.index-page .logo img {
+    left: 0;
+    right: auto;
+    top: -13px;
+    height: 70px;
+  }
+
+  body.index-page .mobile-menu-toggle {
+    display: flex;
+    order: 2;
+    flex: 0 0 32px;
+    color: #0f172a;
+    background: rgba(255, 255, 255, 0.88);
+    box-shadow: 0 14px 34px rgba(17, 80, 168, 0.16);
+  }
+
+  body.index-page .mobile-menu-toggle span {
+    opacity: 0.7;
+  }
+
+  body.index-page .nav-links {
+    position: absolute;
+    top: calc(100% + 12px);
+    left: auto;
+    right: 18px;
+    width: min(220px, calc(100vw - 36px));
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    padding: 8px;
+    border: 1px solid rgba(148, 176, 205, 0.34);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(22px);
+    box-shadow: 0 18px 46px rgba(6, 182, 212, 0.18), 0 8px 22px rgba(17, 80, 168, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-8px) scale(0.98);
+    transform-origin: top right;
+    transition: opacity 0.22s ease, visibility 0.22s ease, transform 0.22s ease;
+  }
+
+  body.index-page .nav-links.is-open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+  }
+
+  body.index-page .nav-links a {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: left;
+    width: 100%;
+    min-height: 34px;
+    padding: 0 11px;
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #0f172a;
+    background: transparent;
+    opacity: 0.82;
+    box-shadow: none;
+  }
+
+  body.index-page .nav-links a:hover,
+  body.index-page .nav-links a.active {
+    opacity: 1;
+    background: transparent;
+  }
+
+  body.index-page .nav-links a::after {
+    display: block;
+    left: 13px;
+    bottom: 6px;
+    width: 0;
+    max-width: calc(100% - 26px);
+  }
+
+  body.index-page .nav-links a:hover::after,
+  body.index-page .nav-links a.active::after {
+    width: calc(100% - 26px);
+  }
+
+  body.index-page #app {
+    width: min(100%, calc(100vw - 28px));
+    gap: 24px;
+    padding: 36px 0 34px;
+  }
+
+  body.index-page .content-left {
+    display: contents;
+    order: 1;
+    max-width: 520px;
+    padding: 0;
+  }
+
+  body.index-page .swap-card {
+    order: 2;
+    width: 80.5%;
+    max-width: 338px;
+    padding: 12px;
+    border-radius: 18px;
+    font-size: 0.82rem;
+  }
+
+  body.index-page .swap-card:has(#step3:not(.hidden)) {
+    width: 80.5%;
+    max-width: 338px;
+    padding: 12px;
+  }
+
+  body.index-page .swap-card:has(#paymentInfoSection:not(.hidden)) {
+    width: 80.5%;
+    max-width: 338px;
+    padding: 12px;
+  }
+
+  body.index-page .step3-payment-card {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  body.index-page .step3-pix-qr {
+    width: min(148px, 56vw);
+    height: min(148px, 56vw);
+  }
+
+  body.index-page .hero-section {
+    display: contents;
+    padding: 0;
+  }
+
+  body.index-page .hero-title {
+    order: 1;
+    width: 100%;
+    max-width: 520px;
+    justify-self: center;
+    padding: 0 22px;
+    font-size: clamp(1.44rem, 6.3vw, 1.89rem);
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-align: center;
+  }
+
+  body.index-page .hero-subtitle {
+    order: 3;
+    width: 100%;
+    max-width: 420px;
+    justify-self: center;
+    padding: 0 20px;
+    font-size: 1rem;
+    line-height: 1.5;
+    margin: 4px auto 0;
+    text-align: center;
+  }
+
+  body.index-page .trust-badges {
+    order: 4;
+    width: 100%;
+    max-width: 420px;
+    justify-self: center;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 0;
+  }
+
+  body.index-page .security-info {
+    order: 5;
+    width: 100%;
+    max-width: 420px;
+    justify-self: center;
+    justify-content: center;
+    margin-top: 0;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  body.index-page .trust-badge {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    min-height: 28px;
+    padding: 5px 4px;
+    gap: 4px;
+    border-radius: 6px;
+  }
+
+  body.index-page .trust-badge .badge-icon {
+    width: 12px;
+    height: 12px;
+    flex: 0 0 auto;
+  }
+
+  body.index-page .trust-badge span {
+    font-size: 0.52rem;
+    line-height: 1.15;
+  }
+
+  body.index-page .trust-badge span[data-mobile-text] {
+    font-size: 0;
+  }
+
+  body.index-page .trust-badge span[data-mobile-text]::before {
+    content: attr(data-mobile-text);
+    font-size: 0.58rem;
+    line-height: 1.15;
+  }
+
+  body.index-page .input-group {
+    min-height: 56px;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  body.index-page #inputSection .currency-input .input-group {
+    min-height: 50px;
+    padding-block: 6px;
+  }
+
+  body.index-page .input-group input {
+    min-width: 0;
+    font-size: 0.9rem;
+  }
+
+  body.index-page #walletGroup .input-group {
+    min-height: 34px;
+    padding: 4px 8px;
+    align-items: center;
+  }
+
+  body.index-page #walletAddress {
+    height: 26px;
+    min-height: 26px;
+    padding: 0 !important;
+    font-size: 0.84rem;
+    line-height: 26px;
+  }
+
+  body.index-page .currency-selector {
+    flex: 0 0 auto;
+    min-width: 70px;
+    min-height: 40px;
+    padding: 6px 8px;
+    gap: 5px;
+    font-size: 0.76rem;
+  }
+
+  body.index-page .currency-selector img {
+    width: 20px;
+    height: 20px;
+  }
+
+  body.index-page .toggle-container {
+    margin-bottom: 16px;
+    padding: 3px;
+  }
+
+  body.index-page .toggle-btn {
+    min-height: 34px;
+    padding: 8px;
+    font-size: 0.82rem;
+  }
+
+  body.index-page .currency-input label,
+  body.index-page .wallet-input label,
+  body.index-page .payment-methods h3 {
+    font-size: 0.86rem;
+    margin-bottom: 8px;
+  }
+
+  body.index-page .currency-input {
+    margin-bottom: 14px;
+  }
+
+  body.index-page .order-summary-step2 p {
+    font-size: 0.99em;
+  }
+
+  body.index-page .currency-input:last-of-type {
+    margin-bottom: 18px;
+  }
+
+  body.index-page .exchange-rate {
+    margin: 10px 0;
+    font-size: 0.78rem;
+  }
+
+  body.index-page .continue-btn,
+  body.index-page .confirm-payment-btn {
+    min-height: 42px;
+    padding: 11px;
+    font-size: 0.86rem;
+  }
+
+  body.index-page #continueBtn {
+    margin-top: 4px;
+  }
+
+  body.index-page .terms {
+    margin-top: 12px;
+    font-size: 0.76rem;
+  }
+
+  body.index-page .checkout-terms {
+    box-sizing: border-box;
+    margin-top: 2px;
+    padding-inline: 10px;
+    transform: translateY(-5%);
+  }
+
+  body.index-page .mobile-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    margin: 8px auto 0;
+    padding-top: 8px;
+    width: min(88%, 338px);
+    border-top: 1px solid rgba(100, 116, 139, 0.22);
+    color: rgba(71, 85, 105, 0.72);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  body.index-page .methods-grid {
+    grid-template-columns: 1fr;
+  }
+
+  body.index-page .payment-method {
+    min-height: 105px;
+    padding: 19px 18px;
+  }
+
+  body.index-page .payment-method .fee {
+    font-size: 0.95em;
+    position: relative;
+    top: -8%;
+  }
+
+  body.index-page .toggle-container {
+    flex-direction: row;
+  }
+}
+
+@media (max-width: 420px) {
+  body.index-page #app {
+    width: min(100%, calc(100vw - 20px));
+    padding-bottom: 24px;
+  }
+
+  body.index-page .hero-title {
+    font-size: clamp(1.3rem, 7vw, 1.58rem);
+  }
+
+  body.index-page .swap-card {
+    padding: 10px;
+    font-size: 0.78rem;
+  }
+
+  body.index-page .currency-selector {
+    min-width: 70px;
+    padding: 6px;
+  }
+
+  body.index-page .terms {
+    font-size: 0.78rem;
+  }
+}
