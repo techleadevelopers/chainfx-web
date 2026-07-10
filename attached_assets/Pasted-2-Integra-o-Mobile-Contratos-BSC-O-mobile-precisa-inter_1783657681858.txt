@@ -1,0 +1,215 @@
+2. Integração Mobile ↔ Contratos BSC
+O mobile precisa interagir com os contratos via backend Go:
+
+❌ FALTA:
+go
+// internal/contracts/vault.go
+type VaultService interface {
+    // Payout via vault
+    Payout(ctx context.Context, req *PayoutRequest) (*PayoutResponse, error)
+    
+    // Verificar limites
+    GetTokenPolicy(ctx context.Context, token string) (*TokenPolicy, error)
+    
+    // Verificar status
+    GetVaultStatus(ctx context.Context) (*VaultStatus, error)
+    
+    // Pausar/despausar (emergência)
+    Pause(ctx context.Context) error
+    Unpause(ctx context.Context) error
+    
+    // Adicionar/remover operadores
+    AddOperator(ctx context.Context, address string) error
+    RemoveOperator(ctx context.Context, address string) error
+}
+
+// internal/contracts/registry.go
+type RegistryService interface {
+    // Verificar delegate confiável
+    IsDelegateTrusted(ctx context.Context, address string) (bool, error)
+    
+    // Registrar delegate
+    RegisterDelegate(ctx context.Context, address string, codeHash string) error
+    
+    // Revogar delegate
+    RevokeDelegate(ctx context.Context, address string, reason string) error
+}
+3. Funcionalidades Mobile vs Backend
+Funcionalidade Mobile	Backend Go	Contratos	Status
+Tela Home (Saldo)	❌	❌	FALTA
+Comprar (Buy)	⚠️ Parcial	❌	FALTA
+Vender (Sell)	⚠️ Parcial	❌	FALTA
+Swap	⚠️ Parcial	❌	FALTA
+Histórico (Activity)	⚠️ Parcial	❌	FALTA
+Carteira (Wallet)	❌	❌	FALTA
+DCA Auto	❌	❌	FALTA
+Segurança (PIN/Biometria)	❌	-	FALTA
+PIX QR Code	⚠️ Parcial	-	FALTA
+Notificações Push	❌	-	FALTA
+Login/Registro	❌	-	FALTA
+Perfil/KYC	❌	-	FALTA
+4. Worker e Processos Assíncronos
+❌ FALTAM WORKERS:
+go
+// 1. Worker de Detecção On-Chain
+// Monitora depósitos em contratos vault
+func (w *OnChainWorker) DetectDeposits(ctx context.Context) error {
+    // Verificar novos depósitos
+    // Atualizar status da ordem
+    // Disparar evento de payout
+}
+
+// 2. Worker de Payout
+// Processa pagamentos PIX
+func (w *PayoutWorker) ProcessPayouts(ctx context.Context) error {
+    // Pegar fila de payouts pendentes
+    // Chamar API do PIX (Bacen/Provedor)
+    // Atualizar status
+    // Registrar no vault (on-chain)
+}
+
+// 3. Worker de Preços
+// Mantém cache de cotações
+func (w *PriceWorker) UpdatePrices(ctx context.Context) error {
+    // Buscar preços do CoinGecko/Binance
+    // Atualizar cache Redis
+    // Publicar via WebSocket para mobile
+}
+
+// 4. Worker de DCA
+// Executa compras automáticas
+func (w *DCAWorker) ExecuteStrategies(ctx context.Context) error {
+    // Verificar estratégias ativas
+    // Executar compras programadas
+    // Atualizar status
+}
+5. Banco de Dados (PostgreSQL) - Schema Mobile
+❌ FALTA TABELAS:
+sql
+-- Tabelas para mobile
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    phone VARCHAR(20) UNIQUE,
+    full_name VARCHAR(255),
+    password_hash VARCHAR(255) NOT NULL,
+    wallet_address VARCHAR(42) UNIQUE,
+    pix_key VARCHAR(255),
+    kyc_status VARCHAR(20) DEFAULT 'pending',
+    kyc_documents JSONB,
+    pin_hash VARCHAR(255),
+    biometry_enabled BOOLEAN DEFAULT false,
+    two_factor_enabled BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE devices (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id),
+    device_name VARCHAR(255),
+    device_type VARCHAR(50),
+    fcm_token VARCHAR(255),
+    apns_token VARCHAR(255),
+    last_active TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE dca_strategies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id),
+    token_symbol VARCHAR(10) NOT NULL,
+    amount_brl DECIMAL(18,2) NOT NULL,
+    frequency VARCHAR(20) NOT NULL, -- daily, weekly, monthly
+    active BOOLEAN DEFAULT true,
+    total_invested DECIMAL(18,2) DEFAULT 0,
+    total_tokens DECIMAL(36,18) DEFAULT 0,
+    next_execution TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id),
+    title VARCHAR(255) NOT NULL,
+    body TEXT,
+    type VARCHAR(50),
+    read BOOLEAN DEFAULT false,
+    data JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE settings (
+    user_id UUID PRIMARY KEY REFERENCES users(id),
+    dark_mode BOOLEAN DEFAULT true,
+    language VARCHAR(10) DEFAULT 'pt-BR',
+    currency VARCHAR(10) DEFAULT 'BRL',
+    notifications_enabled BOOLEAN DEFAULT true,
+    daily_limit DECIMAL(18,2) DEFAULT 10000
+);
+6. Resumo: Prioridades
+Prioridade	O que Fazer	Estimativa
+🔴 CRÍTICO	Endpoints de Autenticação	2 dias
+🔴 CRÍTICO	Endpoints de Carteira/Saldo	2 dias
+🔴 CRÍTICO	Endpoints de Buy/Sell/Swap	3 dias
+🟡 ALTO	Integração com Contratos BSC	3 dias
+🟡 ALTO	Workers On-Chain + Payout	4 dias
+🟢 MÉDIO	DCA Auto	2 dias
+🟢 MÉDIO	Notificações Push	2 dias
+🟢 MÉDIO	WebSocket/SSE Tempo Real	2 dias
+🔵 BAIXO	KYC + Documentos	3 dias
+🔵 BAIXO	Logs + Monitoramento	2 dias
+TOTAL ESTIMADO: 25 dias
+
+7. Checklist Final de Produção
+markdown
+## Backend Go
+- [ ] Autenticação JWT
+- [ ] Todos endpoints REST (10 grupos)
+- [ ] WebSocket para status em tempo real
+- [ ] Integração com contratos BSC
+- [ ] Workers On-Chain + Payout
+- [ ] Cache Redis para preços
+- [ ] Rate Limiting por usuário
+- [ ] Logs estruturados (Pino/Zap)
+- [ ] Migrations PostgreSQL
+
+## Mobile React Native
+- [ ] Conectar aos endpoints (Axios/SWR)
+- [ ] Gerenciamento de estado (Zustand/Redux)
+- [ ] Cache offline (AsyncStorage/MMKV)
+- [ ] Notificações push (FCM/APNS)
+- [ ] Biometria (expo-local-authentication)
+- [ ] PIN de segurança
+- [ ] Deep linking
+- [ ] Splash screen animada
+
+## Contratos BSC
+- [ ] SwappyTreasuryVault - Testnet
+- [ ] SwappyDelegateRegistry - Testnet
+- [ ] Swappy7702PayoutDelegate - Testnet
+- [ ] Auditoria externa
+- [ ] Deploy Mainnet (limites baixos)
+- [ ] Monitoramento on-chain
+Conclusão
+Falta MUITO trabalho de backend Go para suportar o mobile React Native.
+
+O que você tem pronto:
+
+✅ Contratos BSC (3 arquivos .sol)
+
+✅ Frontend Web (HTML/CSS/JS)
+
+✅ Mobile React Native (telas)
+
+O que NÃO tem:
+
+❌ Backend Go com endpoints REST para mobile
+
+❌ Integração dos contratos com o mobile
+
+❌ Workers assíncronos
+
+❌ Banco de dados completo
+
+❌ Autenticação JWT

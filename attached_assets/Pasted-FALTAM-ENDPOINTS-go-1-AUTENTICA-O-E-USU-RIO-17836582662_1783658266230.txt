@@ -1,0 +1,135 @@
+FALTAM ENDPOINTS:
+go
+// ============================================
+// 1. AUTENTICAÇÃO E USUÁRIO
+// ============================================
+
+POST   /api/mobile/auth/register     // Registrar usuário
+POST   /api/mobile/auth/login        // Login com JWT
+POST   /api/mobile/auth/refresh      // Refresh token
+POST   /api/mobile/auth/logout       // Logout
+GET    /api/mobile/user/profile      // Perfil do usuário
+PUT    /api/mobile/user/profile      // Atualizar perfil
+POST   /api/mobile/user/kyc          // Enviar documentos KYC
+GET    /api/mobile/user/kyc/status   // Status KYC
+
+// ============================================
+// 2. CARTEIRA E SALDO
+// ============================================
+
+GET    /api/mobile/wallet/balance    // Saldo total
+GET    /api/mobile/wallet/tokens     // Lista de tokens
+GET    /api/mobile/wallet/address    // Endereço da carteira
+POST   /api/mobile/wallet/generate   // Gerar nova carteira
+GET    /api/mobile/wallet/history    // Histórico de transações
+
+// ============================================
+// 3. TRANSAÇÕES (BUY/SELL/SWAP)
+// ============================================
+
+POST   /api/mobile/order/buy         // Criar ordem de compra
+POST   /api/mobile/order/sell        // Criar ordem de venda
+POST   /api/mobile/order/swap        // Criar ordem de swap
+GET    /api/mobile/order/:id         // Status da ordem
+GET    /api/mobile/orders            // Lista de ordens
+POST   /api/mobile/order/cancel      // Cancelar ordem
+
+// ============================================
+// 4. PAGAMENTOS (PIX)
+// ============================================
+
+POST   /api/mobile/pix/generate      // Gerar QR Code PIX
+POST   /api/mobile/pix/confirm       // Confirmar pagamento PIX
+GET    /api/mobile/pix/status/:id    // Status do PIX
+POST   /api/mobile/pix/copy          // Copiar código PIX
+
+// ============================================
+// 5. DCA (Investimento Automático)
+// ============================================
+
+POST   /api/mobile/dca/create        // Criar estratégia DCA
+GET    /api/mobile/dca/strategies    // Listar estratégias
+PUT    /api/mobile/dca/:id           // Atualizar DCA
+DELETE /api/mobile/dca/:id           // Cancelar DCA
+GET    /api/mobile/dca/:id/status    // Status do DCA
+
+// ============================================
+// 6. SEGURANÇA
+// ============================================
+
+POST   /api/mobile/security/pin      // Configurar PIN
+POST   /api/mobile/security/biometry // Configurar biometria
+POST   /api/mobile/security/2fa      // Ativar 2FA
+GET    /api/mobile/security/devices  // Dispositivos conectados
+DELETE /api/mobile/security/device   // Remover dispositivo
+
+// ============================================
+// 7. CONTRATOS ON-CHAIN
+// ============================================
+
+POST   /api/mobile/contracts/payout  // Executar payout via vault
+GET    /api/mobile/contracts/vault   // Status do vault
+GET    /api/mobile/contracts/delegate // Status do delegate
+POST   /api/mobile/contracts/pause   // Pausar contratos
+POST   /api/mobile/contracts/unpause // Despausar contratos
+
+// ============================================
+// 8. NOTIFICAÇÕES
+// ============================================
+
+GET    /api/mobile/notifications     // Listar notificações
+PUT    /api/mobile/notifications/read // Marcar como lida
+DELETE /api/mobile/notifications/:id // Remover notificação
+POST   /api/mobile/notifications/token // Registrar FCM/APNS token
+
+// ============================================
+// 9. WEBSOCKET / SSE (Status em tempo real)
+// ============================================
+
+WS     /api/mobile/ws/orders         // Status de ordens em tempo real
+WS     /api/mobile/ws/price          // Preços em tempo real
+WS     /api/mobile/ws/notifications  // Notificações push
+
+// ============================================
+// 10. SETTINGS
+// ============================================
+
+GET    /api/mobile/settings          // Configurações do app
+PUT    /api/mobile/settings          // Atualizar configurações
+GET    /api/mobile/settings/limits   // Limites diários
+2. Integração Mobile ↔ Contratos BSC
+O mobile precisa interagir com os contratos via backend Go:
+
+❌ FALTA:
+go
+// internal/contracts/vault.go
+type VaultService interface {
+    // Payout via vault
+    Payout(ctx context.Context, req *PayoutRequest) (*PayoutResponse, error)
+    
+    // Verificar limites
+    GetTokenPolicy(ctx context.Context, token string) (*TokenPolicy, error)
+    
+    // Verificar status
+    GetVaultStatus(ctx context.Context) (*VaultStatus, error)
+    
+    // Pausar/despausar (emergência)
+    Pause(ctx context.Context) error
+    Unpause(ctx context.Context) error
+    
+    // Adicionar/remover operadores
+    AddOperator(ctx context.Context, address string) error
+    RemoveOperator(ctx context.Context, address string) error
+}
+
+// internal/contracts/registry.go
+type RegistryService interface {
+    // Verificar delegate confiável
+    IsDelegateTrusted(ctx context.Context, address string) (bool, error)
+    
+    // Registrar delegate
+    RegisterDelegate(ctx context.Context, address string, codeHash string) error
+    
+    // Revogar delegate
+    RevokeDelegate(ctx context.Context, address string, reason string) error
+}
