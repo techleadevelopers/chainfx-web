@@ -763,25 +763,19 @@
     justify-content: center;
     gap: 6px;
     min-height: 34px;
-    margin: 14px auto 0;
-    padding-top: 14px;
+    margin: 8px auto 0;
+    padding-top: 8px;
     width: min(88%, 338px);
     border-top: 1px solid transparent;
     border-image: linear-gradient(90deg, rgba(100, 116, 139, 0) 0%, rgba(100, 116, 139, 0.35) 50%, rgba(100, 116, 139, 0) 100%) 1;
-    background: linear-gradient(90deg, #0c4f84 0%, #123f68 45%, #6d8199 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
+    color: rgba(71, 85, 105, 0.72);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
   }
 
   body.index-page .mobile-footer-icon {
-    color: #0f6caf;
-    opacity: 0.85;
-    flex-shrink: 0;
+    display: none;
   }
 
   body.index-page .methods-grid {
