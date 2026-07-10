@@ -750,8 +750,9 @@
 
   body.index-page .checkout-terms {
     box-sizing: border-box;
-    margin-top: 4px;
-    margin-bottom: 4px;
+    margin-top: 2px;
+    padding-top: 4px;
+    padding-bottom: 4px;
     padding-inline: 10px;
     transform: translateY(-5%);
   }
