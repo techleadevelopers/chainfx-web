@@ -1,4 +1,4 @@
-﻿@media (max-width: 1199px) {
+@media (max-width: 1199px) {
   body.index-page .markets-view {
     width: min(900px, calc(100vw - 40px));
     padding-top: 94px;
@@ -44,6 +44,10 @@
     position: static;
     flex-direction: row;
     flex-wrap: wrap;
+  }
+
+  body.index-page .developers-sidebar-label {
+    display: none;
   }
 
   body.index-page #app {
@@ -349,6 +353,10 @@
     overflow: visible;
     padding: 5px;
     border-radius: 10px;
+  }
+
+  body.index-page .developers-sidebar-label {
+    display: none;
   }
 
   body.index-page .developers-sidebar a {
