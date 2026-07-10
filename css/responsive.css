@@ -395,9 +395,19 @@
     font-size: 0.72rem;
   }
 
-  body.index-page .endpoint-list code,
   body.index-page .webhook-events span {
     font-size: 0.72rem;
+  }
+
+  body.index-page .endpoint-list code {
+    padding: 5.6px 8.8px;
+    gap: 6.4px;
+    font-size: 0.576rem;
+  }
+
+  body.index-page .endpoint-list .http-method {
+    padding: 1.6px 5.6px;
+    font-size: 0.56rem;
   }
 
   body.index-page::before {
