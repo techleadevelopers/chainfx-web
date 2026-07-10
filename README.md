@@ -13,7 +13,7 @@ Swappy financial é uma stack de on/off-ramp focada em “Sell” (usuário envi
 
 ---
 
-## 📱 Swappy - Buy & Sell Crypto Instantly
+## 📱 ChainFX — Instant Digital FX Payments
 
 **Swappy** é uma plataforma financeira web que permite comprar e vender criptomoedas de forma instantânea e segura. Com integração via PIX, você pode realizar transações em segundos com total confiabilidade.
 
@@ -95,20 +95,20 @@ Swappy financial é uma stack de on/off-ramp focada em “Sell” (usuário envi
 
 ## Security & Key Management (Web3/Fintech focus)
 - **Key isolation by network**:  
-  - TRON signer em `signer/` (TRC20) usa `SIGNER_PRIVATE_KEY` / `TRON_XPRV`; roda separado.  
+  - BSC signer em `signer/` (BEP20) usa `SIGNER_PRIVATE_KEY` / `BSC_XPRV`; roda separado.  
   - BSC/EVM signer em `bsc-signer/` (BEP20) usa `EVM_PRIVATE_KEY`; roda em serviço próprio.  
   - Nunca reuse chave entre redes; deployer ≠ treasury; use chaves hot mínimas e transfira ownership/tesouraria para multisig/hardware.
 - **HMAC + anti-replay**: rotas de signing exigem `x-signer-hmac`, `x-ts`, `x-nonce` (Zod valida). Janela configurável (`HMAC_MAX_SKEW_SEC`), replay guard, idempotência com Postgres (fallback in-memory).
 - **Allowlists**: `ALLOW_DEST`, `ALLOW_TOKEN_CONTRACTS` limitam destinos e tokens assináveis (habilite em produção).
 - **Secrets**: `.env` sempre fora de VCS; exemplos em `.env.example`. Prefira injetar via variables do ambiente/secret manager.
 - **Deploy safety (BSC)**: use deployer dedicado no `.env` (pouco BNB); após deploy, chame `setTreasury`/`transferOwnership` para multisig; remova/rotate o deployer.  
-- **Deploy safety (TRON)**: signer hot separado; não armazene seed, só pk; `TRON_XPRV` opcional para derivação HD (guardado só em ambiente seguro).
+- **Deploy safety (BSC)**: signer hot separado; não armazene seed, só pk; `BSC_XPRV` opcional para derivação HD (guardado só em ambiente seguro).
 - **Transport**: colocar os signers atrás de TLS/reverse proxy; habilitar rate limit/WAF no ingress.
 
 ## Signing Services
-- **TRON signer** (`signer/server.js`):  
-  - `POST /sign/transfer` (TRC20) e `POST /sign/hd/transfer` (derivação HD).  
-  - Env: `SIGNER_PRIVATE_KEY`, `SIGNER_HMAC_SECRET`, `TRON_FULLNODE_URL`, `ALLOW_*`, opcional `DATABASE_URL`.  
+- **BSC signer** (`signer/server.js`):  
+  - `POST /sign/transfer` (BEP20) e `POST /sign/hd/transfer` (derivação HD).  
+  - Env: `SIGNER_PRIVATE_KEY`, `SIGNER_HMAC_SECRET`, `BSC_FULLNODE_URL`, `ALLOW_*`, opcional `DATABASE_URL`.  
 - **BSC signer** (`bsc-signer/server.js`):  
   - `POST /evm/sign/transfer` (BEP20/ERC20) e `GET /evm/health`.  
   - Env: `EVM_PRIVATE_KEY`, `RPC_URL` (default BSC), `HMAC_SECRET`, `ALLOW_*`, opcional `DATABASE_URL`.  
