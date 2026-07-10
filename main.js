@@ -10,6 +10,8 @@ const state = {
   walletAddress: '', // Will be updated from input
   connected: false, // Simulated wallet connection state
   transactionFee: 0.015,
+  totalPayAmount: 0,
+  platformFee: 0,
   walletBalance: { // Simulated balances
       USDT: 0,
       ETH: 0,
@@ -20,7 +22,46 @@ const state = {
 
 const LIQUIDITY_POOLS = { // Simulated liquidity
   USDT: { reserve: 100000, price: 5 }, // price will be updated by fetched rate
-  ETH: { reserve: 1000, price: 15000 }
+  ETH: { reserve: 1000, price: 15000 },
+  EURUSDT: { reserve: 50000, price: 6 },
+  BTC: { reserve: 100, price: 350000 }
+};
+
+const CURRENCY_OPTIONS = {
+  fiat: [
+    { code: 'BRL', label: 'BRL', icon: 'https://res.cloudinary.com/limpeja/image/upload/v1783198241/brl_csztl5.png' },
+    { code: 'USD', label: 'USD', icon: 'https://res.cloudinary.com/limpeja/image/upload/v1783198240/usd_kpao7j.png' },
+    { code: 'EUR', label: 'EUR', icon: 'https://res.cloudinary.com/limpeja/image/upload/v1783198240/eur_r6gcvd.png' }
+  ],
+  crypto: [
+    { code: 'USDT', label: 'USDT', icon: 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/usdt.png' },
+    { code: 'EURUSDT', label: 'EURUSDT', icon: 'https://res.cloudinary.com/limpeja/image/upload/v1783198240/eur_r6gcvd.png' },
+    { code: 'BTC', label: 'BTC', icon: 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/btc.png' }
+  ]
+};
+
+const SELL_RECEIVE_OPTIONS = [
+  { code: 'BRL', label: 'BRL', icon: 'https://res.cloudinary.com/limpeja/image/upload/v1783198241/brl_csztl5.png' }
+];
+
+const FIAT_RATES_TO_BRL = {
+  BRL: 1,
+  USD: 0,
+  EUR: 0
+};
+
+const priceState = {
+  source: '',
+  fetchedAt: 0,
+  rates: {
+    USDTBRL: 0,
+    SELLUSDTBRL: 0,
+    USD: 0,
+    EUR: 0,
+    EURBRL: 0,
+    BTCUSDT: 0,
+    BTCBRL: 0
+  }
 };
 
 const steps = { // Step definitions
@@ -34,10 +75,10 @@ const steps = { // Step definitions
 // Helper functions (mostly from second block)
 
 const validateWalletAddress = (address) => {
-  // O payment-gateway entrega USDT na rede TRON.
+  // O payment-gateway entrega USDT na BSC/BEP20.
   if (!address) return false;
   const a = address.trim();
-  return a.startsWith('T') && a.length >= 30;
+  return /^0x[a-fA-F0-9]{40}$/.test(a);
 };
 
 const calculateFees = (amount) => amount * state.transactionFee;
@@ -46,9 +87,87 @@ const connectWallet = async () => {
   // Simulate wallet connection
   await new Promise(resolve => setTimeout(resolve, 500)); // Simulate async operation
   state.connected = true;
-  // Simula um endereço TRON válido (~34 chars) para não travar a validação
-  state.walletAddress = 'T' + Math.random().toString(36).slice(2, 34);
+  // Simula um endereco BSC valido para nao travar a validacao.
+  state.walletAddress = '0x' + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
   return state.walletAddress;
+};
+
+const UX_MESSAGES = {
+  invalid_amount: 'Valor invalido.',
+  invalid_wallet: 'Wallet BSC invalida.',
+  payment_method_required: 'Selecione PIX.',
+  backend_unavailable: 'Servico indisponivel.',
+  quote_unavailable: 'Cotacao indisponivel.',
+  order_limit: 'Tente novamente em instantes.',
+  order_value_limit: 'Valor fora do limite.',
+  asset_unsupported: 'Ativo indisponivel.',
+  duplicate_payment: 'Pagamento ja processado.',
+  webhook_pending: 'Aguardando PIX.',
+  payment_identified: 'Pagamento identificado.',
+  payment_sent: 'USDT enviado.',
+  payment_failed: 'Falha no pagamento.',
+  signer_missing: 'Envio indisponivel.',
+  pix_missing: 'PIX indisponivel.',
+  network_error: 'Falha de conexao.',
+  unknown: 'Nao foi possivel continuar.'
+};
+
+const normalizeUxMessage = (input, fallback = 'unknown') => {
+  const raw = String(input || '').toLowerCase();
+  if (!raw) return UX_MESSAGES[fallback] || UX_MESSAGES.unknown;
+  if (raw.includes('limite') || raw.includes('too many') || raw.includes('429')) return UX_MESSAGES.order_limit;
+  if (raw.includes('fora dos limites') || raw.includes('valor insuficiente')) return UX_MESSAGES.order_value_limit;
+  if (raw.includes('asset') || raw.includes('ativo')) return UX_MESSAGES.asset_unsupported;
+  if (raw.includes('duplicate') || raw.includes('duplic')) return UX_MESSAGES.duplicate_payment;
+  if (raw.includes('pagseguro') || raw.includes('pagbank') || raw.includes('pix')) return UX_MESSAGES.pix_missing;
+  if (raw.includes('signer') || raw.includes('hmac')) return UX_MESSAGES.signer_missing;
+  if (raw.includes('fetch') || raw.includes('network') || raw.includes('backend') || raw.includes('failed')) return UX_MESSAGES.backend_unavailable;
+  return input.length <= 72 ? input : (UX_MESSAGES[fallback] || UX_MESSAGES.unknown);
+};
+
+const ensureUxMessageHost = () => {
+  let host = document.getElementById('uxMessageHost');
+  const card = document.querySelector('.swap-card');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'uxMessageHost';
+    host.className = 'ux-message-host';
+  }
+  if (card && host.parentElement !== card) {
+    card.appendChild(host);
+  } else if (!host.parentElement) {
+    document.body.appendChild(host);
+  }
+  return host;
+};
+
+const showUxMessage = (message, type = 'info', opts = {}) => {
+  const text = UX_MESSAGES[message] || normalizeUxMessage(message, opts.fallback || 'unknown');
+  if (opts.inlineEl) {
+    opts.inlineEl.textContent = text;
+    opts.inlineEl.className = `ux-inline-message ${type}`;
+    opts.inlineEl.style.display = text ? 'block' : 'none';
+  }
+  const host = ensureUxMessageHost();
+  const item = document.createElement('div');
+  item.className = `ux-message ${type}`;
+  item.setAttribute('role', type === 'error' ? 'alert' : 'status');
+  const label = document.createElement('span');
+  label.textContent = text;
+  const closeButton = document.createElement('button');
+  closeButton.type = 'button';
+  closeButton.setAttribute('aria-label', 'Fechar mensagem');
+  closeButton.textContent = 'x';
+  item.append(label, closeButton);
+  const close = () => {
+    item.classList.remove('show');
+    setTimeout(() => item.remove(), 180);
+  };
+  closeButton.addEventListener('click', close);
+  host.appendChild(item);
+  requestAnimationFrame(() => item.classList.add('show'));
+  setTimeout(close, opts.duration || 3600);
+  return text;
 };
 
 // We will replace the internal getExchangeRate with a fetch call directly in DOMContentLoaded
@@ -170,14 +289,14 @@ const showCardPaymentModal = (paymentDetails) => {
       const success = Math.random() > 0.1; // 90% success rate
 
       if (success) {
-           alert("Pagamento com cartão simulado bem-sucedido!"); // Portuguese
+           showUxMessage('payment_identified', 'success');
            modal.remove(); // Close modal on success
            // In a real app, you'd then trigger the crypto transaction execution
            // For this integration, the verifyPayment loop handles the next step.
            // We need a way for the modal's success state to signal verifyPayment.
            // A simpler approach for this simulation is to have processTransaction wait.
       } else {
-           alert("Falha no pagamento com cartão simulado."); // Portuguese
+           showUxMessage('payment_failed', 'error');
            // statusElement.textContent = 'Falha';
            // Keep modal open or close based on UX
       }
@@ -284,7 +403,10 @@ function initHeroAnimations() {
 
   const premiumTitle = document.getElementById('premiumTitle');
   if (premiumTitle) {
-      const titleContent = premiumTitle.textContent.trim();
+      const mobileTitleContent = premiumTitle.dataset.textMobile;
+      const titleContent = window.matchMedia('(max-width: 768px)').matches && mobileTitleContent
+          ? mobileTitleContent
+          : premiumTitle.textContent.trim();
       premiumTitle.textContent = ''; // Clear to start typing
 
       const typeAnim = anime({
@@ -317,12 +439,12 @@ const processTransaction = async () => {
 
   // Basic validation again before starting
   if (!state.walletAddress || !validateWalletAddress(state.walletAddress)) {
-      alert('Endereço de carteira inválido.'); // Portuguese
+      showUxMessage('invalid_wallet', 'warning');
       return; // Stop if validation fails
   }
 
   if (!state.selectedPaymentMethod) {
-      alert('Selecione um método de pagamento.'); // Portuguese
+      showUxMessage('payment_method_required', 'warning');
        return; // Stop if no method selected
   }
 
@@ -354,7 +476,7 @@ const processTransaction = async () => {
 
   } catch (err) {
       console.error("Erro no processamento da transação:", err);
-      alert(`Erro: ${err.message}`); // Show error message
+      showUxMessage(err.message, 'error');
       // Close any open modal on error
       const modal = document.querySelector('.payment-modal');
       if(modal) modal.remove();
@@ -374,15 +496,71 @@ const updateReceiveAmount = () => {
   const payAmountInput = document.getElementById('payAmount');
   const receiveAmountInput = document.getElementById('receiveAmount');
 
-  const brlValue = parseFloat(payAmountInput.value);
+  const inputValue = parseFloat(payAmountInput.value);
+  const selectedPool = LIQUIDITY_POOLS[state.receiveCurrency] || LIQUIDITY_POOLS[state.payCurrency] || LIQUIDITY_POOLS.USDT;
+  const rate = state.action === 'sell'
+    ? getSellAssetBrlPrice(state.payCurrency)
+    : Number(selectedPool?.price || state.exchangeRate || 0);
 
   // Only calculate if exchange rate is available and input is a valid positive number
-  if (!isNaN(brlValue) && brlValue > 0 && state.exchangeRate > 0) {
-      const cryptoValue = brlValue / state.exchangeRate;
-      receiveAmountInput.value = cryptoValue.toFixed(6); // USDT precision
+  if (!isNaN(inputValue) && inputValue > 0 && rate > 0) {
+      const brlInputValue = convertFiatToBrl(inputValue, state.payCurrency);
+      const value = state.action === 'sell' ? convertBrlToFiat(inputValue * rate, state.receiveCurrency) : brlInputValue / rate;
+      const precision = state.action === 'sell' ? 2 : state.receiveCurrency === 'BTC' ? 8 : 6;
+      receiveAmountInput.value = value.toFixed(precision);
   } else {
       receiveAmountInput.value = '';
   }
+};
+
+const readPositiveNumber = (...values) => {
+  for (const value of values) {
+    const number = Number(value);
+    if (Number.isFinite(number) && number > 0) return number;
+  }
+  return 0;
+};
+
+const setFiatRateToBrl = (currency, value) => {
+  const code = String(currency || '').toUpperCase();
+  const rate = readPositiveNumber(value);
+  if (code && rate > 0) FIAT_RATES_TO_BRL[code] = rate;
+};
+
+const applyPriceSnapshot = (snapshot) => {
+  if (!snapshot || !snapshot.rates || snapshot.rates.USDTBRL <= 0) {
+    throw new Error('cotacao invalida');
+  }
+
+  priceState.source = snapshot.source || 'unknown';
+  priceState.fetchedAt = snapshot.fetchedAt || Date.now();
+  priceState.rates = { ...priceState.rates, ...snapshot.rates };
+
+  state.exchangeRate = priceState.rates.USDTBRL;
+  LIQUIDITY_POOLS.USDT.price = priceState.rates.USDTBRL;
+  LIQUIDITY_POOLS.USDT.sellPrice = priceState.rates.SELLUSDTBRL || priceState.rates.USDTBRL;
+  LIQUIDITY_POOLS.EURUSDT.price = priceState.rates.EURBRL || priceState.rates.USDTBRL;
+  LIQUIDITY_POOLS.BTC.price = priceState.rates.BTCBRL || LIQUIDITY_POOLS.BTC.price;
+
+  FIAT_RATES_TO_BRL.BRL = 1;
+  setFiatRateToBrl('USD', priceState.rates.USDTBRL);
+  setFiatRateToBrl('EUR', priceState.rates.EURBRL);
+};
+
+const convertFiatToBrl = (value, currency) => {
+  const rate = FIAT_RATES_TO_BRL[currency] || 0;
+  return rate > 0 ? (Number(value) || 0) * rate : 0;
+};
+
+const convertBrlToFiat = (value, currency) => {
+  const rate = FIAT_RATES_TO_BRL[currency] || 0;
+  return rate > 0 ? (Number(value) || 0) / rate : 0;
+};
+
+const formatFiat = (value, currency = 'BRL') => {
+  const amount = Number(value) || 0;
+  const locale = currency === 'BRL' ? 'pt-BR' : 'en-US';
+  return amount.toLocaleString(locale, { style: 'currency', currency });
 };
 
 const formatBrl = (value) => {
@@ -390,18 +568,64 @@ const formatBrl = (value) => {
   return amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
+const getSellAssetBrlPrice = (asset) => {
+  const code = String(asset || '').toUpperCase();
+  if (code === 'USDT') {
+    return priceState.rates.SELLUSDTBRL || LIQUIDITY_POOLS.USDT.sellPrice || priceState.rates.USDTBRL || state.exchangeRate || 0;
+  }
+  return Number((LIQUIDITY_POOLS[code] || {}).price || 0);
+};
+
+const syncMarketsFromPriceState = () => {
+  const marketPrices = {
+    USDT: priceState.rates.USDTBRL,
+    EURUSDT: priceState.rates.EURBRL,
+    BTC: priceState.rates.BTCBRL
+  };
+
+  document.querySelectorAll('.markets-row[data-market-category]').forEach(row => {
+    const asset = row.querySelector('.market-asset strong')?.textContent?.trim();
+    const price = marketPrices[asset];
+    if (!asset || !price || price <= 0) return;
+
+    const priceLabel = formatBrl(price);
+    const priceEl = row.querySelector('.market-price');
+    const pairEl = priceEl?.nextElementSibling;
+    const statusEl = row.querySelector('.market-status');
+
+    if (priceEl) priceEl.textContent = priceLabel;
+    if (pairEl) pairEl.textContent = `1 ${asset} = ${priceLabel}`;
+    if (statusEl) statusEl.textContent = priceState.source === 'backend' ? 'Live' : 'Fallback';
+  });
+};
+
+const normalizeQrImageSrc = (value) => {
+  const src = String(value || '').trim();
+  if (!src) return '';
+  if (/^(data:image\/|https?:\/\/|\/)/i.test(src)) return src;
+  return `data:image/png;base64,${src}`;
+};
+
 const getReceiveDisplayValue = () => {
   const receiveAmountInput = document.getElementById('receiveAmount');
   let amount = receiveAmountInput?.value || '';
-  if (!amount && state.payAmount > 0 && state.exchangeRate > 0) {
-      amount = (state.payAmount / state.exchangeRate).toFixed(8);
+  const selectedPool = LIQUIDITY_POOLS[state.receiveCurrency] || LIQUIDITY_POOLS[state.payCurrency] || LIQUIDITY_POOLS.USDT;
+  const rate = state.action === 'sell'
+    ? getSellAssetBrlPrice(state.payCurrency)
+    : Number(selectedPool?.price || state.exchangeRate || 0);
+  if (!amount && state.payAmount > 0 && rate > 0) {
+      const brlInputValue = convertFiatToBrl(state.payAmount, state.payCurrency);
+      amount = state.action === 'sell'
+        ? convertBrlToFiat(state.payAmount * rate, state.receiveCurrency).toFixed(2)
+        : (brlInputValue / rate).toFixed(8);
       if (receiveAmountInput) receiveAmountInput.value = amount;
   }
   return amount ? `${amount} ${state.receiveCurrency}` : `0 ${state.receiveCurrency}`;
 };
 
 const updateOrderSummaries = () => {
-  const payText = `${formatBrl(state.payAmount)} ${state.payCurrency}`;
+  const payText = `${formatFiat(state.payAmount, state.payCurrency)} ${state.payCurrency}`;
+  const totalText = `${formatFiat(state.totalPayAmount || state.payAmount, state.payCurrency)} ${state.payCurrency}`;
   const receiveText = getReceiveDisplayValue();
 
   document.querySelectorAll('#displayPayAmountStep2, #displayPayAmountStep3').forEach(el => {
@@ -412,19 +636,21 @@ const updateOrderSummaries = () => {
   });
 
   const displayTotalStep3 = document.getElementById('displayTotalStep3');
-  if (displayTotalStep3) displayTotalStep3.textContent = payText;
+  if (displayTotalStep3) displayTotalStep3.textContent = totalText;
 };
 
 const updateStep3PaymentPreview = (showCardWarning = false) => {
   const pixPanel = document.getElementById('step3PixPanel');
   const cardMessage = document.getElementById('step3CardMessage');
   const bypassBtn = document.getElementById('step3BypassBtn');
+  const step3ConfirmPaymentBtn = document.getElementById('step3ConfirmPaymentBtn');
   const continueBtn = document.getElementById('continueBtn');
   const selectedMethod = state.selectedPaymentMethod?.dataset?.method;
   const isPix = selectedMethod === 'pix';
 
   if (pixPanel) pixPanel.classList.toggle('hidden', !isPix);
   if (bypassBtn) bypassBtn.classList.toggle('hidden', !isPix);
+  if (step3ConfirmPaymentBtn) step3ConfirmPaymentBtn.classList.toggle('hidden', !isPix);
   if (continueBtn && state.currentStep === 3) continueBtn.classList.toggle('hidden', isPix);
   if (cardMessage) {
       cardMessage.classList.toggle('hidden', isPix || !showCardWarning);
@@ -442,12 +668,56 @@ const updateFinalPaymentStatus = (status) => {
 };
 
 const resolveApiBase = () => {
-  const configured = window.SWAPPED_API_BASE_URL || localStorage.getItem('SWAPPED_API_BASE_URL') || 'http://localhost:3000';
+  const configured =
+    window.SWAPPED_API_BASE_URL ||
+    import.meta.env.VITE_SWAPPED_API_BASE_URL ||
+    localStorage.getItem('SWAPPED_API_BASE_URL') ||
+    'https://stablecoin-payment-gateway-production-3ee2.up.railway.app';
   return String(configured).trim().replace(/\/+$/, '');
 };
 
-const extractBrlRate = (data) => {
-  return data?.brl ?? data?.BRL ?? data?.priceBRL ?? data?.rate ?? data?.tether?.brl ?? data?.usdt?.brl;
+const normalizePriceSnapshot = (data, source = 'backend') => {
+  const rates = data?.rates || data || {};
+  const usdtBrl = readPositiveNumber(
+    data?.brl,
+    data?.BRL,
+    data?.priceBRL,
+    data?.rate,
+    data?.usdtbrl,
+    data?.USDTBRL,
+    data?.tether?.brl,
+    data?.usdt?.brl,
+    rates?.USDT_BRL,
+    rates?.USDTBRL,
+    rates?.BRL
+  );
+  const usdtUsd = readPositiveNumber(data?.usd, data?.USDTUSD, data?.tether?.usd, rates?.USDT_USD, rates?.USDTUSD, rates?.USD, 1);
+  const sellUsdtBrl = readPositiveNumber(data?.sellUsdtBrl, data?.SELLUSDTBRL, data?.sellUSDTBRL, rates?.SELL_USDT_BRL, rates?.SELLUSDTBRL);
+  const usdtEur = readPositiveNumber(data?.eur, data?.USDTEUR, data?.tether?.eur, rates?.USDT_EUR, rates?.USDTEUR, rates?.EUR);
+  const eurUsd = readPositiveNumber(data?.eurusd, data?.EURUSD, rates?.EUR_USD, rates?.EURUSD);
+  const btcUsdt = readPositiveNumber(data?.btcusdt, data?.BTCUSDT, rates?.BTC_USDT, rates?.BTCUSDT);
+  const eurBrl = readPositiveNumber(
+    data?.eurbrl,
+    data?.EURBRL,
+    rates?.EUR_BRL,
+    rates?.EURBRL,
+    usdtBrl > 0 && eurUsd > 0 ? usdtBrl * eurUsd : 0,
+    usdtBrl > 0 && usdtUsd > 0 && usdtEur > 0 ? usdtBrl * (usdtUsd / usdtEur) : 0
+  );
+
+  return {
+    source,
+    fetchedAt: Date.now(),
+    rates: {
+      USDTBRL: usdtBrl,
+      SELLUSDTBRL: sellUsdtBrl || usdtBrl,
+      USD: usdtUsd,
+      EUR: usdtEur,
+      EURBRL: eurBrl,
+      BTCUSDT: btcUsdt,
+      BTCBRL: usdtBrl > 0 && btcUsdt > 0 ? usdtBrl * btcUsdt : 0
+    }
+  };
 };
 
 const updateStep = (step) => {
@@ -485,7 +755,8 @@ const updateStep = (step) => {
       } else if (step === 3) {
           continueBtn.innerText = 'Avançar';
       } else if (step === 5) {
-          continueBtn.innerText = 'Finalizar';
+          continueBtn.innerText = 'Início';
+          continueBtn.classList.add('hidden');
       } else {
           continueBtn.innerText = 'Buy Now'; // Portuguese
       }
@@ -534,17 +805,24 @@ const updateStep = (step) => {
 document.addEventListener('DOMContentLoaded', async () => {
   const API_BASE = resolveApiBase();
   let buySse = null;
+  let buyPoll = null;
   let currentBuyId = null;
+  let currentBuyAccessToken = null;
+  let currentBuyTxHash = null;
   let buyOrderPromise = null;
   const PARTICLE_ICON = 'https://res.cloudinary.com/limpeja/image/upload/v1771076927/iconnn-Photoroom_wdsmis.png';
 
   // Get DOM element references
   const continueBtn = document.getElementById('continueBtn');
+  const confirmPaymentBtn = document.getElementById('confirmPaymentBtn');
+  const step3ConfirmPaymentBtn = document.getElementById('step3ConfirmPaymentBtn');
   const step3BypassBtn = document.getElementById('step3BypassBtn');
   
   const orderInfoBox = document.getElementById('orderInfoBox');
   const payAmountInput = document.getElementById('payAmount');
   const receiveAmountInput = document.getElementById('receiveAmount');
+  const payAmountLabel = document.querySelector('label[for="payAmount"]');
+  const receiveAmountLabel = document.querySelector('label[for="receiveAmount"]');
   const rateText = document.querySelector('.rate-text');
   const rateSpinner = document.querySelector('.loading-spinner');
   const paymentMethodButtons = document.querySelectorAll('.payment-method');
@@ -558,9 +836,122 @@ document.addEventListener('DOMContentLoaded', async () => {
   const pixKeyDisplay = document.getElementById('pixKey');
   const qrCodeImg = document.getElementById('qrCodeImg');
   const step3PixQr = document.getElementById('step3PixQr');
+  const step3PixCopy = document.getElementById('step3PixCopy');
+  const step3PixCopyBtn = document.getElementById('step3PixCopyBtn');
+  const paymentTxHash = document.getElementById('paymentTxHash');
   const statusMessage = document.getElementById('statusMessage');
   const particlesContainer = document.getElementById('particles-container');
   const premiumTitleEl = document.getElementById('premiumTitle');
+  const payCurrencyBtn = document.getElementById('payCurrency');
+  const receiveCurrencyBtn = document.getElementById('receiveCurrency');
+  const payDropdown = document.getElementById('payDropdown');
+  const receiveDropdown = document.getElementById('receiveDropdown');
+  const toggleButtons = document.querySelectorAll('.toggle-btn[data-action]');
+  const walletGroup = document.getElementById('walletGroup');
+  const sellInfo = document.getElementById('sellInfo');
+  const paymentMethodsSection = document.getElementById('paymentMethodsSection');
+  const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
+  const primaryNav = document.getElementById('primaryNav');
+  const navViewLinks = document.querySelectorAll('.nav-links a[data-view]');
+  const developersView = document.getElementById('developersView');
+  const marketsView = document.getElementById('marketsView');
+  const pricingView = document.getElementById('pricingView');
+  const marketFilterButtons = document.querySelectorAll('[data-market-filter]');
+  const marketRows = document.querySelectorAll('.markets-row[data-market-category]');
+  const marketActionButtons = document.querySelectorAll('[data-market-action]');
+
+  function setPageView(view) {
+    const isDevelopers = view === 'developers';
+    const isMarkets = view === 'markets';
+    const isPricing = view === 'pricing';
+    document.body.classList.toggle('developers-mode', isDevelopers);
+    document.body.classList.toggle('markets-mode', isMarkets);
+    document.body.classList.toggle('pricing-mode', isPricing);
+    if (developersView) developersView.classList.toggle('hidden', !isDevelopers);
+    if (marketsView) marketsView.classList.toggle('hidden', !isMarkets);
+    if (pricingView) pricingView.classList.toggle('hidden', !isPricing);
+    navViewLinks.forEach(link => {
+      const linkView = link.dataset.view || 'trade';
+      link.classList.toggle('active', isDevelopers || isMarkets || isPricing ? linkView === view : linkView === 'trade');
+    });
+    if (isDevelopers || isMarkets || isPricing) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  function setMobileMenu(open) {
+    if (!mobileMenuToggle || !primaryNav) return;
+    mobileMenuToggle.classList.toggle('is-open', open);
+    primaryNav.classList.toggle('is-open', open);
+    mobileMenuToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    mobileMenuToggle.setAttribute('aria-label', open ? 'Close navigation menu' : 'Open navigation menu');
+  }
+
+  if (mobileMenuToggle && primaryNav) {
+    mobileMenuToggle.addEventListener('click', event => {
+      event.stopPropagation();
+      setMobileMenu(!primaryNav.classList.contains('is-open'));
+    });
+
+    document.addEventListener('click', event => {
+      if (!primaryNav.classList.contains('is-open')) return;
+      if (primaryNav.contains(event.target) || mobileMenuToggle.contains(event.target)) return;
+      setMobileMenu(false);
+    });
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') setMobileMenu(false);
+    });
+  }
+
+  navViewLinks.forEach(link => {
+    link.addEventListener('click', event => {
+      const view = link.dataset.view || 'trade';
+      setMobileMenu(false);
+      if (view === 'developers') {
+        event.preventDefault();
+        history.replaceState(null, '', '#developers');
+        setPageView('developers');
+        return;
+      }
+      if (view === 'markets') {
+        event.preventDefault();
+        history.replaceState(null, '', '#markets');
+        setPageView('markets');
+        return;
+      }
+      if (view === 'pricing') {
+        event.preventDefault();
+        history.replaceState(null, '', '#pricing');
+        setPageView('pricing');
+        return;
+      }
+      event.preventDefault();
+      history.replaceState(null, '', '#trade');
+      setPageView('trade');
+    });
+  });
+
+  if (window.location.hash === '#developers') {
+    setPageView('developers');
+  } else if (window.location.hash === '#markets') {
+    setPageView('markets');
+  } else if (window.location.hash === '#pricing') {
+    setPageView('pricing');
+  } else {
+    setPageView('trade');
+  }
+
+  marketFilterButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const filter = button.dataset.marketFilter || 'all';
+      marketFilterButtons.forEach(item => item.classList.toggle('active', item === button));
+      marketRows.forEach(row => {
+        const categories = (row.dataset.marketCategory || '').split(/\s+/);
+        row.classList.toggle('hidden', filter !== 'all' && !categories.includes(filter));
+      });
+    });
+  });
 
   // Apply blur/shake animation to hero title text
   if (premiumTitleEl) {
@@ -595,24 +986,209 @@ document.addEventListener('DOMContentLoaded', async () => {
   function setOrderError(msg) {
     if (!orderErrorEl) return;
     if (msg) {
-      orderErrorEl.textContent = msg;
-      orderErrorEl.style.display = 'block';
+      showUxMessage(msg, 'error', { inlineEl: orderErrorEl });
     } else {
       orderErrorEl.textContent = '';
+      orderErrorEl.className = 'ux-inline-message';
       orderErrorEl.style.display = 'none';
     }
   }
 
+  function shortStatusMessage(status) {
+    switch (status) {
+      case 'aguardando_pix':
+      case 'aguardando_stripe':
+        return UX_MESSAGES.webhook_pending;
+      case 'pago_fiat':
+      case 'pago_pix':
+        return UX_MESSAGES.payment_identified;
+      case 'enviado':
+      case 'delivered':
+      case 'confirmado':
+      case 'completed':
+        return UX_MESSAGES.payment_sent;
+      case 'erro':
+        return UX_MESSAGES.payment_failed;
+      default:
+        return status ? `Status: ${status}` : UX_MESSAGES.webhook_pending;
+    }
+  }
+
+  function optionFor(code) {
+    return [...CURRENCY_OPTIONS.fiat, ...CURRENCY_OPTIONS.crypto, ...SELL_RECEIVE_OPTIONS].find(item => item.code === code) || CURRENCY_OPTIONS.crypto[0];
+  }
+
+  function setSelectorButton(button, option) {
+    if (!button || !option) return;
+    const img = button.querySelector('img');
+    const label = button.querySelector('span');
+    if (img) {
+      img.src = option.icon;
+      img.alt = option.label;
+    }
+    if (label) label.textContent = option.label;
+  }
+
+  function renderCurrencyDropdown(dropdown, options, onSelect) {
+    if (!dropdown) return;
+    dropdown.innerHTML = options.map(option => `
+      <div role="button" tabindex="0" data-currency="${option.code}">
+        <img src="${option.icon}" alt="${option.label}" width="24" height="24" />
+        <span>${option.label}</span>
+      </div>
+    `).join('');
+    dropdown.querySelectorAll('[data-currency]').forEach(item => {
+      const select = () => {
+        const option = options.find(entry => entry.code === item.dataset.currency);
+        if (option) onSelect(option);
+        closeCurrencyDropdowns();
+      };
+      item.addEventListener('click', select);
+      item.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          select();
+        }
+      });
+    });
+  }
+
+  function closeCurrencyDropdowns() {
+    payDropdown?.classList.add('hidden');
+    receiveDropdown?.classList.add('hidden');
+  }
+
+  function updateRateLabel() {
+    if (!rateText) return;
+    const rateSource = state.action === 'sell' ? state.payCurrency : state.receiveCurrency;
+    const pool = LIQUIDITY_POOLS[rateSource] || LIQUIDITY_POOLS.USDT;
+    const rate = state.action === 'sell'
+      ? getSellAssetBrlPrice(rateSource)
+      : Number(pool?.price || state.exchangeRate || 0);
+    if (!rate) {
+      rateText.textContent = UX_MESSAGES.quote_unavailable;
+      return;
+    }
+    rateText.textContent = `1 ${rateSource} ≈ ${rate.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+  }
+
+  function setReceiveCurrency(option) {
+    if (state.action === 'sell' && option.code !== 'BRL') {
+      option = SELL_RECEIVE_OPTIONS[0];
+    }
+    state.receiveCurrency = option.code;
+    setSelectorButton(receiveCurrencyBtn, option);
+    updateRateLabel();
+    updateReceiveAmount();
+    updateOrderSummaries();
+  }
+
+  function setPayCurrency(option) {
+    state.payCurrency = option.code;
+    setSelectorButton(payCurrencyBtn, option);
+    updateRateLabel();
+    updateReceiveAmount();
+    updateOrderSummaries();
+  }
+
+  function syncTradeModeLabels() {
+    const isSell = state.action === 'sell';
+    if (payAmountLabel) payAmountLabel.textContent = isSell ? 'Sell' : 'Pay';
+    if (receiveAmountLabel) receiveAmountLabel.textContent = 'Receive';
+    if (payCurrencyBtn) payCurrencyBtn.setAttribute('aria-label', isSell ? 'Select crypto to sell' : 'Select currency to pay');
+    if (receiveCurrencyBtn) receiveCurrencyBtn.setAttribute('aria-label', isSell ? 'Select fiat to receive' : 'Select asset to receive');
+    if (receiveCurrencyBtn) {
+      receiveCurrencyBtn.disabled = isSell;
+      receiveCurrencyBtn.classList.toggle('locked', isSell);
+      if (isSell) {
+        setSelectorButton(receiveCurrencyBtn, optionFor('BRL'));
+      }
+    }
+  }
+
+  function syncTradeModeUI() {
+    const isSell = state.action === 'sell';
+    if (isSell) {
+      state.payCurrency = 'USDT';
+      state.receiveCurrency = 'BRL';
+    } else {
+      state.payCurrency = 'BRL';
+      state.receiveCurrency = 'USDT';
+    }
+    toggleButtons.forEach(button => button.classList.toggle('active', button.dataset.action === state.action));
+    if (walletGroup) walletGroup.classList.toggle('hidden', isSell);
+    if (sellInfo) sellInfo.classList.toggle('hidden', !isSell);
+    if (paymentMethodsSection) paymentMethodsSection.classList.toggle('hidden', isSell);
+    syncTradeModeLabels();
+    renderCurrencyDropdown(payDropdown, isSell ? CURRENCY_OPTIONS.crypto : CURRENCY_OPTIONS.fiat, setPayCurrency);
+    renderCurrencyDropdown(receiveDropdown, isSell ? SELL_RECEIVE_OPTIONS : CURRENCY_OPTIONS.crypto, setReceiveCurrency);
+
+    if (isSell) {
+      setPayCurrency(optionFor('USDT'));
+      setReceiveCurrency(optionFor('BRL'));
+    } else {
+      setPayCurrency(optionFor('BRL'));
+      setReceiveCurrency(optionFor('USDT'));
+    }
+
+    state.selectedPaymentMethod = null;
+    paymentMethodButtons.forEach(button => button.classList.remove('selected'));
+    updateStep(1);
+    syncTradeModeLabels();
+    if (continueBtn) continueBtn.textContent = isSell ? 'Sell Now' : 'Buy Now';
+  }
+
+  function resetCheckoutFlow() {
+    state.payAmount = 0;
+    state.totalPayAmount = 0;
+    state.platformFee = 0;
+    state.selectedPaymentMethod = null;
+    state.walletAddress = '';
+    state.connected = false;
+    currentBuyId = null;
+    currentBuyAccessToken = null;
+    currentBuyTxHash = null;
+    if (buySse) {
+      buySse.close();
+      buySse = null;
+    }
+    if (buyPoll) {
+      clearInterval(buyPoll);
+      buyPoll = null;
+    }
+
+    if (payAmountInput) payAmountInput.value = '';
+    if (receiveAmountInput) receiveAmountInput.value = '';
+    if (walletAddressInput) walletAddressInput.value = '';
+    if (step3PixQr) step3PixQr.src = '/images/qrcode.png';
+    if (step3PixCopy) step3PixCopy.value = '';
+    updatePaymentTxHash('');
+    paymentMethodButtons.forEach(button => {
+      button.classList.remove('selected');
+      button.style.borderColor = '';
+    });
+    updateStep3PaymentPreview(false);
+    updateStep(1);
+  }
+
   function startBuyStream(buyId) {
     if (buySse) buySse.close();
+    startBuyStatusPolling();
     try {
-      buySse = new EventSource(`${API_BASE}/api/buy/${buyId}/stream`);
+      const streamPath = currentBuyAccessToken
+        ? `/api/buy/${encodeURIComponent(buyId)}/stream?accessToken=${encodeURIComponent(currentBuyAccessToken)}`
+        : `/api/buy/${encodeURIComponent(buyId)}/stream`;
+      buySse = new EventSource(`${API_BASE}${streamPath}`);
       buySse.onmessage = (ev) => {
         try {
           const data = JSON.parse(ev.data);
           updateFinalPaymentStatus(data.status);
+          if (data.txHash) updatePaymentTxHash(data.txHash);
           if (orderStatusEl) orderStatusEl.textContent = data.status || '—';
-          if (statusMessage) statusMessage.textContent = `Status: ${data.status || '—'}`;
+          if (statusMessage) statusMessage.textContent = shortStatusMessage(data.status);
+          if (isPaymentIdentifiedStatus(data.status) && state.currentStep === 3) updateStep(5);
+          if (['enviado', 'delivered', 'confirmado'].includes(data.status)) showUxMessage('payment_sent', 'success');
+          if (data.status === 'erro') showUxMessage('payment_failed', 'error');
         } catch (e) { /* ignore */ }
       };
       buySse.onerror = () => buySse && buySse.close();
@@ -621,28 +1197,79 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  function startBuyStatusPolling() {
+    if (buyPoll) clearInterval(buyPoll);
+    buyPoll = setInterval(async () => {
+      const data = await refreshBuyStatus().catch(() => null);
+      if (!data?.status) return;
+      if (isPaymentIdentifiedStatus(data.status) && state.currentStep === 3) updateStep(5);
+      if (['enviado', 'delivered', 'confirmado', 'erro'].includes(String(data.status).toLowerCase())) {
+        clearInterval(buyPoll);
+        buyPoll = null;
+      }
+    }, 3000);
+  }
+
+  function updatePaymentTxHash(txHash) {
+    const cleanHash = typeof txHash === 'string' ? txHash.trim() : '';
+    currentBuyTxHash = cleanHash || null;
+    if (!paymentTxHash) return;
+    if (!cleanHash) {
+      paymentTxHash.textContent = 'Aguardando envio on-chain';
+      return;
+    }
+    const href = /^0x[a-fA-F0-9]{64}$/.test(cleanHash) ? `https://bscscan.com/tx/${cleanHash}` : '';
+    if (!href) {
+      paymentTxHash.textContent = cleanHash;
+      return;
+    }
+    paymentTxHash.innerHTML = `<a class="tx-hash-link" href="${href}" target="_blank" rel="noopener noreferrer">${shortenTxHash(cleanHash)}</a>`;
+  }
+
+  function shortenTxHash(txHash) {
+    return txHash && txHash.length > 18 ? `${txHash.slice(0, 10)}...${txHash.slice(-8)}` : txHash;
+  }
+
+  function isPaymentIdentifiedStatus(status) {
+    const normalized = String(status || '').toLowerCase();
+    return ['pago', 'paid', 'pago_fiat', 'pago_pix', 'enviado', 'delivered', 'confirmado', 'confirmed', 'concluido', 'concluida'].some(value => normalized.includes(value));
+  }
+
+  async function refreshBuyStatus() {
+    if (!currentBuyId || !currentBuyAccessToken) return null;
+    const res = await fetch(`${API_BASE}/api/buy/${encodeURIComponent(currentBuyId)}?accessToken=${encodeURIComponent(currentBuyAccessToken)}`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (orderStatusEl) orderStatusEl.textContent = data.status || 'aguardando_pix';
+    updateFinalPaymentStatus(data.status);
+    updatePaymentTxHash(data.txHashOut || data.tx_hash_out || data.txHash || '');
+    return data;
+  }
+
   async function createBuyOrder() {
-    if (currentBuyId) return { buyId: currentBuyId };
+    if (currentBuyId) return { buyId: currentBuyId, accessToken: currentBuyAccessToken };
     if (buyOrderPromise) return buyOrderPromise;
 
     buyOrderPromise = (async () => {
       setOrderError('');
       const amount = parseFloat(payAmountInput?.value || '0');
+      const amountBRL = convertFiatToBrl(amount, state.payCurrency);
       const destAddr = walletAddressInput?.value?.trim();
       const phone = pixPhoneInput?.value?.replace(/\D/g, '') || '';
       const cpf = pixCpfInput?.value?.replace(/\D/g, '') || '';
 
-      if (!amount || amount <= 0) return setOrderError('Informe um valor valido.');
-      if (!destAddr || !validateWalletAddress(destAddr)) return setOrderError('Informe um endereco TRON valido.');
+      if (!amount || amount <= 0) return setOrderError('invalid_amount');
+      if (!destAddr || !validateWalletAddress(destAddr)) return setOrderError('invalid_wallet');
+      if (state.receiveCurrency !== 'USDT') return setOrderError('Asset nao suportado nesta fase. Use USDT para finalizar a compra.');
 
       try {
         const resp = await fetch(`${API_BASE}/api/buy`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            amountBRL: amount,
+            amountBRL,
             amountFiat: amount,
-            fiatCurrency: 'BRL',
+            fiatCurrency: state.payCurrency,
             paymentMethod: 'pix',
             asset: 'USDT',
             address: destAddr,
@@ -653,26 +1280,37 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!resp.ok) {
           const data = await resp.json().catch(() => ({}));
-          const msg = data.error || (resp.status === 429 ? 'Limite diario atingido.' : 'Erro ao criar compra');
+          const msg = data.error || (resp.status === 429 ? 'order_limit' : 'backend_unavailable');
           setOrderError(msg);
           return null;
         }
 
         const data = await resp.json();
         currentBuyId = data.buyId || data.id;
+        currentBuyAccessToken = data.accessToken || data.customerAccessToken || null;
+        updatePaymentTxHash(data.txHash || data.txHashOut || data.payment?.txHash || '');
+        state.totalPayAmount = Number(data.totalFiat || data.amountFiat || amount) || amount;
+        state.platformFee = Number(data.feeFiat || 0) || 0;
+        if (data.cryptoAmount && receiveAmountInput) {
+          receiveAmountInput.value = Number(data.cryptoAmount).toFixed(6);
+        }
+        updateOrderSummaries();
         if (orderIdEl) orderIdEl.textContent = currentBuyId || '-';
         if (orderStatusEl) orderStatusEl.textContent = data.status || 'aguardando_pix';
         updateFinalPaymentStatus(data.status);
         if (pixKeyDisplay) pixKeyDisplay.textContent = data.pixKey || data.payment?.pixKey || 'chavepix@nexswap.com';
-        const qrUrl = data.qrCodeUrl || data.payment?.qrCodeUrl;
+        const qrUrl = normalizeQrImageSrc(data.qrCodeUrl || data.payment?.qrCodeUrl);
+        const pixCopy = data.pixCopiaECola || data.payment?.pixCopiaECola || data.payment?.qrcode || '';
         if (qrCodeImg && qrUrl) qrCodeImg.src = qrUrl;
         if (step3PixQr && qrUrl) step3PixQr.src = qrUrl;
-        if (statusMessage) statusMessage.textContent = 'Pague o PIX para liberar o envio.';
+        if (step3PixCopy) step3PixCopy.value = pixCopy;
+        if (statusMessage) statusMessage.textContent = UX_MESSAGES.webhook_pending;
+        showUxMessage('webhook_pending', 'info');
         if (currentBuyId) startBuyStream(currentBuyId);
         return data;
       } catch (err) {
         console.error(err);
-        setOrderError('Backend indisponivel. Mantendo QR local para teste.');
+        setOrderError('backend_unavailable');
         return null;
       } finally {
         buyOrderPromise = null;
@@ -684,47 +1322,139 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // --- Initial Setup ---
 
-  async function fetchPriceWithFallback() {
-    try {
-      const res = await fetch(`${API_BASE}/api/price`);
-      if (!res.ok) throw new Error(`backend ${res.status}`);
-      const data = await res.json();
-      return extractBrlRate(data);
-    } catch (e) {
-      // fallback para CoinGecko se backend falhar
-      try {
-        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=brl');
-        const data = await res.json();
-        return data?.tether?.brl;
-      } catch {
-        throw e; // mantém o primeiro erro
-      }
-    }
+  async function fetchJson(url) {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`${url} ${res.status}`);
+    return res.json();
   }
 
-  // Fetch USDT price and update the rate text and state
+  async function fetchPriceWithFallback() {
+    const attempts = [
+      async () => normalizePriceSnapshot(await fetchJson(`${API_BASE}/api/price`), 'backend'),
+      async () => normalizePriceSnapshot(await fetchJson(`${API_BASE}/rates`), 'backend'),
+      async () => normalizePriceSnapshot(await fetchJson('https://api.coingecko.com/api/v3/simple/price?ids=tether,bitcoin&vs_currencies=brl,usd,eur'), 'coingecko'),
+      async () => {
+        const [usdtBrl, btcUsdt, eurUsdt] = await Promise.all([
+          fetchJson('https://api.binance.com/api/v3/ticker/price?symbol=USDTBRL'),
+          fetchJson('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT'),
+          fetchJson('https://api.binance.com/api/v3/ticker/price?symbol=EURUSDT')
+        ]);
+        return normalizePriceSnapshot({
+          brl: readPositiveNumber(usdtBrl?.price),
+          usd: 1,
+          eurusd: readPositiveNumber(eurUsdt?.price),
+          btcusdt: readPositiveNumber(btcUsdt?.price)
+        }, 'binance');
+      }
+    ];
+
+    let lastError;
+    for (const attempt of attempts) {
+      try {
+        const snapshot = await attempt();
+        if (snapshot?.rates?.USDTBRL > 0) return snapshot;
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    throw lastError || new Error('cotacao indisponivel');
+  }
+
+  // Fetch prices and update every UI surface from one snapshot.
   try {
-    const price = await fetchPriceWithFallback();
-    if (!price) throw new Error('sem preço');
-    state.exchangeRate = price;
-    LIQUIDITY_POOLS.USDT.price = price;
-    rateText.textContent = `1 USDT ≈ ${price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
-    console.log("USDT Rate fetched:", state.exchangeRate);
+    const snapshot = await fetchPriceWithFallback();
+    applyPriceSnapshot(snapshot);
+    updateRateLabel();
+    syncMarketsFromPriceState();
+    console.log("Rates fetched:", priceState);
     updateReceiveAmount();
     updateOrderSummaries();
     if (rateSpinner) rateSpinner.classList.add('hidden');
   } catch (err) {
-    console.error("Erro ao buscar o preço do USDT:", err);
-    rateText.textContent = "Erro ao buscar a taxa 😓";
+    console.error("Erro ao buscar o preco do USDT:", err);
+    rateText.textContent = UX_MESSAGES.quote_unavailable;
+    showUxMessage('quote_unavailable', 'warning');
     state.exchangeRate = 0;
     LIQUIDITY_POOLS.USDT.price = 0;
     if (rateSpinner) rateSpinner.classList.add('hidden');
   }
-
   // Set initial step and update UI
   updateStep(state.currentStep); // Start at Step 1
 
   // --- Event Listeners ---
+
+  syncTradeModeUI();
+
+  if (payCurrencyBtn && payDropdown) {
+      payCurrencyBtn.addEventListener('click', (event) => {
+          event.stopPropagation();
+          receiveDropdown?.classList.add('hidden');
+          payDropdown.classList.toggle('hidden');
+      });
+  }
+
+  if (receiveCurrencyBtn && receiveDropdown) {
+      receiveCurrencyBtn.addEventListener('click', (event) => {
+          event.stopPropagation();
+          if (state.action === 'sell') {
+              setReceiveCurrency(optionFor('BRL'));
+              receiveDropdown.classList.add('hidden');
+              return;
+          }
+          payDropdown?.classList.add('hidden');
+          receiveDropdown.classList.toggle('hidden');
+      });
+  }
+
+  document.addEventListener('click', (event) => {
+      if (!event.target.closest('.currency-selector') && !event.target.closest('.dropdown-options')) {
+          closeCurrencyDropdowns();
+      }
+  });
+
+  toggleButtons.forEach(button => {
+      button.addEventListener('click', () => {
+          if (button.dataset.action === state.action) return;
+          state.action = button.dataset.action;
+          state.payAmount = 0;
+          state.totalPayAmount = 0;
+          state.platformFee = 0;
+          state.walletAddress = '';
+          if (payAmountInput) payAmountInput.value = '';
+          if (receiveAmountInput) receiveAmountInput.value = '';
+          if (walletAddressInput) walletAddressInput.value = '';
+          syncTradeModeUI();
+      });
+  });
+
+  marketActionButtons.forEach(button => {
+      button.addEventListener('click', () => {
+          const row = button.closest('.markets-row');
+          const assetCode = row?.querySelector('.market-asset strong')?.textContent?.trim() || 'USDT';
+          const option = optionFor(assetCode);
+          const action = button.dataset.marketAction === 'sell' ? 'sell' : 'buy';
+
+          state.action = action;
+          state.payAmount = 0;
+          state.totalPayAmount = 0;
+          state.platformFee = 0;
+          state.walletAddress = '';
+          if (payAmountInput) payAmountInput.value = '';
+          if (receiveAmountInput) receiveAmountInput.value = '';
+          if (walletAddressInput) walletAddressInput.value = '';
+
+          syncTradeModeUI();
+          if (action === 'buy') {
+              setReceiveCurrency(option);
+          } else {
+              setPayCurrency(option);
+              setReceiveCurrency(optionFor('BRL'));
+          }
+          history.replaceState(null, '', '#trade');
+          setPageView('trade');
+          document.getElementById('app')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+  });
 
   // Listen for input on the pay amount field to update the receive amount
   if (payAmountInput) {
@@ -758,11 +1488,59 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   if (step3BypassBtn) {
-      step3BypassBtn.addEventListener('click', () => {
+      step3BypassBtn.addEventListener('click', async () => {
           if (state.currentStep !== 3 || state.selectedPaymentMethod?.dataset?.method !== 'pix') return;
-          updateFinalPaymentStatus('completed');
-          updateStep(5);
+          const data = await refreshBuyStatus();
+          if (isPaymentIdentifiedStatus(data?.status)) updateStep(5);
       });
+  }
+
+  if (step3ConfirmPaymentBtn) {
+      step3ConfirmPaymentBtn.addEventListener('click', async () => {
+          if (state.currentStep !== 3 || state.selectedPaymentMethod?.dataset?.method !== 'pix') return;
+          step3ConfirmPaymentBtn.disabled = true;
+          step3ConfirmPaymentBtn.textContent = 'Checking...';
+          try {
+              const data = await refreshBuyStatus();
+              if (isPaymentIdentifiedStatus(data?.status)) {
+                  updateStep(5);
+                  return;
+              }
+              if (statusMessage) statusMessage.textContent = UX_MESSAGES.webhook_pending;
+              showUxMessage('webhook_pending', 'info');
+          } finally {
+              step3ConfirmPaymentBtn.disabled = false;
+              step3ConfirmPaymentBtn.textContent = 'Confirm Payment';
+          }
+      });
+  }
+
+  if (step3PixCopyBtn && step3PixCopy) {
+      step3PixCopyBtn.addEventListener('click', async () => {
+          const value = step3PixCopy.value || '';
+          if (!value) return;
+          try {
+              if (navigator.clipboard?.writeText) {
+                  await navigator.clipboard.writeText(value);
+              } else {
+                  step3PixCopy.select();
+                  document.execCommand('copy');
+                  step3PixCopy.blur();
+              }
+              step3PixCopyBtn.classList.add('copied');
+              step3PixCopyBtn.setAttribute('aria-label', 'Pix copiado');
+              setTimeout(() => {
+                  step3PixCopyBtn.classList.remove('copied');
+                  step3PixCopyBtn.setAttribute('aria-label', 'Copiar Pix copia e cola');
+              }, 1300);
+          } catch (error) {
+              console.warn('Falha ao copiar Pix', error);
+          }
+      });
+  }
+
+  if (confirmPaymentBtn) {
+      confirmPaymentBtn.addEventListener('click', resetCheckoutFlow);
   }
 
   // Listen for clicks on the 'Continue' button
@@ -772,10 +1550,12 @@ document.addEventListener('DOMContentLoaded', async () => {
               case 1: // Amount Input Step
                   const payAmount = parseFloat(payAmountInput.value);
                   if (isNaN(payAmount) || payAmount <= 0) {
-                      alert('Por favor, insira um valor válido.'); // Portuguese
+                      showUxMessage('invalid_amount', 'warning');
                       return; // Stay on this step if validation fails
                   }
                   state.payAmount = payAmount; // Store validated amount in state
+                  state.totalPayAmount = 0;
+                  state.platformFee = 0;
                   updateReceiveAmount();
                   updateOrderSummaries();
                   updateStep(2); // Move to Wallet Step
@@ -785,13 +1565,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                   // Validate the wallet address entered by the user.
                   const wallet = walletAddressInput.value.trim();
                   if (!wallet || !validateWalletAddress(wallet)) {
-                       alert("Por favor, insira um endereço de carteira válido."); // Portuguese
+                       showUxMessage('invalid_wallet', 'warning');
                        // state.connected = false; // Optional: reset connected state if address becomes invalid
                        return; // Stay on step 2 if validation fails
                   }
                   state.walletAddress = wallet; // Store validated address in state
                   if (!state.selectedPaymentMethod) {
-                      alert('Por favor, selecione um método de pagamento.'); // Portuguese
+                      showUxMessage('payment_method_required', 'warning');
                       return;
                   }
                   updateStep(3); // Move to Payment Method Step
@@ -802,7 +1582,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
               case 3: // Payment Method Step
                   if (!state.selectedPaymentMethod) {
-                      alert('Por favor, selecione um método de pagamento.'); // Portuguese
+                      showUxMessage('payment_method_required', 'warning');
                       return; // Stay on step 3 if no method is selected
                   }
                   // No data to store in state here, selection is already in state.selectedPaymentMethod
@@ -813,32 +1593,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                   return;
 
               case 5: // Confirmed payment Step
-                  // Resetting state variables
-                  state.payAmount = 0;
-                  state.selectedPaymentMethod = null;
-                  state.walletAddress = '';
-                  state.connected = false; // Reset connection state
-                  currentBuyId = null;
-                  if (buySse) {
-                      buySse.close();
-                      buySse = null;
-                  }
-
-                  // Resetting UI elements
-                  if (payAmountInput) payAmountInput.value = '';
-                  if (receiveAmountInput) receiveAmountInput.value = '';
-                  if (walletAddressInput) walletAddressInput.value = '';
-                  if (step3PixQr) step3PixQr.src = '/images/qrcode.png';
-                  // Deselect payment method buttons visually
-                  paymentMethodButtons.forEach(b => {
-                      b.classList.remove('selected');
-                      // Also reset any custom styles like border color from the first snippet
-                      b.style.borderColor = '';
-                  });
-                  updateStep3PaymentPreview(false);
-
-                  // Move back to the first step
-                  updateStep(1);
+                  resetCheckoutFlow();
                   break;
 
               default:
@@ -993,6 +1748,3 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.addEventListener('resize', resize);
   requestAnimationFrame(render);
 })();
-
-
-
