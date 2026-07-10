@@ -392,7 +392,11 @@
   }
 
   body.index-page .developer-panel pre {
+    overflow-x: hidden;
     font-size: 0.72rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
   }
 
   body.index-page .webhook-events span {
