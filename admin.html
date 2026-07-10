@@ -3,25 +3,35 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Swappy Admin</title>
-  <link rel="icon" href="https://res.cloudinary.com/limpeja/image/upload/v1771076927/iconnn-Photoroom_wdsmis.png" type="image/png">
+  <title>ChainFX Admin</title>
+  <link rel="icon" href="https://res.cloudinary.com/limpeja/image/upload/v1783193228/iconn-removebg-preview_ywjkgu.png" type="image/png">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="css/effects.css">
+  <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/responsive.css">
   <style>
     :root {
       color-scheme: light;
-      --bg: #f6f7f2;
-      --panel: #ffffff;
-      --panel-soft: #f0f3ea;
-      --ink: #1b1f1d;
-      --muted: #66716b;
-      --line: #dfe4da;
-      --green: #1f7a4d;
-      --green-soft: #e6f4ec;
+      --bg:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.97), rgba(245, 249, 255, 0.92) 46%, rgba(255, 255, 255, 0.97)),
+        url('https://res.cloudinary.com/limpeja/image/upload/v1783193641/ChatGPT_Image_4_de_jul._de_2026_16_32_44_angzza.png') 78% 52% / min(980px, 92vw) auto no-repeat fixed,
+        #ffffff;
+      --panel: rgba(255, 255, 255, 0.96);
+      --panel-soft: rgba(244, 248, 253, 0.96);
+      --ink: var(--text-color, #1a1a1a);
+      --muted: #607086;
+      --line: rgba(17, 80, 168, 0.16);
+      --green: var(--primary-color, #1150a8);
+      --green-soft: rgba(17, 80, 168, 0.1);
       --amber: #a76310;
       --amber-soft: #fff2db;
       --red: #a6362f;
       --red-soft: #fdecea;
-      --teal: #0b7b83;
-      --shadow: 0 12px 32px rgba(37, 44, 35, 0.08);
+      --teal: var(--secondary-color, #00E8FF);
+      --shadow: 0 22px 60px rgba(15, 23, 42, 0.1);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
@@ -32,6 +42,13 @@
       min-height: 100vh;
       color: var(--ink);
       background: var(--bg);
+      padding-top: 0;
+    }
+
+    body::before,
+    body::after {
+      content: none !important;
+      display: none !important;
     }
 
     button, input, select {
@@ -49,23 +66,25 @@
       top: 0;
       height: 100vh;
       padding: 20px 14px;
-      background: #101512;
-      color: #f4f7f0;
-      border-right: 1px solid #202820;
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--ink);
+      border-right: 1px solid var(--line);
+      box-shadow: 18px 0 44px rgba(15, 23, 42, 0.06);
+      backdrop-filter: blur(18px);
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 10px;
+      justify-content: center;
       padding: 8px 10px 22px;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
+      border-bottom: 1px solid var(--line);
       margin-bottom: 16px;
     }
 
     .brand img {
-      width: 34px;
-      height: 34px;
+      width: min(168px, 100%);
+      height: auto;
       object-fit: contain;
     }
 
@@ -78,7 +97,7 @@
     .brand span {
       display: block;
       font-size: 12px;
-      color: #a9b7ad;
+      color: var(--muted);
       margin-top: 2px;
     }
 
@@ -96,7 +115,7 @@
       padding: 0 10px;
       border: 0;
       border-radius: 8px;
-      color: #dbe4dd;
+      color: #48566b;
       background: transparent;
       cursor: pointer;
       text-align: left;
@@ -104,8 +123,8 @@
 
     .nav button:hover,
     .nav button.active {
-      color: #ffffff;
-      background: rgba(255,255,255,0.1);
+      color: var(--primary-color, #1150a8);
+      background: rgba(17, 80, 168, 0.08);
     }
 
     .nav svg {
@@ -120,11 +139,21 @@
       right: 14px;
       bottom: 18px;
       padding: 12px;
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid var(--line);
       border-radius: 8px;
-      color: #b8c5bc;
+      color: var(--muted);
+      background: rgba(244, 248, 253, 0.82);
       font-size: 12px;
       line-height: 1.45;
+    }
+
+    .sidebar-foot code {
+      display: block;
+      margin-top: 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #334155;
     }
 
     main {
@@ -168,15 +197,16 @@
       padding: 0 12px;
       border: 1px solid var(--line);
       border-radius: 8px;
-      background: var(--panel);
+      background: #ffffff;
       color: var(--ink);
       cursor: pointer;
       white-space: nowrap;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
     }
 
     .btn.primary {
       border-color: var(--green);
-      background: var(--green);
+      background: linear-gradient(135deg, var(--primary-color, #1150a8), var(--secondary-color, #00E8FF));
       color: white;
     }
 
@@ -206,6 +236,7 @@
       border: 1px solid var(--line);
       border-radius: 8px;
       box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
     }
 
     .kpi {
@@ -249,7 +280,7 @@
 
     .toolbar {
       display: grid;
-      grid-template-columns: 1.1fr 160px 160px auto auto;
+      grid-template-columns: minmax(220px, 1.1fr) minmax(180px, 0.8fr) 120px 140px auto auto;
       gap: 8px;
       padding: 12px;
       align-items: end;
@@ -336,7 +367,7 @@
       top: 0;
       z-index: 1;
       background: var(--panel-soft);
-      color: #39443d;
+      color: #334155;
       font-size: 12px;
       text-transform: uppercase;
     }
@@ -344,7 +375,7 @@
     td code {
       font-family: "SFMono-Regular", Consolas, monospace;
       font-size: 12px;
-      color: #34443a;
+      color: #334155;
     }
 
     .badge {
@@ -362,7 +393,7 @@
     .badge.ok { background: var(--green-soft); color: var(--green); }
     .badge.warn { background: var(--amber-soft); color: var(--amber); }
     .badge.bad { background: var(--red-soft); color: var(--red); }
-    .badge.info { background: #e6f5f6; color: var(--teal); }
+    .badge.info { background: rgba(6, 182, 212, 0.12); color: #087f98; }
 
     .split {
       display: grid;
@@ -424,6 +455,7 @@
       border-radius: 8px;
       padding: 12px;
       background: #fff;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
     }
 
     .metric-box label {
@@ -462,8 +494,8 @@
       overflow: auto;
       padding: 14px;
       border-radius: 8px;
-      background: #111612;
-      color: #d8f2df;
+      background: #0f172a;
+      color: #dce9ff;
       font: 12px/1.6 "SFMono-Regular", Consolas, monospace;
       white-space: pre-wrap;
     }
@@ -497,6 +529,84 @@
       opacity: 1;
     }
 
+    .admin-login {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(239, 248, 255, 0.86)),
+        url('https://res.cloudinary.com/limpeja/image/upload/v1783193641/ChatGPT_Image_4_de_jul._de_2026_16_32_44_angzza.png') 74% 52% / min(940px, 110vw) auto no-repeat fixed,
+        #f7faff;
+    }
+
+    .admin-login.hidden {
+      display: none;
+    }
+
+    .login-card {
+      width: min(100%, 430px);
+      padding: 24px;
+      border: 1px solid rgba(17, 80, 168, 0.16);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.14);
+      backdrop-filter: blur(18px);
+    }
+
+    .login-card img {
+      display: block;
+      width: 176px;
+      height: auto;
+      margin: 0 auto 18px;
+    }
+
+    .login-card h1 {
+      font-size: 22px;
+      text-align: center;
+    }
+
+    .login-card p {
+      margin: 8px 0 18px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    .login-form {
+      display: grid;
+      gap: 12px;
+    }
+
+    .login-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .login-row input {
+      width: 16px;
+      min-height: 16px;
+      accent-color: var(--primary-color, #1150a8);
+    }
+
+    .login-error {
+      min-height: 18px;
+      color: var(--red);
+      font-size: 13px;
+    }
+
+    .admin-locked {
+      filter: blur(8px);
+      pointer-events: none;
+      user-select: none;
+    }
+
     @media (max-width: 980px) {
       .shell { grid-template-columns: 1fr; }
       .sidebar {
@@ -518,14 +628,38 @@
   </style>
 </head>
 <body>
-  <div class="shell">
+  <section class="admin-login" id="adminLogin" aria-labelledby="adminLoginTitle">
+    <form class="login-card" id="adminLoginForm">
+      <img src="https://res.cloudinary.com/limpeja/image/upload/v1783623705/Green_Modern_Marketing_Logo-removebg-preview_1_yivrrc.png" alt="ChainFX">
+      <h1 id="adminLoginTitle">Admin operacional</h1>
+      <p>Entre com seu email e senha de administrador. O painel só libera dados depois que o backend confirmar a sessão.</p>
+      <div class="login-form">
+        <div class="field">
+          <label for="loginApiBase">Backend</label>
+          <input id="loginApiBase" type="url" autocomplete="url" placeholder="https://api.example.com">
+        </div>
+        <div class="field">
+          <label for="loginEmail">Email</label>
+          <input id="loginEmail" type="email" autocomplete="username" placeholder="admin@example.com">
+        </div>
+        <div class="field">
+          <label for="loginPassword">Senha</label>
+          <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Sua senha">
+        </div>
+        <label class="login-row">
+          <input id="rememberLogin" type="checkbox">
+          Lembrar neste navegador
+        </label>
+        <div class="login-error" id="loginError" role="alert"></div>
+        <button class="btn primary" id="adminLoginBtn" type="submit">Entrar</button>
+      </div>
+    </form>
+  </section>
+
+  <div class="shell admin-locked" id="adminShell" aria-hidden="true">
     <aside class="sidebar">
       <div class="brand">
-        <img src="https://res.cloudinary.com/limpeja/image/upload/v1770993671/swap_1_mvctri.png" alt="Swappy">
-        <div>
-          <strong>Swappy Admin</strong>
-          <span>Backoffice financeiro</span>
-        </div>
+        <img src="https://res.cloudinary.com/limpeja/image/upload/v1783623705/Green_Modern_Marketing_Logo-removebg-preview_1_yivrrc.png" alt="ChainFX">
       </div>
       <nav class="nav" aria-label="Admin">
         <button class="active" data-section="overview" type="button">
@@ -552,6 +686,7 @@
       <div class="sidebar-foot">
         <strong>API</strong>
         <div id="apiBaseLabel">http://localhost:3000</div>
+        <code id="apiKeyLabel">sessao bloqueada</code>
       </div>
     </aside>
 
@@ -563,7 +698,9 @@
         </div>
         <div class="top-actions">
           <button class="btn" id="configureApiBtn" type="button">API</button>
+          <button class="btn" id="configureKeyBtn" type="button">Conta</button>
           <button class="btn" id="refreshBtn" type="button">Atualizar</button>
+          <button class="btn warn" id="logoutBtn" type="button">Sair</button>
           <button class="btn primary" id="exportCsvBtn" type="button">Exportar CSV</button>
         </div>
       </header>
@@ -628,6 +765,10 @@
             <div class="field">
               <label for="lookupId">ID da ordem</label>
               <input id="lookupId" type="text" placeholder="UUID buy/order">
+            </div>
+            <div class="field">
+              <label for="lookupAccessToken">Token</label>
+              <input id="lookupAccessToken" type="text" placeholder="accessToken">
             </div>
             <div class="field">
               <label for="lookupType">Tipo</label>
@@ -745,12 +886,23 @@
 
   <div class="toast" id="toast"></div>
 
-  <script>
+  <script type="module">
     (() => {
-      const DEFAULT_API = window.SWAPPED_API_BASE_URL || localStorage.getItem('SWAPPED_API_BASE_URL') || 'http://localhost:3000';
+      const DEFAULT_API =
+        window.SWAPPED_API_BASE_URL ||
+        import.meta.env.VITE_SWAPPED_API_BASE_URL ||
+        localStorage.getItem('SWAPPED_API_BASE_URL') ||
+        'http://localhost:3000';
       const state = {
         apiBase: DEFAULT_API.replace(/\/$/, ''),
+        apiKey:
+          sessionStorage.getItem('SWAPPY_ADMIN_SESSION') ||
+          localStorage.getItem('SWAPPY_ADMIN_SESSION') ||
+          '',
+        adminEmail: localStorage.getItem('SWAPPY_ADMIN_EMAIL') || '',
+        adminUser: null,
         transactions: loadLocal('swappy.admin.transactions', []),
+        events: loadLocal('swappy.admin.events', []),
         telemetry: loadLocal('swappy.admin.telemetry', []),
         alerts: []
       };
@@ -768,12 +920,123 @@
 
       document.addEventListener('DOMContentLoaded', () => {
         $('apiBaseLabel').textContent = state.apiBase;
+        $('loginApiBase').value = state.apiBase;
+        $('loginEmail').value = state.adminEmail;
+        $('rememberLogin').checked = Boolean(localStorage.getItem('SWAPPY_ADMIN_SESSION'));
+        updateApiKeyLabel();
+        bindLogin();
         bindNavigation();
         bindActions();
         renderAll();
-        refreshBackend();
-        tryFetchAdminCollections();
+        if (state.apiKey) {
+          validateAdminSession({ silent: true });
+        } else {
+          setLocked(true);
+        }
       });
+
+      function bindLogin() {
+        $('adminLoginForm').addEventListener('submit', async (event) => {
+          event.preventDefault();
+          state.apiBase = $('loginApiBase').value.trim().replace(/\/$/, '');
+          state.adminEmail = $('loginEmail').value.trim();
+          const password = $('loginPassword').value;
+          if (!state.apiBase || !state.adminEmail || !password) {
+            $('loginError').textContent = 'Informe backend, email e senha.';
+            return;
+          }
+          localStorage.setItem('SWAPPED_API_BASE_URL', state.apiBase);
+          $('apiBaseLabel').textContent = state.apiBase;
+          await loginAdmin(password);
+        });
+      }
+
+      async function loginAdmin(password) {
+        $('loginError').textContent = '';
+        $('adminLoginBtn').disabled = true;
+        $('adminLoginBtn').textContent = 'Entrando...';
+        try {
+          const response = await fetch(`${state.apiBase}/api/admin/login`, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: state.adminEmail, password })
+          });
+          const text = await response.text();
+          let data = {};
+          if (text) {
+            try { data = JSON.parse(text); } catch { data = { raw: text }; }
+          }
+          if (!response.ok) {
+            throw new Error(data.error || `${response.status} ${response.statusText}`);
+          }
+          state.apiKey = data.token || '';
+          state.adminUser = data.user || null;
+          if (!state.apiKey) throw new Error('Sessao administrativa nao retornada pelo backend.');
+          $('loginPassword').value = '';
+          await validateAdminSession({ silent: false });
+        } catch (error) {
+          clearAdminKey();
+          setLocked(true);
+          $('loginError').textContent = error.message || 'Falha ao autenticar.';
+        } finally {
+          $('adminLoginBtn').disabled = false;
+          $('adminLoginBtn').textContent = 'Entrar';
+        }
+      }
+
+      async function validateAdminSession({ silent }) {
+        $('loginError').textContent = '';
+        $('adminLoginBtn').disabled = true;
+        $('adminLoginBtn').textContent = 'Validando...';
+        try {
+          const data = await request('/api/admin/overview?limit=50');
+          if (data.adminUser) state.adminUser = data.adminUser;
+          persistAdminKey();
+          setLocked(false);
+          if (data.readiness) $('readyJson').textContent = JSON.stringify(data.readiness, null, 2);
+          if (Array.isArray(data.transactions)) mergeTransactions(data.transactions.map(normalizeRecord).filter(Boolean));
+          if (Array.isArray(data.events)) mergeEvents(data.events);
+          if (Array.isArray(data.operationalGaps)) {
+            state.alerts = data.operationalGaps.map((item) => ({ type: 'operational_gap', item, at: data.generatedAt || new Date().toISOString() }));
+          }
+          updateApiKeyLabel();
+          persist();
+          renderAll();
+          refreshBackend();
+          if (!silent) toast('Admin autenticado.');
+        } catch (error) {
+          clearAdminKey();
+          setLocked(true);
+          $('loginError').textContent = error.message || 'Falha ao autenticar.';
+        } finally {
+          $('adminLoginBtn').disabled = false;
+          $('adminLoginBtn').textContent = 'Entrar';
+        }
+      }
+
+      function setLocked(locked) {
+        $('adminLogin').classList.toggle('hidden', !locked);
+        $('adminShell').classList.toggle('admin-locked', locked);
+        $('adminShell').setAttribute('aria-hidden', locked ? 'true' : 'false');
+      }
+
+      function persistAdminKey() {
+        sessionStorage.setItem('SWAPPY_ADMIN_SESSION', state.apiKey);
+        if (state.adminEmail) localStorage.setItem('SWAPPY_ADMIN_EMAIL', state.adminEmail);
+        if ($('rememberLogin').checked) {
+          localStorage.setItem('SWAPPY_ADMIN_SESSION', state.apiKey);
+        } else {
+          localStorage.removeItem('SWAPPY_ADMIN_SESSION');
+        }
+      }
+
+      function clearAdminKey() {
+        state.apiKey = '';
+        state.adminUser = null;
+        sessionStorage.removeItem('SWAPPY_ADMIN_SESSION');
+        localStorage.removeItem('SWAPPY_ADMIN_SESSION');
+        updateApiKeyLabel();
+      }
 
       function bindNavigation() {
         document.querySelectorAll('.nav button').forEach((button) => {
@@ -796,9 +1059,23 @@
           refreshBackend();
         });
 
+        $('configureKeyBtn').addEventListener('click', () => {
+          $('loginApiBase').value = state.apiBase;
+          $('loginEmail').value = state.adminEmail;
+          $('loginPassword').value = '';
+          setLocked(true);
+        });
+
         $('refreshBtn').addEventListener('click', () => {
           refreshBackend();
           tryFetchAdminCollections();
+        });
+
+        $('logoutBtn').addEventListener('click', () => {
+          clearAdminKey();
+          $('loginPassword').value = '';
+          setLocked(true);
+          toast('Sessao encerrada.');
         });
 
         $('loadOrderBtn').addEventListener('click', loadOrderById);
@@ -808,6 +1085,7 @@
         $('statusFilter').addEventListener('change', renderTransactions);
         $('clearDataBtn').addEventListener('click', () => {
           state.transactions = [];
+          state.events = [];
           persist();
           renderAll();
           toast('Registros locais limpos.');
@@ -846,17 +1124,33 @@
       }
 
       async function tryFetchAdminCollections() {
-        const endpoints = ['/api/admin/transactions?limit=100', '/api/admin/audit?limit=100', '/api/admin/telemetry'];
-        for (const endpoint of endpoints) {
-          const started = performance.now();
-          try {
-            const data = await request(endpoint);
-            if (Array.isArray(data)) mergeTransactions(data.map(normalizeRecord).filter(Boolean));
-            if (Array.isArray(data.transactions)) mergeTransactions(data.transactions.map(normalizeRecord).filter(Boolean));
-            logTelemetry(endpoint, 'ok', performance.now() - started);
-          } catch (error) {
-            logTelemetry(endpoint, 'unavailable', performance.now() - started, error.message);
+        const started = performance.now();
+        try {
+          const data = await request('/api/admin/overview?limit=200');
+          if (data.readiness) {
+            $('readyJson').textContent = JSON.stringify(data.readiness, null, 2);
+            state.alerts = Array.isArray(data.operationalGaps)
+              ? data.operationalGaps.map((item) => ({ type: 'operational_gap', item, at: data.generatedAt || new Date().toISOString() }))
+              : [];
           }
+          if (Array.isArray(data.transactions)) mergeTransactions(data.transactions.map(normalizeRecord).filter(Boolean));
+          if (Array.isArray(data.events)) mergeEvents(data.events);
+          if (data.metrics) $('rawJson').textContent = JSON.stringify({ metrics: data.metrics, rates: data.rates }, null, 2);
+          logTelemetry('/api/admin/overview', 'ok', performance.now() - started);
+          persist();
+          renderAll();
+          return;
+        } catch (error) {
+          logTelemetry('/api/admin/overview', 'unavailable', performance.now() - started, error.message);
+        }
+
+        const fallbackStarted = performance.now();
+        try {
+          const logs = await request('/developers/logs?limit=100');
+          if (Array.isArray(logs.events)) mergeEvents(logs.events);
+          logTelemetry('/developers/logs', 'ok', performance.now() - fallbackStarted);
+        } catch (error) {
+          logTelemetry('/developers/logs', 'unavailable', performance.now() - fallbackStarted, error.message);
         }
         persist();
         renderAll();
@@ -869,7 +1163,9 @@
           toast('Informe um ID.');
           return;
         }
-        const endpoint = type === 'buy' ? `/api/buy/${encodeURIComponent(id)}` : `/api/order/${encodeURIComponent(id)}`;
+        const token = $('lookupAccessToken').value.trim();
+        const tokenQuery = token ? `?accessToken=${encodeURIComponent(token)}` : '';
+        const endpoint = type === 'buy' ? `/api/buy/${encodeURIComponent(id)}${tokenQuery}` : `/api/order/${encodeURIComponent(id)}${tokenQuery}`;
         const started = performance.now();
         try {
           const data = await request(endpoint);
@@ -889,7 +1185,9 @@
       }
 
       async function request(path) {
-        const response = await fetch(`${state.apiBase}${path}`, { headers: { 'Accept': 'application/json' } });
+        const headers = { 'Accept': 'application/json' };
+        if (state.apiKey) headers.Authorization = `Bearer ${state.apiKey}`;
+        const response = await fetch(`${state.apiBase}${path}`, { headers });
         const text = await response.text();
         let data = {};
         if (text) {
@@ -903,7 +1201,8 @@
 
       function normalizeRecord(input, forcedType) {
         if (!input || !input.id) return null;
-        const type = forcedType || (input.dest_address || input.crypto_amount ? 'buy' : 'order');
+        const source = String(input.source || '').toLowerCase();
+        const type = forcedType || (source === 'sell' ? 'order' : source) || (input.dest_address || input.crypto_amount ? 'buy' : 'order');
         const fiat = Number(input.amount_fiat ?? input.amountFiat ?? input.amount_brl ?? input.amountBRL ?? 0);
         const brl = Number(input.amount_brl ?? input.amountBRL ?? (input.fiat_currency === 'BRL' ? fiat : 0));
         const fee = Number(input.fee_brl ?? input.feeBRL ?? 0);
@@ -923,7 +1222,7 @@
           payoutBRL: payout,
           cryptoAmount: crypto,
           asset: input.asset || 'USDT',
-          address: input.dest_address || input.destAddress || input.address || input.tron_address || '',
+          address: input.dest_address || input.destAddress || input.address || input.BSC_address || '',
           txHash: valueOrString(input.tx_hash_out || input.txHashOut || input.tx_hash || input.txHash || input.deposit_tx || input.depositTx),
           providerPaymentId: valueOrString(input.provider_payment_id || input.providerPaymentId),
           rate: Number(input.rate_locked || input.rate || 0),
@@ -936,6 +1235,12 @@
         const map = new Map(state.transactions.map((record) => [record.type + ':' + record.id, record]));
         records.forEach((record) => map.set(record.type + ':' + record.id, record));
         state.transactions = Array.from(map.values()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      }
+
+      function mergeEvents(events) {
+        const map = new Map(state.events.map((event) => [event.id || `${event.orderId}:${event.type}:${event.createdAt}`, event]));
+        events.forEach((event) => map.set(event.id || `${event.orderId}:${event.type}:${event.createdAt}`, event));
+        state.events = Array.from(map.values()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 300);
       }
 
       function renderAll() {
@@ -993,7 +1298,14 @@
       }
 
       function renderAudit() {
-        const rows = auditRows();
+        const rows = auditRows().concat(state.events.map((event) => ({
+          event: event.type || 'event',
+          at: event.createdAt || event.created_at,
+          type: event.source || 'event',
+          status: event.requestId || event.request_id || '',
+          id: event.orderId || event.order_id || event.id || '',
+          tx: ''
+        }))).sort((a, b) => new Date(b.at) - new Date(a.at));
         $('auditList').innerHTML = rows.length ? rows.map((row) => `
           <div class="audit-item">
             <i class="audit-pin"></i>
@@ -1063,7 +1375,12 @@
 
       function persist() {
         localStorage.setItem('swappy.admin.transactions', JSON.stringify(state.transactions));
+        localStorage.setItem('swappy.admin.events', JSON.stringify(state.events));
         localStorage.setItem('swappy.admin.telemetry', JSON.stringify(state.telemetry));
+      }
+
+      function updateApiKeyLabel() {
+        $('apiKeyLabel').textContent = state.apiKey ? (state.adminUser?.email || state.adminEmail || 'admin ativo') : 'sessao bloqueada';
       }
 
       function loadLocal(key, fallback) {
