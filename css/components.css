@@ -979,6 +979,72 @@
   appearance: none;
 }
 
+.sell-network-input {
+  margin-bottom: 12px;
+}
+
+.sell-network-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.sell-network-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 52px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid rgba(209, 224, 242, 0.95);
+  border-radius: 12px;
+  background: rgba(248, 251, 255, 0.88);
+  color: #1f2a44;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.sell-network-option img {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex: 0 0 22px;
+}
+
+.sell-network-option span {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.sell-network-option strong {
+  font-size: 0.86rem;
+  line-height: 1.1;
+}
+
+.sell-network-option small {
+  font-size: 0.7rem;
+  line-height: 1.1;
+  color: #6f7b8d;
+}
+
+.sell-network-option.active,
+.sell-network-option[aria-checked="true"] {
+  border-color: #2f80ed;
+  background: rgba(232, 243, 255, 0.96);
+  box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.12);
+}
+
+.sell-network-option.disabled,
+.sell-network-option:disabled,
+.sell-network-option[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.52;
+  background: rgba(245, 247, 250, 0.84);
+  box-shadow: none;
+}
+
 .sell-deposit-card {
   display: grid;
   gap: 7px;
