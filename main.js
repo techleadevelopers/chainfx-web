@@ -12,6 +12,7 @@ const state = {
   transactionFee: 0.015,
   totalPayAmount: 0,
   platformFee: 0,
+  sellNetwork: 'BSC',
   walletBalance: { // Simulated balances
       USDT: 0,
       ETH: 0,
@@ -29,9 +30,7 @@ const LIQUIDITY_POOLS = { // Simulated liquidity
 
 const CURRENCY_OPTIONS = {
   fiat: [
-    { code: 'BRL', label: 'BRL', icon: 'https://res.cloudinary.com/limpeja/image/upload/v1783198241/brl_csztl5.png' },
-    { code: 'USD', label: 'USD', icon: 'https://res.cloudinary.com/limpeja/image/upload/v1783198240/usd_kpao7j.png' },
-    { code: 'EUR', label: 'EUR', icon: 'https://res.cloudinary.com/limpeja/image/upload/v1783198240/eur_r6gcvd.png' }
+    { code: 'BRL', label: 'BRL', icon: 'https://res.cloudinary.com/limpeja/image/upload/v1783198241/brl_csztl5.png' }
   ],
   crypto: [
     { code: 'USDT', label: 'USDT', icon: 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/usdt.png' },
@@ -44,6 +43,21 @@ const SELL_RECEIVE_OPTIONS = [
   { code: 'BRL', label: 'BRL', icon: 'https://res.cloudinary.com/limpeja/image/upload/v1783198241/brl_csztl5.png' }
 ];
 
+const SELL_NETWORKS = {
+  BSC: {
+    code: 'BSC',
+    shortLabel: 'BSC',
+    displayLabel: 'Rede BSC / BEP20',
+    icon: 'https://cryptologos.cc/logos/bnb-bnb-logo.png?v=033'
+  },
+  POLYGON: {
+    code: 'POLYGON',
+    shortLabel: 'POL',
+    displayLabel: 'Rede Polygon / POL',
+    icon: 'https://cryptologos.cc/logos/polygon-matic-logo.png?v=033'
+  }
+};
+
 const FIAT_RATES_TO_BRL = {
   BRL: 1,
   USD: 0,
@@ -55,6 +69,7 @@ const priceState = {
   fetchedAt: 0,
   sellWallet: '0x7e3BF3FDfeF16040CE3ec60A663381766d3dB375',
   sellNetwork: 'BEP20',
+  sellNetworks: ['BSC'],
   rates: {
     USDTBRL: 0,
     SELLUSDTBRL: 0,
@@ -537,7 +552,13 @@ const applyPriceSnapshot = (snapshot) => {
   priceState.source = snapshot.source || 'unknown';
   priceState.fetchedAt = snapshot.fetchedAt || Date.now();
   priceState.sellWallet = snapshot.sellWallet || priceState.sellWallet;
-  priceState.sellNetwork = snapshot.sellNetwork || priceState.sellNetwork;
+  priceState.sellNetworks = normalizeSellNetworks(snapshot.sellNetworks || priceState.sellNetworks);
+  priceState.sellNetwork = normalizeSellNetwork(snapshot.sellNetwork || priceState.sellNetwork);
+  state.sellNetwork = normalizeSellNetwork(state.sellNetwork || priceState.sellNetwork);
+  if (!priceState.sellNetworks.includes(state.sellNetwork)) {
+    state.sellNetwork = priceState.sellNetworks[0];
+  }
+  priceState.sellNetwork = state.sellNetwork;
   priceState.rates = { ...priceState.rates, ...snapshot.rates };
 
   state.exchangeRate = priceState.rates.USDTBRL;
@@ -577,6 +598,25 @@ const formatBrl = (value) => {
   return amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
+const normalizeSellNetwork = (network) => {
+  const value = String(network || '').trim().toUpperCase();
+  if (!value || value === 'BEP20' || value === 'BINANCE') return 'BSC';
+  if (value === 'POL' || value === 'MATIC') return 'POLYGON';
+  return SELL_NETWORKS[value] ? value : 'BSC';
+};
+
+const normalizeSellNetworks = (networks) => {
+  const values = Array.isArray(networks) ? networks : String(networks || '').split(',');
+  const normalized = values
+    .map(normalizeSellNetwork)
+    .filter((network, index, list) => SELL_NETWORKS[network] && list.indexOf(network) === index);
+  return normalized.length > 0 ? normalized : ['BSC'];
+};
+
+const getSellNetworkMeta = (network = state.sellNetwork) => {
+  return SELL_NETWORKS[normalizeSellNetwork(network)] || SELL_NETWORKS.BSC;
+};
+
 const getSellAssetBrlPrice = (asset) => {
   const code = String(asset || '').toUpperCase();
   if (code === 'USDT') {
@@ -586,8 +626,39 @@ const getSellAssetBrlPrice = (asset) => {
 };
 
 const updateSellDepositWallet = () => {
+  const enabledNetworks = normalizeSellNetworks(priceState.sellNetworks);
+  if (!enabledNetworks.includes(normalizeSellNetwork(state.sellNetwork))) {
+    state.sellNetwork = enabledNetworks[0];
+    priceState.sellNetwork = state.sellNetwork;
+  }
   const walletEl = document.getElementById('sellDepositWallet');
   if (walletEl) walletEl.textContent = priceState.sellWallet;
+  const meta = getSellNetworkMeta();
+  const iconEl = document.getElementById('sellDepositNetworkIcon');
+  const labelEl = document.getElementById('sellDepositNetworkLabel');
+  const selectEl = document.getElementById('sellNetwork');
+  if (iconEl) {
+    iconEl.src = meta.icon;
+    iconEl.alt = meta.shortLabel;
+  }
+  if (labelEl) labelEl.textContent = meta.displayLabel;
+  if (selectEl) {
+    Array.from(selectEl.options || []).forEach(option => {
+      const network = normalizeSellNetwork(option.value);
+      option.disabled = !enabledNetworks.includes(network);
+    });
+    selectEl.value = meta.code;
+  }
+  document.querySelectorAll('.sell-network-option[data-network]').forEach(button => {
+    const network = normalizeSellNetwork(button.dataset.network);
+    const enabled = enabledNetworks.includes(network);
+    const selected = enabled && network === meta.code;
+    button.disabled = !enabled;
+    button.classList.toggle('disabled', !enabled);
+    button.classList.toggle('active', selected);
+    button.setAttribute('aria-checked', selected ? 'true' : 'false');
+    button.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+  });
 };
 
 const syncMarketsFromPriceState = () => {
@@ -728,6 +799,7 @@ const normalizePriceSnapshot = (data, source = 'backend') => {
     fetchedAt: Date.now(),
     sellWallet: data?.sellWallet || data?.sellWalletAddress || data?.SELL_WALLET_ADDRESS || rates?.sellWallet || rates?.SELL_WALLET_ADDRESS,
     sellNetwork: data?.sellNetwork || data?.SELL_NETWORK || rates?.sellNetwork || 'BEP20',
+    sellNetworks: data?.sellNetworks || data?.supportedSellNetworks || rates?.sellNetworks || rates?.supportedSellNetworks,
     rates: {
       USDTBRL: usdtBrl,
       SELLUSDTBRL: sellUsdtBrl || usdtBrl,
@@ -797,6 +869,7 @@ const updateStep = (step) => {
   // Optional: Perform actions specific to entering a step
   if (step === 2) {
        updateOrderSummaries();
+       updateSellDepositWallet();
        // Maybe focus the wallet input or show a connect button
        const walletInput = document.getElementById('walletAddress');
        if (walletInput && !state.connected) {
@@ -837,6 +910,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentBuyAccessToken = null;
   let currentBuyTxHash = null;
   let buyOrderPromise = null;
+  let sellSse = null;
+  let sellPoll = null;
+  let currentSellId = null;
+  let currentSellAccessToken = null;
   const PARTICLE_ICON = 'https://res.cloudinary.com/limpeja/image/upload/v1771076927/iconnn-Photoroom_wdsmis.png';
 
   // Get DOM element references
@@ -858,7 +935,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const orderIdEl = document.getElementById('orderId');
   const depositAddressEl = document.getElementById('depositAddress');
   const sellDepositAddressInput = document.getElementById('sellDepositAddressInput');
+  const sellDepositCopyBtn = document.getElementById('sellDepositCopyBtn');
   const sellDepositBlock = document.getElementById('sellDepositBlock');
+  const sellNetworkSelect = document.getElementById('sellNetwork');
+  const sellNetworkOptions = document.querySelectorAll('.sell-network-option[data-network]');
   const paymentBtcAmountEl = document.getElementById('paymentBtcAmount');
   const paymentWalletEl = document.getElementById('paymentWallet');
   const paymentStatusLabelEl = document.getElementById('paymentStatusLabel');
@@ -891,6 +971,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   const marketFilterButtons = document.querySelectorAll('[data-market-filter]');
   const marketRows = document.querySelectorAll('.markets-row[data-market-category]');
   const marketActionButtons = document.querySelectorAll('[data-market-action]');
+
+  function setSelectedSellNetwork(network) {
+    const requested = normalizeSellNetwork(network);
+    const enabledNetworks = normalizeSellNetworks(priceState.sellNetworks);
+    state.sellNetwork = enabledNetworks.includes(requested) ? requested : enabledNetworks[0];
+    priceState.sellNetwork = state.sellNetwork;
+    updateSellDepositWallet();
+  }
 
   function setPageView(view) {
     const isDevelopers = view === 'developers';
@@ -1229,6 +1317,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (isSell) {
       setPayCurrency(optionFor('USDT'));
       setReceiveCurrency(optionFor('BRL'));
+      setSelectedSellNetwork(state.sellNetwork || 'BSC');
     } else {
       setPayCurrency(optionFor('BRL'));
       setReceiveCurrency(optionFor('USDT'));
@@ -1251,6 +1340,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentBuyId = null;
     currentBuyAccessToken = null;
     currentBuyTxHash = null;
+    currentSellId = null;
+    currentSellAccessToken = null;
     if (buySse) {
       buySse.close();
       buySse = null;
@@ -1258,6 +1349,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (buyPoll) {
       clearInterval(buyPoll);
       buyPoll = null;
+    }
+    if (sellSse) {
+      sellSse.close();
+      sellSse = null;
+    }
+    if (sellPoll) {
+      clearInterval(sellPoll);
+      sellPoll = null;
     }
 
     if (payAmountInput) payAmountInput.value = '';
@@ -1351,6 +1450,140 @@ document.addEventListener('DOMContentLoaded', async () => {
     return data;
   }
 
+  function sellStatusMessage(status) {
+    const normalized = String(status || '').toLowerCase();
+    if (normalized.includes('aguardando_validacao')) return 'Deposito recebido. Aguardando validacao.';
+    if (normalized.includes('aguardando_deposito')) return 'Aguardando deposito USDT.';
+    if (normalized === 'pago' || normalized.includes('processando_payout')) return 'PIX em processamento.';
+    if (normalized.includes('concluida') || normalized.includes('concluido')) return 'PIX enviado.';
+    if (normalized.includes('erro')) return 'Falha no payout PIX.';
+    if (normalized.includes('expirada')) return 'Ordem expirada.';
+    return status ? `Status: ${status}` : 'Aguardando deposito USDT.';
+  }
+
+  function applySellStatus(data = {}) {
+    const status = data.status || 'aguardando_deposito';
+    if (orderStatusEl) orderStatusEl.textContent = status;
+    if (paymentStatusLabelEl) paymentStatusLabelEl.textContent = sellStatusMessage(status);
+    if (statusMessage) statusMessage.textContent = sellStatusMessage(status);
+    const tx = data.depositTx || data.deposit_tx || data.txHash || data.tx_hash || '';
+    if (tx) updatePaymentTxHash(tx);
+    const depositAmount = data.depositAmount || data.deposit_amount;
+    if (depositAmount && paymentBtcAmountEl) {
+      paymentBtcAmountEl.textContent = `${Number(depositAmount).toFixed(6)} USDT`;
+    }
+    const normalized = String(status).toLowerCase();
+    if (normalized.includes('concluida') || normalized.includes('concluido')) {
+      showUxMessage('PIX enviado.', 'success');
+      if (sellPoll) {
+        clearInterval(sellPoll);
+        sellPoll = null;
+      }
+      if (sellSse) {
+        sellSse.close();
+        sellSse = null;
+      }
+    }
+    if (normalized.includes('erro')) {
+      showUxMessage(data.error || 'Falha no payout PIX.', 'error');
+    }
+  }
+
+  async function refreshSellStatus() {
+    if (!currentSellId || !currentSellAccessToken) return null;
+    const res = await fetch(`${API_BASE}/api/order/${encodeURIComponent(currentSellId)}?accessToken=${encodeURIComponent(currentSellAccessToken)}`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    applySellStatus(data);
+    return data;
+  }
+
+  function startSellStatusPolling() {
+    if (sellPoll) clearInterval(sellPoll);
+    sellPoll = setInterval(async () => {
+      const data = await refreshSellStatus().catch(() => null);
+      const status = String(data?.status || '').toLowerCase();
+      if (status.includes('concluida') || status.includes('concluido') || status.includes('erro') || status.includes('expirada')) {
+        clearInterval(sellPoll);
+        sellPoll = null;
+      }
+    }, 3000);
+  }
+
+  function startSellStream(orderId) {
+    if (sellSse) sellSse.close();
+    startSellStatusPolling();
+    try {
+      const streamPath = currentSellAccessToken
+        ? `/api/order/${encodeURIComponent(orderId)}/stream?accessToken=${encodeURIComponent(currentSellAccessToken)}`
+        : `/api/order/${encodeURIComponent(orderId)}/stream`;
+      sellSse = new EventSource(`${API_BASE}${streamPath}`);
+      sellSse.onmessage = (ev) => {
+        try {
+          applySellStatus(JSON.parse(ev.data));
+        } catch (e) { /* ignore */ }
+      };
+      sellSse.onerror = () => sellSse && sellSse.close();
+    } catch (e) {
+      console.warn('SSE sell error', e);
+    }
+  }
+
+  async function refreshOrderQuote() {
+    const amount = parseFloat(payAmountInput?.value || '0');
+    if (!amount || amount <= 0) {
+      showUxMessage('invalid_amount', 'warning');
+      return null;
+    }
+
+    const payload = {
+      mode: state.action,
+      asset: 'USDT',
+      amountFiat: state.action === 'sell' ? amount : amount,
+      amountBRL: state.action === 'buy' ? convertFiatToBrl(amount, state.payCurrency) : 0,
+      fiatCurrency: state.action === 'buy' ? state.payCurrency : 'BRL',
+      paymentMethod: 'pix'
+    };
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/quote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        showUxMessage(data.error || 'quote_unavailable', 'warning');
+        return null;
+      }
+      const data = await resp.json();
+      state.platformFee = Number(data.feeFiat || data.spreadFiat || 0) || 0;
+      state.totalPayAmount = Number(data.totalFiat || data.amountFiat || amount) || amount;
+      if (data.rate) {
+        if (state.action === 'sell') {
+          priceState.rates.SELLUSDTBRL = Number(data.rate) || priceState.rates.SELLUSDTBRL;
+        } else {
+          state.exchangeRate = Number(data.rate) || state.exchangeRate;
+          LIQUIDITY_POOLS.USDT.price = state.exchangeRate;
+        }
+        updateRateLabel();
+      }
+      if (receiveAmountInput) {
+        if (state.action === 'sell' && data.payoutFiat) {
+          receiveAmountInput.value = Number(data.payoutFiat).toFixed(2);
+        } else if (data.cryptoAmount) {
+          receiveAmountInput.value = Number(data.cryptoAmount).toFixed(6);
+        }
+      }
+      updateOrderSummaries();
+      return data;
+    } catch (err) {
+      console.error(err);
+      showUxMessage('quote_unavailable', 'warning');
+      return null;
+    }
+  }
+
   async function createBuyOrder() {
     if (currentBuyId) return { buyId: currentBuyId, accessToken: currentBuyAccessToken };
     if (buyOrderPromise) return buyOrderPromise;
@@ -1435,19 +1668,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       showUxMessage('invalid_amount', 'warning');
       return null;
     }
-    if (!cpf && !phone) {
-      showUxMessage('Informe sua chave PIX.', 'warning');
+    if (!cpf || !phone) {
+      showUxMessage('Informe CPF e chave PIX.', 'warning');
       return null;
     }
 
     try {
+      const selectedNetwork = normalizeSellNetwork(state.sellNetwork);
       const resp = await fetch(`${API_BASE}/api/order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amountUSDT,
           asset: 'USDT',
-          network: 'BSC',
+          network: selectedNetwork,
           pixCpf: cpf,
           pixPhone: phone
         })
@@ -1460,10 +1694,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       const data = await resp.json();
+      currentSellId = data.orderId || data.id || null;
+      currentSellAccessToken = data.accessToken || null;
+      priceState.sellWallet = data.depositAddress || data.address || priceState.sellWallet;
+      setSelectedSellNetwork(data.network || selectedNetwork);
       state.totalPayAmount = amountUSDT;
       state.platformFee = Number(data.spreadBRL || data.feeBRL || 0) || 0;
       if (receiveAmountInput && data.payoutBRL) receiveAmountInput.value = Number(data.payoutBRL).toFixed(2);
-      if (orderIdEl) orderIdEl.textContent = data.orderId || data.id || '-';
+      if (orderIdEl) orderIdEl.textContent = currentSellId || '-';
       if (orderStatusEl) orderStatusEl.textContent = data.status || 'aguardando_deposito';
       if (depositAddressEl) depositAddressEl.textContent = data.depositAddress || data.address || priceState.sellWallet;
       if (sellDepositAddressInput) sellDepositAddressInput.value = data.depositAddress || data.address || priceState.sellWallet;
@@ -1473,6 +1711,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (sellDepositBlock) sellDepositBlock.classList.remove('hidden');
       updatePaymentTxHash(data.depositTx || data.txHash || '');
       updateOrderSummaries();
+      applySellStatus(data);
+      if (currentSellId) startSellStream(currentSellId);
       return data;
     } catch (err) {
       console.error(err);
@@ -1545,6 +1785,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   // --- Event Listeners ---
 
   syncTradeModeUI();
+  setSelectedSellNetwork(state.sellNetwork);
+
+  sellNetworkOptions.forEach(button => {
+      button.addEventListener('click', () => {
+          setSelectedSellNetwork(button.dataset.network);
+      });
+  });
+
+  if (sellNetworkSelect) {
+      sellNetworkSelect.addEventListener('change', () => {
+          setSelectedSellNetwork(sellNetworkSelect.value);
+      });
+  }
 
   if (payCurrencyBtn && payDropdown) {
       payCurrencyBtn.addEventListener('click', (event) => {
@@ -1701,6 +1954,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
   }
 
+  if (sellDepositCopyBtn && sellDepositAddressInput) {
+      sellDepositCopyBtn.addEventListener('click', async () => {
+          const value = sellDepositAddressInput.value || '';
+          if (!value) return;
+          try {
+              if (navigator.clipboard?.writeText) {
+                  await navigator.clipboard.writeText(value);
+              } else {
+                  sellDepositAddressInput.select();
+                  document.execCommand('copy');
+                  sellDepositAddressInput.blur();
+              }
+              sellDepositCopyBtn.classList.add('copied');
+              setTimeout(() => sellDepositCopyBtn.classList.remove('copied'), 1300);
+          } catch (error) {
+              console.warn('Falha ao copiar endereco de deposito', error);
+          }
+      });
+  }
+
   if (confirmPaymentBtn) {
       confirmPaymentBtn.addEventListener('click', resetCheckoutFlow);
   }
@@ -1720,6 +1993,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                   state.platformFee = 0;
                   updateReceiveAmount();
                   updateOrderSummaries();
+                  if (!await refreshOrderQuote()) return;
                   updateStep(2); // Move to Wallet Step
                   break;
 
