@@ -470,6 +470,170 @@
       font-size: 20px;
     }
 
+    .executive-hero {
+      position: relative;
+      overflow: hidden;
+      padding: 18px;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(242, 249, 255, 0.94)),
+        radial-gradient(circle at 88% 12%, rgba(6, 182, 212, 0.18), transparent 34%);
+    }
+
+    .executive-hero::after {
+      content: '';
+      position: absolute;
+      right: -96px;
+      top: -112px;
+      width: 320px;
+      height: 320px;
+      background: radial-gradient(circle, rgba(17, 80, 168, 0.18), rgba(6, 182, 212, 0.08) 42%, transparent 70%);
+      filter: blur(12px);
+      pointer-events: none;
+    }
+
+    .executive-hero > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .executive-title {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+
+    .executive-title h2 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: 0;
+      background: linear-gradient(90deg, #0d4779 0%, #1150a8 42%, #06b6d4 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .executive-title p {
+      max-width: 760px;
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .executive-pill {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(6, 182, 212, 0.24);
+      color: var(--primary-color, #1150a8);
+      background: rgba(255, 255, 255, 0.8);
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .executive-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .executive-card {
+      min-height: 104px;
+      padding: 14px;
+      border: 1px solid rgba(17, 80, 168, 0.12);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.84);
+      box-shadow:
+        0 0 0 1px rgba(6, 182, 212, 0.04),
+        0 12px 30px rgba(15, 23, 42, 0.06);
+    }
+
+    .executive-card label,
+    .ceo-metric label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .executive-card strong {
+      display: block;
+      margin-top: 12px;
+      font-size: 24px;
+      line-height: 1;
+      color: #102033;
+    }
+
+    .executive-card span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .ceo-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .ceo-block {
+      padding: 14px;
+    }
+
+    .ceo-block h3 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      letter-spacing: 0;
+      color: #102033;
+    }
+
+    .ceo-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .ceo-metric {
+      min-height: 92px;
+      padding: 12px;
+      border: 1px solid rgba(17, 80, 168, 0.12);
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+    }
+
+    .ceo-metric strong {
+      display: block;
+      margin-top: 10px;
+      font-size: 18px;
+      color: #102033;
+      overflow-wrap: anywhere;
+    }
+
+    .ceo-metric span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .ceo-block.wide {
+      grid-column: 1 / -1;
+    }
+
+    .ceo-block.wide .ceo-metrics {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
     .notice {
       padding: 12px;
       border: 1px solid #e7d2a8;
@@ -619,9 +783,14 @@
       .toolbar,
       .telemetry,
       .report-grid,
+      .executive-summary,
+      .ceo-grid,
+      .ceo-block.wide .ceo-metrics,
       .kpis {
         grid-template-columns: 1fr;
       }
+      .ceo-metrics { grid-template-columns: 1fr; }
+      .executive-title { display: grid; }
       main { padding: 14px; }
       .top-actions { flex-wrap: wrap; }
     }
@@ -664,7 +833,7 @@
       <nav class="nav" aria-label="Admin">
         <button class="active" data-section="overview" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z"/></svg>
-          Visao geral
+          Dashboard CEO
         </button>
         <button data-section="transactions" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
@@ -693,8 +862,8 @@
     <main>
       <header class="topbar">
         <div>
-          <h1>Operacao financeira, auditoria e relatorios</h1>
-          <p class="subhead">Registros carregados do backend, exportacao fiscal e rastreabilidade operacional.</p>
+          <h1>Dashboard Executivo ChainFX</h1>
+          <p class="subhead">Financeiro, treasury, marketplace, developers e AI/MCP em uma unica tela operacional.</p>
         </div>
         <div class="top-actions">
           <button class="btn" id="configureApiBtn" type="button">API</button>
@@ -729,31 +898,99 @@
       </section>
 
       <section class="section active" id="overview">
-        <div class="split">
-          <div class="panel">
-            <div class="panel-head">
-              <div>
-                <h2>Resumo operacional</h2>
-                <p>Estado consolidado dos registros carregados nesta sessao.</p>
-              </div>
-              <span class="badge info" id="lastSync">sem sync</span>
+        <div class="panel executive-hero">
+          <div class="executive-title">
+            <div>
+              <h2>Dashboard Executivo (CEO)</h2>
+              <p>Visao consolidada de receita, spread, liquidez, produto, integrações de developers e operacao AI/MCP. Os numeros refletem a sessao carregada do backend e ficam prontos para receber novos endpoints executivos.</p>
             </div>
-            <div class="report-body">
-              <div class="report-grid">
-                <div class="metric-box"><label>Compras</label><strong id="metricBuys">0</strong></div>
-                <div class="metric-box"><label>Vendas</label><strong id="metricSells">0</strong></div>
-                <div class="metric-box"><label>Erros</label><strong id="metricErrors">0</strong></div>
-              </div>
-              <div class="notice" id="opsNotice">Conecte o backend ou busque uma ordem por ID para iniciar a conciliacao.</div>
+            <span class="executive-pill" id="lastSync">sem sync</span>
+          </div>
+          <div class="executive-summary">
+            <div class="executive-card">
+              <label>Receita bruta</label>
+              <strong id="ceoGrossRevenue">R$ 0,00</strong>
+              <span id="ceoGrossRevenueHint">Volume financeiro carregado</span>
+            </div>
+            <div class="executive-card">
+              <label>Receita liquida</label>
+              <strong id="ceoNetRevenue">R$ 0,00</strong>
+              <span id="ceoNetRevenueHint">Payouts abatidos quando disponiveis</span>
+            </div>
+            <div class="executive-card">
+              <label>Liquidez disponivel</label>
+              <strong id="ceoLiquidity">R$ 0,00</strong>
+              <span id="ceoLiquidityHint">Treasury local + saldos informados</span>
+            </div>
+            <div class="executive-card">
+              <label>Agentes ativos</label>
+              <strong id="ceoActiveAgents">0</strong>
+              <span id="ceoActiveAgentsHint">Eventos AI/MCP detectados</span>
             </div>
           </div>
-          <div class="panel">
-            <div class="panel-head">
-              <div>
-                <h2>Saude dos rails</h2>
-                <p>Leitura de `/readyz`.</p>
-              </div>
+        </div>
+
+        <div class="ceo-grid">
+          <div class="panel ceo-block">
+            <h3>Financeiro</h3>
+            <div class="ceo-metrics">
+              <div class="ceo-metric"><label>Receita bruta</label><strong id="financeGross">R$ 0,00</strong><span>Volume total processado</span></div>
+              <div class="ceo-metric"><label>Receita liquida</label><strong id="financeNet">R$ 0,00</strong><span>Depois dos payouts</span></div>
+              <div class="ceo-metric"><label>Spread acumulado</label><strong id="financeSpread">R$ 0,00</strong><span>Spread/rate quando informado</span></div>
+              <div class="ceo-metric"><label>Fees acumuladas</label><strong id="financeFees">R$ 0,00</strong><span>Taxas da plataforma</span></div>
+              <div class="ceo-metric"><label>Network fees cobradas</label><strong id="financeNetworkFees">R$ 0,00</strong><span>Gas/onchain repassado</span></div>
+              <div class="ceo-metric"><label>Payouts realizados</label><strong id="financePayouts">R$ 0,00</strong><span>Liquidados para clientes</span></div>
+              <div class="ceo-metric"><label>Volume BUY</label><strong id="financeBuyVolume">R$ 0,00</strong><span id="financeBuyCount">0 ordens</span></div>
+              <div class="ceo-metric"><label>Volume SELL</label><strong id="financeSellVolume">R$ 0,00</strong><span id="financeSellCount">0 ordens</span></div>
             </div>
+          </div>
+
+          <div class="panel ceo-block">
+            <h3>Treasury</h3>
+            <div class="ceo-metrics">
+              <div class="ceo-metric"><label>Saldo em USDT</label><strong id="treasuryUsdt">0.000000</strong><span>Saldo informado + liquidado</span></div>
+              <div class="ceo-metric"><label>Saldo em BRL</label><strong id="treasuryBrl">R$ 0,00</strong><span>Caixa local estimado</span></div>
+              <div class="ceo-metric"><label>Liquidez disponivel</label><strong id="treasuryLiquidity">R$ 0,00</strong><span>BRL + USDT convertido</span></div>
+              <div class="ceo-metric"><label>Reserva operacional</label><strong id="treasuryReserve">R$ 0,00</strong><span>Base minima configuravel</span></div>
+              <div class="ceo-metric"><label>Wallets monitoradas</label><strong id="treasuryWallets">0</strong><span>Carteiras unicas carregadas</span></div>
+              <div class="ceo-metric"><label>Status dos rails</label><strong id="treasuryRails">--</strong><span>Leitura de /readyz</span></div>
+            </div>
+          </div>
+
+          <div class="panel ceo-block">
+            <h3>Marketplace</h3>
+            <div class="ceo-metrics">
+              <div class="ceo-metric"><label>Vendas por capability</label><strong id="marketCapabilitySales">0</strong><span>Eventos capability executados</span></div>
+              <div class="ceo-metric"><label>Top produtos</label><strong id="marketTopProducts">--</strong><span>Produto/capability principal</span></div>
+              <div class="ceo-metric"><label>Take rate acumulada</label><strong id="marketTakeRate">0,00%</strong><span>Fees sobre volume</span></div>
+              <div class="ceo-metric"><label>Receita por provider</label><strong id="marketProviderRevenue">R$ 0,00</strong><span>Provider dominante</span></div>
+            </div>
+          </div>
+
+          <div class="panel ceo-block">
+            <h3>Developers</h3>
+            <div class="ceo-metrics">
+              <div class="ceo-metric"><label>API Keys ativas</label><strong id="devApiKeys">0</strong><span>Sessoes/chaves detectadas</span></div>
+              <div class="ceo-metric"><label>Requests por minuto</label><strong id="devRpm">0</strong><span>Media da telemetria local</span></div>
+              <div class="ceo-metric"><label>Erros</label><strong id="devErrors">0</strong><span>Falhas de request/transacao</span></div>
+              <div class="ceo-metric"><label>Webhooks entregues</label><strong id="devWebhooks">0</strong><span>Eventos webhook delivered</span></div>
+              <div class="ceo-metric"><label>Quota consumida</label><strong id="devQuota">0</strong><span>Chamadas registradas</span></div>
+              <div class="ceo-metric"><label>Latencia media</label><strong id="devLatency">0 ms</strong><span>Requests administrativos</span></div>
+            </div>
+          </div>
+
+          <div class="panel ceo-block wide">
+            <h3>AI / MCP</h3>
+            <div class="ceo-metrics">
+              <div class="ceo-metric"><label>Agentes ativos</label><strong id="aiActiveAgents">0</strong><span>Agentes vistos nos eventos</span></div>
+              <div class="ceo-metric"><label>Tool calls</label><strong id="aiToolCalls">0</strong><span>Chamadas MCP/tools registradas</span></div>
+              <div class="ceo-metric"><label>Capabilities executadas</label><strong id="aiCapabilities">0</strong><span>Execucoes por capability</span></div>
+              <div class="ceo-metric"><label>Receita por agente</label><strong id="aiRevenuePerAgent">R$ 0,00</strong><span>Receita liquida / agentes</span></div>
+            </div>
+          </div>
+
+          <div class="panel ceo-block wide">
+            <h3>Saude dos rails</h3>
             <pre class="pre" id="readyJson">{}</pre>
           </div>
         </div>
@@ -1255,20 +1492,87 @@
         const rows = state.transactions;
         const totalBRL = rows.reduce((sum, row) => sum + Number(row.amountBRL || 0), 0);
         const totalUSDT = rows.reduce((sum, row) => sum + Number(row.cryptoAmount || 0), 0);
-        const sent = rows.filter((row) => /enviado|delivered|confirmado|concluida/.test(row.status)).length;
+        const totalFees = rows.reduce((sum, row) => sum + Number(row.feeBRL || 0), 0);
+        const totalPayouts = rows.reduce((sum, row) => sum + Number(row.payoutBRL || 0), 0);
+        const networkFees = rows.reduce((sum, row) => sum + rawNumber(row, ['network_fee_brl', 'networkFeeBRL', 'gas_fee_brl', 'gasFeeBRL']), 0);
+        const spread = rows.reduce((sum, row) => sum + rawNumber(row, ['spread_brl', 'spreadBRL', 'spread']), 0);
+        const buyRows = rows.filter((row) => row.type === 'buy');
+        const sellRows = rows.filter((row) => row.type === 'order' || row.type === 'sell');
+        const buyVolume = buyRows.reduce((sum, row) => sum + Number(row.amountBRL || 0), 0);
+        const sellVolume = sellRows.reduce((sum, row) => sum + Number(row.amountBRL || 0), 0);
+        const netRevenue = Math.max(totalBRL - totalPayouts, 0);
+        const takeRate = totalBRL > 0 ? (totalFees / totalBRL) * 100 : 0;
+        const wallets = new Set(rows.map((row) => String(row.address || '').toLowerCase()).filter(Boolean));
+        const avgRate = average(rows.map((row) => Number(row.rate || 0)).filter(Boolean));
+        const estimatedUsdtBrl = avgRate || 5;
+        const treasuryBrl = rows.reduce((sum, row) => sum + rawNumber(row, ['treasury_brl', 'treasuryBRL', 'balance_brl', 'balanceBRL']), 0);
+        const treasuryUsdtRaw = rows.reduce((sum, row) => sum + rawNumber(row, ['treasury_usdt', 'treasuryUSDT', 'balance_usdt', 'balanceUSDT']), 0);
+        const treasuryUsdt = treasuryUsdtRaw || totalUSDT;
+        const liquidity = treasuryBrl + (treasuryUsdt * estimatedUsdtBrl);
+        const reserve = Math.max(totalFees + networkFees, 0);
         const errors = rows.filter((row) => /erro|failed|rejeit/.test(row.status)).length;
+        const eventText = state.events.map((event) => JSON.stringify(event).toLowerCase());
+        const capabilityEvents = eventText.filter((text) => text.includes('capability')).length;
+        const webhookEvents = eventText.filter((text) => text.includes('webhook') && /delivered|entreg|success|ok/.test(text)).length;
+        const toolCalls = eventText.filter((text) => text.includes('tool') || text.includes('mcp')).length;
+        const aiEvents = eventText.filter((text) => text.includes('agent') || text.includes('mcp') || text.includes('ai')).length;
+        const activeAgents = uniqueFromEvents(['agent_id', 'agentId', 'agent', 'assistant_id', 'assistantId']).size || (aiEvents ? 1 : 0);
+        const providerRevenue = providerBreakdown(rows);
+        const topProduct = topEventValue(['capability', 'product', 'product_id', 'productId']) || '--';
+        const avgLatency = average(state.telemetry.map((item) => Number(item.latency_ms || 0)).filter(Boolean));
+        const recentMinute = Date.now() - 60000;
+        const rpm = state.telemetry.filter((item) => new Date(item.at).getTime() >= recentMinute).length;
+        const sent = rows.filter((row) => /enviado|delivered|confirmado|concluida/.test(row.status)).length;
         $('kpiBrl').textContent = money.format(totalBRL);
         $('kpiCount').textContent = `${rows.length} transacoes`;
         $('kpiUsdt').textContent = num.format(totalUSDT);
         $('kpiSent').textContent = `${sent} liquidadas`;
         $('kpiAlerts').textContent = String(state.alerts.length + errors);
         $('kpiAlertText').textContent = errors ? `${errors} transacoes com erro` : 'Sem erros carregados';
-        $('metricBuys').textContent = rows.filter((row) => row.type === 'buy').length;
-        $('metricSells').textContent = rows.filter((row) => row.type === 'order').length;
-        $('metricErrors').textContent = String(errors);
-        $('opsNotice').textContent = rows.length
-          ? 'Base local pronta para conciliacao, auditoria e exportacao.'
-          : 'Conecte o backend ou busque uma ordem por ID para iniciar a conciliacao.';
+
+        setText('ceoGrossRevenue', money.format(totalBRL));
+        setText('ceoNetRevenue', money.format(netRevenue));
+        setText('ceoLiquidity', money.format(liquidity));
+        setText('ceoActiveAgents', String(activeAgents));
+        setText('ceoGrossRevenueHint', `${rows.length} transacoes carregadas`);
+        setText('ceoNetRevenueHint', `${sent} payouts liquidados`);
+        setText('ceoLiquidityHint', `${wallets.size} wallets monitoradas`);
+        setText('ceoActiveAgentsHint', `${toolCalls} tool calls`);
+
+        setText('financeGross', money.format(totalBRL));
+        setText('financeNet', money.format(netRevenue));
+        setText('financeSpread', money.format(spread));
+        setText('financeFees', money.format(totalFees));
+        setText('financeNetworkFees', money.format(networkFees));
+        setText('financePayouts', money.format(totalPayouts));
+        setText('financeBuyVolume', money.format(buyVolume));
+        setText('financeSellVolume', money.format(sellVolume));
+        setText('financeBuyCount', `${buyRows.length} ordens`);
+        setText('financeSellCount', `${sellRows.length} ordens`);
+
+        setText('treasuryUsdt', num.format(treasuryUsdt));
+        setText('treasuryBrl', money.format(treasuryBrl));
+        setText('treasuryLiquidity', money.format(liquidity));
+        setText('treasuryReserve', money.format(reserve));
+        setText('treasuryWallets', String(wallets.size));
+        setText('treasuryRails', $('backendStatus').textContent || '--');
+
+        setText('marketCapabilitySales', String(capabilityEvents));
+        setText('marketTopProducts', topProduct);
+        setText('marketTakeRate', `${takeRate.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`);
+        setText('marketProviderRevenue', providerRevenue.label);
+
+        setText('devApiKeys', state.apiKey ? '1' : '0');
+        setText('devRpm', String(rpm));
+        setText('devErrors', String(errors + state.telemetry.filter((item) => item.status === 'error' || item.status === 'unavailable').length));
+        setText('devWebhooks', String(webhookEvents));
+        setText('devQuota', String(state.telemetry.length));
+        setText('devLatency', `${Math.round(avgLatency || 0)} ms`);
+
+        setText('aiActiveAgents', String(activeAgents));
+        setText('aiToolCalls', String(toolCalls));
+        setText('aiCapabilities', String(capabilityEvents));
+        setText('aiRevenuePerAgent', money.format(activeAgents ? netRevenue / activeAgents : 0));
       }
 
       function renderTransactions() {
@@ -1365,6 +1669,60 @@
           if (row.txHash) base.push({ event: 'blockchain.tx.linked', at: row.updatedAt || row.createdAt, type: row.type, status: row.status, id: row.id, tx: row.txHash });
           return base;
         }).sort((a, b) => new Date(b.at) - new Date(a.at));
+      }
+
+      function setText(id, value) {
+        const el = $(id);
+        if (el) el.textContent = value;
+      }
+
+      function rawNumber(row, keys) {
+        const raw = row.raw || {};
+        for (const key of keys) {
+          const value = raw[key] ?? row[key];
+          if (value != null && value !== '') {
+            const parsed = Number(value);
+            if (Number.isFinite(parsed)) return parsed;
+          }
+        }
+        return 0;
+      }
+
+      function average(values) {
+        return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+      }
+
+      function uniqueFromEvents(keys) {
+        const values = new Set();
+        state.events.forEach((event) => {
+          keys.forEach((key) => {
+            if (event && event[key]) values.add(String(event[key]));
+          });
+        });
+        return values;
+      }
+
+      function topEventValue(keys) {
+        const counts = new Map();
+        state.events.forEach((event) => {
+          keys.forEach((key) => {
+            const value = event && event[key];
+            if (value) counts.set(String(value), (counts.get(String(value)) || 0) + 1);
+          });
+        });
+        return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+      }
+
+      function providerBreakdown(rows) {
+        const totals = new Map();
+        rows.forEach((row) => {
+          const raw = row.raw || {};
+          const provider = raw.provider || raw.provider_name || raw.providerName || row.paymentMethod || 'rails';
+          totals.set(provider, (totals.get(provider) || 0) + Number(row.feeBRL || 0));
+        });
+        const top = Array.from(totals.entries()).sort((a, b) => b[1] - a[1])[0];
+        if (!top) return { provider: '', label: money.format(0) };
+        return { provider: top[0], label: `${money.format(top[1])} / ${top[0]}` };
       }
 
       function logTelemetry(endpoint, status, ms, error) {
