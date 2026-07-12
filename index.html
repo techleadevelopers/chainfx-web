@@ -3,8 +3,28 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-     <title>Instant Digital FX Payments</title>
-    <link rel="icon" href="https://res.cloudinary.com/limpeja/image/upload/v1783193228/iconn-removebg-preview_ywjkgu.png" type="image/png">
+    <title>Buy Crypto with PIX and Settle in USDT</title>
+    <meta name="description" content="ChainFX connects PIX payments to crypto settlement. Let customers pay with PIX, confirm orders by API and webhooks, and deliver USDT or BTC to their wallet.">
+    <link rel="canonical" href="https://www.chainfx.store/">
+    <meta property="og:title" content="ChainFX | Buy Crypto with PIX">
+    <meta property="og:description" content="Accept PIX payments and deliver USDT or BTC after payment confirmation with ChainFX.">
+    <meta property="og:url" content="https://www.chainfx.store/">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
+    <meta name="robots" content="index, follow">
+    <meta name="application-name" content="ChainFX">
+    <link rel="icon" href="/favicon.png" type="image/png" sizes="192x192">
+    <link rel="shortcut icon" href="/favicon.png" type="image/png">
+    <link rel="apple-touch-icon" href="/favicon.png">
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "ChainFX",
+            "url": "https://www.chainfx.store/",
+            "description": "ChainFX connects PIX payments to crypto settlement. Let customers pay with PIX, confirm orders by API and webhooks, and deliver USDT or BTC to their wallet."
+        }
+    </script>
     <!-- Font Awesome para os ícones sociais -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" defer></script>
@@ -220,7 +240,7 @@ void main() {
                 <span></span>
                 <span></span>
             </button>
-            <div class="logo"><img src="https://res.cloudinary.com/limpeja/image/upload/v1783205208/ChatGPT_Image_4_de_jul._de_2026__19_38_11-removebg-preview_hskbjt.png" alt="NexSwap logo" /></div>
+            <div class="logo"><img src="https://res.cloudinary.com/limpeja/image/upload/v1783205208/ChatGPT_Image_4_de_jul._de_2026__19_38_11-removebg-preview_hskbjt.png" alt="ChainFX logo" /></div>
             <div class="nav-links" id="primaryNav">
                 <a href="#trade" class="active" data-view="trade">Trade</a>
                 <a href="#markets" data-view="markets">Markets</a>
@@ -235,7 +255,7 @@ void main() {
     <div id="app">
         <div class="content-left">
             <div class="hero-section">
-                <div class="hero-title">
+                <h1 class="hero-title">
                   <span class="title-text"
       id="premiumTitle"
       data-text-en="Buy USDT with PIX and receive it directly in your wallet."
@@ -243,7 +263,7 @@ void main() {
       data-text-mobile="Buy USDT with PIX and receive it directly in your wallet.">
     Buy USDT with PIX and receive it directly in your wallet.
 </span>
-                </div>
+                </h1>
                 <p class="hero-subtitle">Complete your payment and receive your digital assets directly in your wallet.</p>
 
                 <div class="trust-badges">
@@ -336,6 +356,25 @@ void main() {
               </div>
 
               <div class="sell-info hidden" id="sellInfo">
+                  <div class="wallet-input sell-network-input">
+                      <label>Rede para envio do USDT</label>
+                      <div class="sell-network-options" id="sellNetworkOptions" role="radiogroup" aria-label="Escolha a rede de envio">
+                          <button class="sell-network-option active" type="button" data-network="BSC" role="radio" aria-checked="true">
+                              <img src="https://cryptologos.cc/logos/bnb-bnb-logo.png?v=033" alt="BNB" />
+                              <span>
+                                  <strong>BSC</strong>
+                                  <small>BEP20</small>
+                              </span>
+                          </button>
+                          <button class="sell-network-option" type="button" data-network="POLYGON" role="radio" aria-checked="false">
+                              <img src="https://cryptologos.cc/logos/polygon-matic-logo.png?v=033" alt="POL" />
+                              <span>
+                                  <strong>POL</strong>
+                                  <small>Polygon</small>
+                              </span>
+                          </button>
+                      </div>
+                  </div>
                   <div class="wallet-input">
                       <label for="pixCpf">Seu CPF (para PIX)</label>
                       <div class="input-group">
@@ -343,15 +382,15 @@ void main() {
                       </div>
                   </div>
                   <div class="wallet-input">
-                      <label for="pixPhone">Chave (PIX)</label>
+                      <label for="pixPhone">Chave PIX para receber</label>
                       <div class="input-group">
-                          <input type="text" id="pixPhone" placeholder="(11) 99999-9999" />
+                          <input type="text" id="pixPhone" placeholder="CPF, telefone, email ou chave aleatoria" />
                       </div>
                   </div>
                   <div class="sell-deposit-card" id="sellDepositNotice">
                       <div class="sell-deposit-card-head">
-                          <img src="https://cryptologos.cc/logos/bnb-bnb-logo.png?v=033" alt="BNB" />
-                          <span>Rede BEP20</span>
+                          <img id="sellDepositNetworkIcon" src="https://cryptologos.cc/logos/bnb-bnb-logo.png?v=033" alt="BSC" />
+                          <span id="sellDepositNetworkLabel">Rede BSC / BEP20</span>
                       </div>
                       <strong>Envie USDT para:</strong>
                       <code id="sellDepositWallet">0x7e3BF3FDfeF16040CE3ec60A663381766d3dB375</code>
@@ -435,14 +474,18 @@ void main() {
     </p>
     <div id="sellDepositBlock" class="hidden">
         <label for="sellDepositAddressInput">Endereço para enviar</label>
-        <div class="input-group">
+        <div class="input-group sell-deposit-copy-row">
             <input type="text" id="sellDepositAddressInput" readonly />
+            <button class="step3-copy-btn" id="sellDepositCopyBtn" type="button" aria-label="Copiar endereco de deposito">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M8 7a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-1v1a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3h1V7Zm3-1a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-6Zm-4 4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-1h-3a3 3 0 0 1-3-3v-3H7Z"/>
+                </svg>
+            </button>
         </div>
         <label for="sellNetwork">Rede</label>
         <select id="sellNetwork">
-            <option value="btc">Bitcoin</option>
-            <option value="erc20">Ethereum (ERC20)</option>
-            <option value="BEP20">BSC (BEP20)</option>
+            <option value="BSC">BSC (BEP20)</option>
+            <option value="POLYGON">Polygon (POL)</option>
         </select>
     </div>
     <img id="qrCodeImg" class="hidden" src="" alt="QR Code PIX" />
@@ -499,7 +542,7 @@ void main() {
         <div class="markets-shell">
             <div class="markets-header">
                 <div>
-                    <h1 id="marketsTitle">Markets</h1>
+                    <h2 id="marketsTitle">Markets</h2>
                     <p>Live prices for supported digital assets.</p>
                 </div>
                 <div class="markets-filter" aria-label="Market filters">
@@ -566,18 +609,20 @@ void main() {
     <section id="developersView" class="developers-view hidden" aria-labelledby="developersTitle">
         <div class="developers-shell">
             <div class="developers-hero">
-                <h1 id="developersTitle">Accept PIX. Deliver digital dollars.</h1>
-                <p>Use ChainFX to generate PIX payment flows by API, receive webhooks, and deliver USDT to your customer's wallet after payment confirmation.</p>
+                <h2 id="developersTitle">Build payments and agent capability flows.</h2>
+                <p>Use ChainFX to create PIX and stablecoin payment flows, expose MCP tools to agents, and let autonomous systems discover, purchase and execute digital capabilities.</p>
                 <div class="developers-actions">
                     <a href="#api-buy" class="developer-primary-action">Start with PIX Buy</a>
                     <a href="https://stablecoin-payment-gateway-production-3ee2.up.railway.app/openapi.json" target="_blank" rel="noopener">OpenAPI</a>
+                    <a href="#api-mcp">MCP Tools</a>
                 </div>
             </div>
 
             <div class="developers-status-grid">
                 <div><strong>REST API</strong><span>Rates, quotes, buy, sell and order status.</span></div>
+                <div><strong>MCP Server</strong><span>Tools for agents to list, buy and execute capabilities.</span></div>
+                <div><strong>Capabilities</strong><span>Capability catalog, contracts, router and metering.</span></div>
                 <div><strong>Webhooks</strong><span>payment.completed, crypto.sent and order.failed.</span></div>
-                <div><strong>SDKs</strong><span>Node and Python available in the backend repo.</span></div>
                 <div><strong>Sandbox</strong><span>Fake PIX, fake QR, fake wallet and test keys.</span></div>
             </div>
 
@@ -587,6 +632,8 @@ void main() {
                     <a href="#api-overview" data-dev-link>Overview</a>
                     <a href="#api-buy" data-dev-link>PIX to USDT</a>
                     <a href="#api-sell" data-dev-link>USDT to PIX</a>
+                    <a href="#api-capabilities" data-dev-link>Capabilities</a>
+                    <a href="#api-mcp" data-dev-link>MCP</a>
                     <a href="#api-webhooks" data-dev-link>Webhooks</a>
                     <a href="#api-pricing" data-dev-link>Pricing</a>
                     <a href="#api-roadmap" data-dev-link>Roadmap</a>
@@ -594,14 +641,16 @@ void main() {
 
                 <div class="developers-content">
                     <article id="api-overview" class="developer-panel">
-                        <h2>Build automated payment flows</h2>
-                        <p>Developers can request a quote, create a buy order, show the PIX QR Code to the payer, and listen for webhook confirmation. The API is designed for server-to-server usage with Bearer secret keys.</p>
+                        <h2>Build automated payment and agent flows</h2>
+                        <p>Developers can request quotes, create buy and sell orders, listen for webhooks, and expose ChainFX MCP tools to agents. The API is designed for server-to-server usage with Bearer secret keys.</p>
                         <div class="endpoint-list">
                             <code><span class="http-method get">GET</span>/rates</code>
                             <code><span class="http-method post">POST</span>/quote</code>
                             <code><span class="http-method post">POST</span>/buy</code>
                             <code><span class="http-method post">POST</span>/sell</code>
                             <code><span class="http-method get">GET</span>/order/{id}</code>
+                            <code><span class="http-method get">GET</span>/marketplace/capabilities</code>
+                            <code><span class="http-method post">POST</span>/mcp/tools/call</code>
                             <code><span class="http-method post">POST</span>/webhooks/test</code>
                         </div>
                     </article>
@@ -671,7 +720,7 @@ Response 201
 
                     <article id="api-sell" class="developer-panel">
                         <h2>USDT to PIX BRL</h2>
-                        <p>For sell flows, the customer sends USDT to the generated deposit address and receives BRL via PIX after on-chain confirmation.</p>
+                        <p>For sell flows, the customer sends USDT on BSC or Polygon to the generated deposit address and receives BRL via PIX after on-chain confirmation.</p>
                         <div class="code-window">
                             <div class="code-window-bar">
                                 <span class="code-window-dots"><i></i><i></i><i></i></span>
@@ -683,11 +732,142 @@ Authorization: Bearer sk_live_xxx
 
 {
   "asset": "USDT",
-  "network": "BSC",
+  "network": "POLYGON",
   "amount": 500,
   "depositAddress": "0x174208255ECc40481f7fD7c34EE6a9A5B66B4339",
-  "pixCpf": "12345678909"
+  "pixCpf": "12345678909",
+  "pixPhone": "11999999999"
 }</code></pre>
+                        </div>
+                    </article>
+
+                    <article id="api-capabilities" class="developer-panel">
+                        <h2>Capability Marketplace</h2>
+                        <p>Agents can discover capabilities, inspect input/output contracts, create a stablecoin purchase intent, submit the on-chain payment receipt, and consume the capability with metered access.</p>
+                        <div class="endpoint-list">
+                            <code><span class="http-method get">GET</span>/marketplace/capabilities</code>
+                            <code><span class="http-method get">GET</span>/marketplace/capabilities/{id}</code>
+                            <code><span class="http-method get">GET</span>/marketplace/capabilities/{id}/contract</code>
+                            <code><span class="http-method post">POST</span>/marketplace/capabilities/{id}/purchase</code>
+                            <code><span class="http-method post">POST</span>/agent/v1/capabilities/{capability}/execute</code>
+                        </div>
+                        <div class="code-window">
+                            <div class="code-window-bar">
+                                <span class="code-window-dots"><i></i><i></i><i></i></span>
+                                <span class="code-window-title">GET /marketplace/capabilities</span>
+                                <button type="button" class="code-copy-btn" data-copy-target>Copy</button>
+                            </div>
+                            <pre><code>GET /marketplace/capabilities
+
+Response 200
+{
+  "model": "capability_network",
+  "capabilities": [
+    {
+      "id": "llm_chat",
+      "displayName": "Chat LLM",
+      "routingMode": "best_available",
+      "providers": ["openai", "mock_dev"],
+      "plans": [
+        {
+          "id": "plan_gpt_300",
+          "price": "300.000000",
+          "asset": "USDT",
+          "network": "BSC"
+        }
+      ]
+    }
+  ]
+}</code></pre>
+                        </div>
+                        <div class="code-window">
+                            <div class="code-window-bar">
+                                <span class="code-window-dots"><i></i><i></i><i></i></span>
+                                <span class="code-window-title">POST /agent/v1/capabilities/{capability}/execute</span>
+                                <button type="button" class="code-copy-btn" data-copy-target>Copy</button>
+                            </div>
+                            <pre><code>POST /agent/v1/capabilities/semantic_memory/execute
+Authorization: Bearer cfx_access_xxx
+Content-Type: application/json
+
+{
+  "operation": "save_memory",
+  "requestId": "req_01",
+  "idempotencyKey": "idem_01",
+  "units": 1,
+  "routingMode": "best_available",
+  "input": {
+    "text": "Customer prefers settlement in USDT on Polygon."
+  }
+}</code></pre>
+                        </div>
+                    </article>
+
+                    <article id="api-mcp" class="developer-panel">
+                        <h2>ChainFX MCP</h2>
+                        <p>Agent clients can install the ChainFX MCP server and use tools to discover capabilities, create purchases, execute capabilities, check usage, list assets, quote trades and query settlement status.</p>
+                        <div class="endpoint-list">
+                            <code><span class="http-method post">POST</span>/mcp/initialize</code>
+                            <code><span class="http-method post">POST</span>/mcp/tools/list</code>
+                            <code><span class="http-method post">POST</span>/mcp/tools/call</code>
+                            <code><span class="http-method post">POST</span>/mcp/resources/list</code>
+                            <code><span class="http-method post">POST</span>/mcp/resources/read</code>
+                        </div>
+                        <div class="code-window">
+                            <div class="code-window-bar">
+                                <span class="code-window-dots"><i></i><i></i><i></i></span>
+                                <span class="code-window-title">MCP client config</span>
+                                <button type="button" class="code-copy-btn" data-copy-target>Copy</button>
+                            </div>
+                            <pre><code>{
+  "mcpServers": {
+    "chainfx-mcp": {
+      "url": "https://stablecoin-payment-gateway-production-3ee2.up.railway.app/mcp/initialize",
+      "headers": {
+        "Authorization": "Bearer sk_live_xxx"
+      }
+    }
+  }
+}</code></pre>
+                        </div>
+                        <div class="code-window">
+                            <div class="code-window-bar">
+                                <span class="code-window-dots"><i></i><i></i><i></i></span>
+                                <span class="code-window-title">POST /mcp/tools/call</span>
+                                <button type="button" class="code-copy-btn" data-copy-target>Copy</button>
+                            </div>
+                            <pre><code>POST /mcp/tools/call
+Authorization: Bearer sk_live_xxx
+Content-Type: application/json
+
+{
+  "name": "executeCapability",
+  "arguments": {
+    "capability": "semantic_memory",
+    "accessToken": "cfx_access_xxx",
+    "operation": "save_memory",
+    "requestId": "req_01",
+    "idempotencyKey": "idem_01",
+    "units": 1,
+    "routingMode": "best_available",
+    "input": {
+      "text": "Store this agent preference."
+    }
+  }
+}</code></pre>
+                        </div>
+                        <div class="webhook-events">
+                            <span class="is-highlight">listCapabilities</span>
+                            <span>getCapability</span>
+                            <span>getCapabilityContract</span>
+                            <span class="is-highlight">purchaseCapability</span>
+                            <span>chooseRoute</span>
+                            <span class="is-highlight">executeCapability</span>
+                            <span>getUsage</span>
+                            <span>listAssets</span>
+                            <span>quote</span>
+                            <span>trade</span>
+                            <span>settlementStatus</span>
                         </div>
                     </article>
 
@@ -731,7 +911,7 @@ Authorization: Bearer sk_live_xxx
 
                     <article id="api-roadmap" class="developer-panel">
                         <h2>Roadmap</h2>
-                        <p>Phase 4 will add MCP, n8n, Zapier, Make and OpenAI Agents examples. Phase 5 will expand assets, countries and payment rails. Bridge, pool, AMM, DEX and yield are intentionally out of scope.</p>
+                        <p>MCP, capability catalog, capability contracts, route preview, hybrid execution, access grants and usage metering are available. Next steps are public MCP registry listing, more real providers and enterprise routing policies. Bridge, pool, AMM, DEX and yield are intentionally out of scope.</p>
                     </article>
                 </div>
             </div>
@@ -741,7 +921,7 @@ Authorization: Bearer sk_live_xxx
     <section id="pricingView" class="pricing-view hidden" aria-labelledby="pricingTitle">
         <div class="pricing-shell">
             <div class="pricing-hero">
-                <h1 id="pricingTitle">Start free. Pay only when an order is completed.</h1>
+                    <h2 id="pricingTitle">Start free. Pay only when an order is completed.</h2>
                 <p>Production access starts with no activation fee. ChainFX earns from successful transactions through a fixed fee, percentage fee and FX spread.</p>
             </div>
 
@@ -763,11 +943,12 @@ Authorization: Bearer sk_live_xxx
                     <span class="pricing-label">Live Starter</span>
                     <h2>Free activation</h2>
                     <p>Designed for developers launching real PIX to USDT flows without upfront cost.</p>
-                    <div class="pricing-fee">2.5% + R$ 1,99</div>
+                    <div class="pricing-fee">4.5%-7.5% + R$ 1,99</div>
                     <ul>
                         <li>Charged only on completed orders</li>
                         <li>Initial limit: R$ 2.000/day</li>
                         <li>USDT delivery on BSC</li>
+                        <li>Minimum fee R$ 4,99</li>
                         <li>FX spread included in quote</li>
                     </ul>
                     <button type="button" class="pricing-card-action">Start Live</button>
@@ -795,12 +976,13 @@ Authorization: Bearer sk_live_xxx
                 </div>
                 <pre><code>{
   "fiatAmount": 500,
-  "feeRate": "2.5%",
-  "fixedFee": 1.99,
-  "feeAmount": 14.49,
-  "netFiatAmount": 485.51,
-  "rate": 5.48,
-  "cryptoAmount": 88.60
+  "feeRate": "4.5%-7.5%",
+  "networkFee": 1.99,
+  "minFee": 4.99,
+  "feeAmount": 29.49,
+  "totalFiat": 529.49,
+  "rate": 5.53,
+  "cryptoAmount": 90.42
 }</code></pre>
             </div>
 
