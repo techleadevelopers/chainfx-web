@@ -11,7 +11,9 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: resolve(__dirname, 'index.html'),
-        admin: resolve(__dirname, 'admin.html')
+        admin: resolve(__dirname, 'admin.html'),
+        agentConsole: resolve(__dirname, 'app/agent/index.html'),
+        developerConsole: resolve(__dirname, 'app/developer/index.html')
       }
     }
   }
