@@ -28,6 +28,7 @@
     <!-- Font Awesome para os ícones sociais -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/payment-token-efi/dist/payment-token-efi-umd.min.js"></script>
     <script type="importmap">
         {
             "imports": {
@@ -387,14 +388,6 @@ void main() {
                           <input type="text" id="pixPhone" placeholder="CPF, telefone, email ou chave aleatoria" />
                       </div>
                   </div>
-                  <div class="sell-deposit-card" id="sellDepositNotice">
-                      <div class="sell-deposit-card-head">
-                          <img id="sellDepositNetworkIcon" src="https://cryptologos.cc/logos/bnb-bnb-logo.png?v=033" alt="BSC" />
-                          <span id="sellDepositNetworkLabel">Rede BSC / BEP20</span>
-                      </div>
-                      <strong>Envie USDT para:</strong>
-                      <code id="sellDepositWallet">0x7e3BF3FDfeF16040CE3ec60A663381766d3dB375</code>
-                  </div>
               </div>
 
               <div class="payment-methods" id="paymentMethodsSection">
@@ -443,7 +436,76 @@ void main() {
                   <span>→</span>
               </button>
               <button type="button" class="confirm-payment-btn step3-confirm-payment-btn hidden" id="step3ConfirmPaymentBtn">Confirm Payment</button>
-              <p class="step3-card-message hidden" id="step3CardMessage">Volte e pague com Pix.</p>
+              <p class="step3-card-message hidden" id="step3CardMessage">Preencha os dados do cartao.</p>
+              <div class="step3-payment-card step3-card-form hidden" id="step3CardPanel">
+                  <div class="card-field-grid" data-card-step="1">
+                      <label class="card-field card-field-wide">
+                          <span>Numero do cartao</span>
+                          <span class="card-number-input">
+                              <input id="cardNumber" inputmode="numeric" autocomplete="cc-number" placeholder="0000 0000 0000 0000" />
+                              <img id="step3CardBrandIcon" src="/images/visa.png" alt="Cartao" />
+                          </span>
+                      </label>
+                      <label class="card-field card-field-wide">
+                          <span>Nome impresso</span>
+                          <input id="cardHolderName" autocomplete="cc-name" placeholder="Nome do titular" />
+                      </label>
+                      <label class="card-field">
+                          <span>Validade</span>
+                          <input id="cardExpiry" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/AA" />
+                      </label>
+                      <label class="card-field">
+                          <span>CVV</span>
+                          <input id="cardCvv" inputmode="numeric" autocomplete="cc-csc" placeholder="123" />
+                      </label>
+                  </div>
+                  <div class="card-field-grid hidden" data-card-step="2">
+                      <label class="card-field card-field-wide">
+                          <span>CPF</span>
+                          <input id="cardCpf" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" />
+                      </label>
+                      <label class="card-field card-field-wide">
+                          <span>Telefone</span>
+                          <input id="cardPhone" inputmode="tel" autocomplete="tel" placeholder="11999999999" />
+                      </label>
+                      <label class="card-field card-field-wide">
+                          <span>Email</span>
+                          <input id="cardEmail" type="email" autocomplete="email" placeholder="email@dominio.com" />
+                      </label>
+                  </div>
+                  <div class="card-field-grid hidden" data-card-step="3">
+                      <label class="card-field card-field-wide">
+                          <span>Nascimento</span>
+                          <input id="cardBirthDate" type="date" autocomplete="bday" />
+                      </label>
+                  </div>
+                  <div class="card-field-grid hidden" data-card-step="4">
+                      <label class="card-field card-field-wide">
+                          <span>Endereco de cobranca</span>
+                          <input id="billingStreet" autocomplete="billing street-address" placeholder="Rua / Avenida" />
+                      </label>
+                      <label class="card-field">
+                          <span>Numero</span>
+                          <input id="billingNumber" autocomplete="billing address-line2" placeholder="100" />
+                      </label>
+                      <label class="card-field">
+                          <span>Bairro</span>
+                          <input id="billingNeighborhood" placeholder="Centro" />
+                      </label>
+                      <label class="card-field">
+                          <span>CEP</span>
+                          <input id="billingZipcode" inputmode="numeric" autocomplete="billing postal-code" placeholder="00000000" />
+                      </label>
+                      <label class="card-field">
+                          <span>Cidade</span>
+                          <input id="billingCity" autocomplete="billing address-level2" placeholder="Sao Paulo" />
+                      </label>
+                      <label class="card-field">
+                          <span>UF</span>
+                          <input id="billingState" autocomplete="billing address-level1" placeholder="SP" maxlength="2" />
+                      </label>
+                  </div>
+              </div>
           </div>
             <button type="button" class="continue-btn btn-premium-glow" id="continueBtn">
                 Continue
@@ -473,6 +535,14 @@ void main() {
         <span id="txHashRow"><strong>Tx hash:</strong> <span id="paymentTxHash">Aguardando envio on-chain</span></span>
     </p>
     <div id="sellDepositBlock" class="hidden">
+        <div class="sell-deposit-card" id="sellDepositNotice">
+            <div class="sell-deposit-card-head">
+                <img id="sellDepositNetworkIcon" src="https://cryptologos.cc/logos/bnb-bnb-logo.png?v=033" alt="BSC" />
+                <span id="sellDepositNetworkLabel">Rede BSC / BEP20</span>
+            </div>
+            <strong>Envie USDT para:</strong>
+            <code id="sellDepositWallet">0x7e3BF3FDfeF16040CE3ec60A663381766d3dB375</code>
+        </div>
         <label for="sellDepositAddressInput">Endereço para enviar</label>
         <div class="input-group sell-deposit-copy-row">
             <input type="text" id="sellDepositAddressInput" readonly />
@@ -610,7 +680,7 @@ void main() {
         <div class="developers-shell">
             <div class="developers-hero">
                 <h2 id="developersTitle">Build payments and agent capability flows.</h2>
-                <p>Use ChainFX to create PIX and stablecoin payment flows, expose MCP tools to agents, and let autonomous systems discover, purchase and execute digital capabilities.</p>
+                <p>Use ChainFX to create PIX, card and stablecoin-funded agent payment flows, expose MCP tools to agents, and let autonomous systems discover, purchase and execute digital capabilities.</p>
                 <div class="developers-actions">
                     <a href="#api-buy" class="developer-primary-action">Start with PIX Buy</a>
                     <a href="https://stablecoin-payment-gateway-production-3ee2.up.railway.app/openapi.json" target="_blank" rel="noopener">OpenAPI</a>
@@ -619,8 +689,9 @@ void main() {
             </div>
 
             <div class="developers-status-grid">
-                <div><strong>REST API</strong><span>Rates, quotes, buy, sell and order status.</span></div>
-                <div><strong>MCP Server</strong><span>Tools for agents to list, buy and execute capabilities.</span></div>
+                <div><strong>REST API</strong><span>Rates, quotes, buy, sell, card and order status.</span></div>
+                <div><strong>MCP Server</strong><span>Tools for agents to list, buy, pay and execute capabilities.</span></div>
+                <div><strong>Agent Pay</strong><span>Agents fund PIX/card intents with BSC USDT.</span></div>
                 <div><strong>Capabilities</strong><span>Capability catalog, contracts, router and metering.</span></div>
                 <div><strong>Webhooks</strong><span>payment.completed, crypto.sent and order.failed.</span></div>
                 <div><strong>Sandbox</strong><span>Fake PIX, fake QR, fake wallet and test keys.</span></div>
@@ -632,6 +703,7 @@ void main() {
                     <a href="#api-overview" data-dev-link>Overview</a>
                     <a href="#api-buy" data-dev-link>PIX to USDT</a>
                     <a href="#api-sell" data-dev-link>USDT to PIX</a>
+                    <a href="#api-agent-pay" data-dev-link>Agent Pay</a>
                     <a href="#api-capabilities" data-dev-link>Capabilities</a>
                     <a href="#api-mcp" data-dev-link>MCP</a>
                     <a href="#api-webhooks" data-dev-link>Webhooks</a>
@@ -642,7 +714,7 @@ void main() {
                 <div class="developers-content">
                     <article id="api-overview" class="developer-panel">
                         <h2>Build automated payment and agent flows</h2>
-                        <p>Developers can request quotes, create buy and sell orders, listen for webhooks, and expose ChainFX MCP tools to agents. The API is designed for server-to-server usage with Bearer secret keys.</p>
+                        <p>Developers can request quotes, create buy and sell orders, create agent-funded PIX/card payment intents, listen for webhooks, and expose ChainFX MCP tools to agents. The API is designed for server-to-server usage with Bearer secret keys.</p>
                         <div class="endpoint-list">
                             <code><span class="http-method get">GET</span>/rates</code>
                             <code><span class="http-method post">POST</span>/quote</code>
@@ -650,6 +722,7 @@ void main() {
                             <code><span class="http-method post">POST</span>/sell</code>
                             <code><span class="http-method get">GET</span>/order/{id}</code>
                             <code><span class="http-method get">GET</span>/marketplace/capabilities</code>
+                            <code><span class="http-method post">POST</span>/agent/v1/pay</code>
                             <code><span class="http-method post">POST</span>/mcp/tools/call</code>
                             <code><span class="http-method post">POST</span>/webhooks/test</code>
                         </div>
@@ -741,6 +814,70 @@ Authorization: Bearer sk_live_xxx
                         </div>
                     </article>
 
+                    <article id="api-agent-pay" class="developer-panel">
+                        <h2>Agent Pay: USDT-funded PIX and card</h2>
+                        <p>Agents can create a payment intent for a PIX payout or credit-card bill, deposit the quoted USDT to a unique BSC payment address, and let ChainFX settle the fiat recipient after confirmation.</p>
+                        <div class="endpoint-list">
+                            <code><span class="http-method post">POST</span>/agent/v1/pay</code>
+                            <code><span class="http-method get">GET</span>/agent/v1/pay/{id}</code>
+                            <code><span class="http-method post">POST</span>/mcp/tools/call createPaymentIntent</code>
+                            <code><span class="http-method post">POST</span>/mcp/tools/call getPaymentIntent</code>
+                        </div>
+                        <div class="code-window">
+                            <div class="code-window-bar">
+                                <span class="code-window-dots"><i></i><i></i><i></i></span>
+                                <span class="code-window-title">POST /agent/v1/pay</span>
+                                <button type="button" class="code-copy-btn" data-copy-target>Copy</button>
+                            </div>
+                            <pre><code>POST /agent/v1/pay
+Authorization: Bearer sk_live_xxx
+Content-Type: application/json
+
+{
+  "type": "pix",
+  "amount_brl": "250.00",
+  "pix_key": "financeiro@example.com",
+  "idempotency_key": "agent-pay-2026-07-13-001",
+  "agent_wallet": "0x174208255ECc40481f7fD7c34EE6a9A5B66B4339"
+}
+
+Response 201
+{
+  "intent_id": "int_m2m_...",
+  "status": "pending_deposit",
+  "payment_type": "pix",
+  "amount_brl": "250.00",
+  "gross_usdt": "45.871559",
+  "fee_usdt": "4.587156",
+  "required_usdt": "50.458715",
+  "fee_bps": 1000,
+  "payment_address": "0x...",
+  "next_step": "deposit RequiredUSDT on-chain to PaymentAddress, then poll GET /agent/v1/pay/{intent_id}"
+}</code></pre>
+                        </div>
+                        <div class="code-window">
+                            <div class="code-window-bar">
+                                <span class="code-window-dots"><i></i><i></i><i></i></span>
+                                <span class="code-window-title">MCP createPaymentIntent</span>
+                                <button type="button" class="code-copy-btn" data-copy-target>Copy</button>
+                            </div>
+                            <pre><code>POST /mcp/tools/call
+Authorization: Bearer sk_live_xxx
+Content-Type: application/json
+
+{
+  "name": "createPaymentIntent",
+  "arguments": {
+    "type": "credit_card",
+    "amount_brl": "420.00",
+    "idempotency_key": "agent-card-001",
+    "agent_wallet": "0x174208255ECc40481f7fD7c34EE6a9A5B66B4339"
+  }
+}</code></pre>
+                        </div>
+                        <p class="developer-note">Agent Pay never settles before the USDT deposit is confirmed. Each intent receives a unique payment address for address-based matching. Overpayment is recorded for operations review and is not auto-refunded.</p>
+                    </article>
+
                     <article id="api-capabilities" class="developer-panel">
                         <h2>Capability Marketplace</h2>
                         <p>Agents can discover capabilities, inspect input/output contracts, create a stablecoin purchase intent, submit the on-chain payment receipt, and consume the capability with metered access.</p>
@@ -805,7 +942,7 @@ Content-Type: application/json
 
                     <article id="api-mcp" class="developer-panel">
                         <h2>ChainFX MCP</h2>
-                        <p>Agent clients can install the ChainFX MCP server and use tools to discover capabilities, create purchases, execute capabilities, check usage, list assets, quote trades and query settlement status.</p>
+                        <p>Agent clients can install the ChainFX MCP server and use tools to discover capabilities, create purchases, execute capabilities, create PIX/card payment intents, check usage, list assets, quote trades and query settlement status.</p>
                         <div class="endpoint-list">
                             <code><span class="http-method post">POST</span>/mcp/initialize</code>
                             <code><span class="http-method post">POST</span>/mcp/tools/list</code>
@@ -868,6 +1005,9 @@ Content-Type: application/json
                             <span>quote</span>
                             <span>trade</span>
                             <span>settlementStatus</span>
+                            <span class="is-highlight">createPaymentIntent</span>
+                            <span>getPaymentIntent</span>
+                            <span>listAgentPaymentIntents</span>
                         </div>
                     </article>
 
@@ -911,7 +1051,7 @@ Content-Type: application/json
 
                     <article id="api-roadmap" class="developer-panel">
                         <h2>Roadmap</h2>
-                        <p>MCP, capability catalog, capability contracts, route preview, hybrid execution, access grants and usage metering are available. Next steps are public MCP registry listing, more real providers and enterprise routing policies. Bridge, pool, AMM, DEX and yield are intentionally out of scope.</p>
+                        <p>MCP, Agent Pay, capability catalog, capability contracts, route preview, hybrid execution, access grants and usage metering are available. Next steps are more real providers and enterprise routing policies. Bridge, pool, AMM, DEX and yield are intentionally out of scope.</p>
                     </article>
                 </div>
             </div>
