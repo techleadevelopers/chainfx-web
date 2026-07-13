@@ -566,6 +566,16 @@
     gap: 10px;
   }
 
+  body.index-page .card-field {
+    font-size: 0.95rem;
+  }
+
+  body.index-page #step3CardPanel {
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
   body.index-page .step3-pix-qr {
     width: min(148px, 56vw);
     height: min(148px, 56vw);
@@ -683,6 +693,21 @@
     line-height: 26px;
   }
 
+  body.index-page #sellInfo .input-group:has(#pixCpf),
+  body.index-page #sellInfo .input-group:has(#pixPhone) {
+    min-height: 39px;
+    padding: 4px 10px;
+  }
+
+  body.index-page #pixCpf,
+  body.index-page #pixPhone {
+    min-height: 30px;
+    height: 30px;
+    padding: 0 8px !important;
+    font-size: 0.84rem;
+    line-height: 30px;
+  }
+
   body.index-page .currency-selector {
     flex: 0 0 auto;
     min-width: 70px;
@@ -740,7 +765,7 @@
   }
 
   body.index-page #continueBtn {
-    margin-top: 4px;
+    margin-top: 5%;
   }
 
   body.index-page .terms {
