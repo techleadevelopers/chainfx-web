@@ -1,0 +1,21 @@
+.git
+.vercel
+node_modules
+dist
+
+# Local backend/services not used by the Vite frontend deployment
+payment-gateway
+bsc-signer
+signer
+server
+
+# Local/debug artifacts
+attached_assets
+screenshots
+vite-dev.err.log
+vite-dev.out.log
+*.log
+
+# Local-only env files
+.env
+.env.local
