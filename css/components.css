@@ -48,6 +48,10 @@
   display: none;
 }
 
+.swap-card:has(#inputSection:not(.hidden)) .toggle-container {
+  margin-bottom: 18px;
+}
+
 .wallet-info {
   background: var(--hover-color);
   padding: 16px;
@@ -204,17 +208,34 @@
 }
 
 #walletGroup .input-group {
-  min-height: 34px;
-  padding: 4px 8px;
+  min-height: 37px;
+  padding: 5px 9px;
   align-items: center;
 }
 
 #walletAddress {
-  height: 26px;
-  min-height: 26px;
+  height: 29px;
+  min-height: 29px;
   padding: 0 !important;
-  font-size: 0.86rem;
-  line-height: 26px;
+  font-size: 0.95rem;
+  line-height: 29px;
+}
+
+#sellInfo .input-group:has(#pixCpf),
+#sellInfo .input-group:has(#pixPhone) {
+  min-height: 39px;
+  padding: 4px 10px;
+  align-items: center;
+  border-radius: 10px;
+}
+
+#pixCpf,
+#pixPhone {
+  min-height: 30px;
+  height: 30px;
+  padding: 0 8px !important;
+  font-size: 0.94rem;
+  line-height: 30px;
 }
 
 .currency-input label {
@@ -315,8 +336,8 @@
 }
 
 .order-summary-step3 {
-  margin-top: 4px;
-  margin-bottom: 14px;
+  margin-top: -6px;
+  margin-bottom: 10px;
 }
 
 #step3 {
@@ -346,13 +367,15 @@
   align-items: center;
   gap: 8px;
   color: var(--text-color);
-  font-size: 0.9rem;
+  font-family: inherit;
+  font-size: 0.95rem;
   font-weight: 600;
 }
 
 .step3-payment-head img {
-  width: 24px;
+  width: 34px;
   height: 24px;
+  object-fit: contain;
 }
 
 .step3-pix-qr {
@@ -440,6 +463,101 @@
   text-align: center;
 }
 
+.step3-card-form {
+  align-items: stretch;
+  justify-items: stretch;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+.card-field-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.card-field {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  color: var(--text-color);
+  font-family: inherit;
+  font-size: 0.874rem;
+  font-weight: 500;
+}
+
+.card-field-wide {
+  grid-column: 1 / -1;
+}
+
+.card-number-input {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.card-number-input img {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  width: 46px;
+  height: 31px;
+  padding: 2px;
+  box-sizing: border-box;
+  object-fit: contain;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.card-field input {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #f8fafc;
+  color: var(--text-color);
+  font-family: inherit;
+  font-size: 1.05rem;
+  line-height: 42px;
+  font-weight: 500;
+}
+
+.card-field input::placeholder {
+  font-size: 0.9975rem;
+  font-weight: 400;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.card-number-input input {
+  padding-right: 62px;
+}
+
+.card-field input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(17, 80, 168, 0.12);
+}
+
+.inline-card-status {
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.78rem;
+  text-align: left;
+}
+
+.inline-card-status.warn {
+  border-color: rgba(181, 71, 8, 0.24);
+  background: rgba(255, 250, 235, 0.96);
+  color: #92400e;
+}
+
 .step3-bypass-btn {
   position: absolute;
   right: -8px;
@@ -469,6 +587,7 @@
 
 .continue-btn {
   width: 100%;
+  margin-top: 5%;
   padding: 16px;
   border: none;
   border-radius: 12px;
