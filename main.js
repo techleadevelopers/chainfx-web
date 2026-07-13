@@ -7,6 +7,7 @@ const state = {
   selectedPaymentMethod: null, // Will store the DOM element
   exchangeRate: 0, // Will be fetched
   currentStep: 1,
+  cardCheckoutStep: 1,
   walletAddress: '', // Will be updated from input
   connected: false, // Simulated wallet connection state
   transactionFee: 0.015,
@@ -112,14 +113,16 @@ const connectWallet = async () => {
 const UX_MESSAGES = {
   invalid_amount: 'Valor invalido.',
   invalid_wallet: 'Wallet BSC invalida.',
-  payment_method_required: 'Selecione PIX.',
+  payment_method_required: 'Selecione um metodo de pagamento.',
+  card_fields_required: 'Preencha os dados do cartao e endereco.',
+  card_token_unavailable: 'Tokenizacao Efi indisponivel.',
   backend_unavailable: 'Servico indisponivel.',
   quote_unavailable: 'Cotacao indisponivel.',
   order_limit: 'Tente novamente em instantes.',
   order_value_limit: 'Valor fora do limite.',
   asset_unsupported: 'Ativo indisponivel.',
   duplicate_payment: 'Pagamento ja processado.',
-  webhook_pending: 'Aguardando PIX.',
+  webhook_pending: 'Aguardando confirmacao.',
   payment_identified: 'Pagamento identificado.',
   payment_sent: 'USDT enviado.',
   payment_failed: 'Falha no pagamento.',
@@ -132,6 +135,7 @@ const UX_MESSAGES = {
 const normalizeUxMessage = (input, fallback = 'unknown') => {
   const raw = String(input || '').toLowerCase();
   if (!raw) return UX_MESSAGES[fallback] || UX_MESSAGES.unknown;
+  if (raw.includes('limite diario') || raw.includes('limite diário')) return input;
   if (raw.includes('limite') || raw.includes('too many') || raw.includes('429')) return UX_MESSAGES.order_limit;
   if (raw.includes('fora dos limites') || raw.includes('valor insuficiente')) return UX_MESSAGES.order_value_limit;
   if (raw.includes('asset') || raw.includes('ativo')) return UX_MESSAGES.asset_unsupported;
@@ -728,22 +732,98 @@ const updateOrderSummaries = () => {
   if (displayTotalStep3) displayTotalStep3.textContent = totalText;
 };
 
+const CARD_CHECKOUT_STEP_COUNT = 4;
+
+const setCardStatus = (message, type = '') => {
+  if (type === 'warn' || type === 'error') showUxMessage(message, type === 'warn' ? 'warning' : type);
+};
+
+const setCardCheckoutStep = (step, focus = false) => {
+  state.cardCheckoutStep = Math.max(1, Math.min(CARD_CHECKOUT_STEP_COUNT, Number(step) || 1));
+  document.querySelectorAll('[data-card-step]').forEach(panel => {
+    panel.classList.toggle('hidden', Number(panel.dataset.cardStep) !== state.cardCheckoutStep);
+  });
+  const continueBtn = document.getElementById('continueBtn');
+  if (continueBtn && state.currentStep === 3 && selectedPaymentRail().paymentMethod === 'credit_card') {
+    continueBtn.textContent = state.cardCheckoutStep === CARD_CHECKOUT_STEP_COUNT ? 'Pagar com cartao' : 'Avancar';
+  }
+  if (focus) {
+    const currentPanel = document.querySelector(`[data-card-step="${state.cardCheckoutStep}"]`);
+    setTimeout(() => currentPanel?.querySelector('input')?.focus(), 0);
+  }
+};
+
+const validateCardCheckoutStep = (step = state.cardCheckoutStep) => {
+  const expiry = splitExpiry(inputValue('cardExpiry'));
+  const validators = {
+    1: [
+      [digitsOnly(inputValue('cardNumber')).length >= 13, 'Informe o numero do cartao.'],
+      [inputValue('cardHolderName').length >= 3, 'Informe o nome impresso.'],
+      [expiry.month.length === 2 && expiry.year.length === 4, 'Informe a validade MM/AA.'],
+      [digitsOnly(inputValue('cardCvv')).length >= 3, 'Informe o CVV.']
+    ],
+    2: [
+      [digitsOnly(inputValue('cardCpf')).length === 11, 'Informe o CPF.'],
+      [digitsOnly(inputValue('cardPhone')).length >= 10, 'Informe o telefone.'],
+      [/^\S+@\S+\.\S+$/.test(inputValue('cardEmail')), 'Informe um email valido.']
+    ],
+    3: [
+      [Boolean(inputValue('cardBirthDate')), 'Informe a data de nascimento.']
+    ],
+    4: [
+      [Boolean(inputValue('billingStreet')), 'Informe o endereco de cobranca.'],
+      [Boolean(inputValue('billingNumber')), 'Informe o numero.'],
+      [Boolean(inputValue('billingNeighborhood')), 'Informe o bairro.'],
+      [digitsOnly(inputValue('billingZipcode')).length === 8, 'Informe o CEP com 8 digitos.'],
+      [Boolean(inputValue('billingCity')), 'Informe a cidade.'],
+      [inputValue('billingState').length === 2, 'Informe a UF.']
+    ]
+  };
+  const failed = (validators[step] || []).find(([valid]) => !valid);
+  if (failed) {
+    setCardStatus(failed[1], 'warn');
+    return false;
+  }
+  return true;
+};
+
+const advanceCreditCardCheckout = () => {
+  if (!validateCardCheckoutStep()) return false;
+  if (state.cardCheckoutStep < CARD_CHECKOUT_STEP_COUNT) {
+    setCardCheckoutStep(state.cardCheckoutStep + 1, true);
+    return false;
+  }
+  return true;
+};
+
 const updateStep3PaymentPreview = (showCardWarning = false) => {
   const pixPanel = document.getElementById('step3PixPanel');
   const cardMessage = document.getElementById('step3CardMessage');
+  const cardPanel = document.getElementById('step3CardPanel');
+  const cardBrandIcon = document.getElementById('step3CardBrandIcon');
   const bypassBtn = document.getElementById('step3BypassBtn');
   const step3ConfirmPaymentBtn = document.getElementById('step3ConfirmPaymentBtn');
   const continueBtn = document.getElementById('continueBtn');
-  const selectedMethod = state.selectedPaymentMethod?.dataset?.method;
-  const isPix = selectedMethod === 'pix';
+  const rail = selectedPaymentRail();
+  const isPix = rail.method === 'pix';
+  const isCard = rail.paymentMethod === 'credit_card';
 
   if (pixPanel) pixPanel.classList.toggle('hidden', !isPix);
+  if (cardPanel) cardPanel.classList.toggle('hidden', !isCard);
   if (bypassBtn) bypassBtn.classList.toggle('hidden', !isPix);
   if (step3ConfirmPaymentBtn) step3ConfirmPaymentBtn.classList.toggle('hidden', !isPix);
-  if (continueBtn && state.currentStep === 3) continueBtn.classList.toggle('hidden', isPix);
+  if (continueBtn && state.currentStep === 3) {
+      continueBtn.classList.toggle('hidden', isPix);
+      if (isCard) setCardCheckoutStep(state.cardCheckoutStep || 1);
+  }
+  if (cardBrandIcon && isCard) {
+      const selectedIcon = state.selectedPaymentMethod?.querySelector('img');
+      cardBrandIcon.src = selectedIcon?.getAttribute('src') || (rail.cardBrand === 'mastercard' ? '/images/mastercard.png' : '/images/visa.png');
+      cardBrandIcon.alt = selectedIcon?.alt || (rail.cardBrand === 'mastercard' ? 'Mastercard' : 'Visa');
+  }
   if (cardMessage) {
-      cardMessage.classList.toggle('hidden', isPix || !showCardWarning);
-      if (!isPix && showCardWarning) cardMessage.textContent = 'Volte e pague com Pix.';
+      cardMessage.classList.toggle('hidden', isPix || isCard || !showCardWarning);
+      if (!isPix && !isCard && showCardWarning) cardMessage.textContent = 'Metodo indisponivel.';
   }
 };
 
@@ -763,6 +843,150 @@ const resolveApiBase = () => {
     localStorage.getItem('SWAPPED_API_BASE_URL') ||
     'https://stablecoin-payment-gateway-production-3ee2.up.railway.app';
   return String(configured).trim().replace(/\/+$/, '');
+};
+
+const resolveEfiPayeeCode = () => {
+  return String(
+    window.SWAPPED_EFI_PAYEE_CODE ||
+    import.meta.env.VITE_EFI_PAYEE_CODE ||
+    localStorage.getItem('SWAPPED_EFI_PAYEE_CODE') ||
+    ''
+  ).trim();
+};
+
+const resolveEfiEnvironment = () => {
+  const configured = String(
+    window.SWAPPED_EFI_ENVIRONMENT ||
+    import.meta.env.VITE_EFI_ENVIRONMENT ||
+    localStorage.getItem('SWAPPED_EFI_ENVIRONMENT') ||
+    ''
+  ).trim().toLowerCase();
+  if (configured === 'production' || configured === 'sandbox') return configured;
+  return location.hostname === 'localhost' || location.hostname === '127.0.0.1' ? 'sandbox' : 'production';
+};
+
+const normalizeCardBrand = (method) => {
+  switch (String(method || '').toLowerCase()) {
+    case 'visa':
+      return 'visa';
+    case 'master':
+    case 'mastercard':
+      return 'mastercard';
+    default:
+      return '';
+  }
+};
+
+const selectedPaymentRail = () => {
+  const method = state.selectedPaymentMethod?.dataset?.method || '';
+  const brand = normalizeCardBrand(method);
+  return {
+    method,
+    paymentMethod: brand ? 'credit_card' : method,
+    cardBrand: brand
+  };
+};
+
+const digitsOnly = (value) => String(value || '').replace(/\D/g, '');
+
+const splitExpiry = (value) => {
+  const digits = digitsOnly(value);
+  if (digits.length < 4) return { month: '', year: '' };
+  const month = digits.slice(0, 2);
+  const rawYear = digits.slice(2, 6);
+  const year = rawYear.length === 2 ? `20${rawYear}` : rawYear;
+  return { month, year };
+};
+
+const inputValue = (id) => document.getElementById(id)?.value?.trim() || '';
+
+const collectCardCheckoutInput = () => {
+  const rail = selectedPaymentRail();
+  const expiry = splitExpiry(inputValue('cardExpiry'));
+  const billingAddress = {
+    street: inputValue('billingStreet'),
+    number: inputValue('billingNumber'),
+    neighborhood: inputValue('billingNeighborhood'),
+    zipcode: digitsOnly(inputValue('billingZipcode')),
+    city: inputValue('billingCity'),
+    state: inputValue('billingState').toUpperCase()
+  };
+  const customer = {
+    name: inputValue('cardHolderName'),
+    cpf: digitsOnly(inputValue('cardCpf')),
+    email: inputValue('cardEmail'),
+    phone: digitsOnly(inputValue('cardPhone')),
+    birthDate: inputValue('cardBirthDate'),
+    address: billingAddress
+  };
+  return {
+    rail,
+    card: {
+      brand: rail.cardBrand,
+      number: digitsOnly(inputValue('cardNumber')),
+      cvv: digitsOnly(inputValue('cardCvv')),
+      expirationMonth: expiry.month,
+      expirationYear: expiry.year,
+      holderName: customer.name,
+      holderDocument: customer.cpf
+    },
+    customer,
+    billingAddress
+  };
+};
+
+const validateCardCheckoutInput = (checkout) => {
+  const requiredCard = [
+    checkout.card.brand,
+    checkout.card.number,
+    checkout.card.cvv,
+    checkout.card.expirationMonth,
+    checkout.card.expirationYear,
+    checkout.customer.name,
+    checkout.customer.cpf,
+    checkout.customer.email,
+    checkout.customer.phone,
+    checkout.billingAddress.street,
+    checkout.billingAddress.number,
+    checkout.billingAddress.neighborhood,
+    checkout.billingAddress.zipcode,
+    checkout.billingAddress.city,
+    checkout.billingAddress.state
+  ];
+  if (requiredCard.some(value => !String(value || '').trim())) return false;
+  if (checkout.customer.cpf.length !== 11) return false;
+  if (checkout.customer.phone.length < 10) return false;
+  if (checkout.billingAddress.zipcode.length !== 8) return false;
+  if (!/^\S+@\S+\.\S+$/.test(checkout.customer.email)) return false;
+  return true;
+};
+
+const generateEfiPaymentToken = async (checkout) => {
+  const payeeCode = resolveEfiPayeeCode();
+  const efiCard = window.EfiPay?.CreditCard || window.EfiJs?.CreditCard;
+  if (!payeeCode || !efiCard) {
+    throw new Error('card_token_unavailable');
+  }
+  if (typeof efiCard.isScriptBlocked === 'function' && await efiCard.isScriptBlocked()) {
+    throw new Error('card_token_unavailable');
+  }
+  const tokenResult = await efiCard
+    .setEnvironment(resolveEfiEnvironment())
+    .setAccount(payeeCode)
+    .setCreditCardData({
+      brand: checkout.card.brand,
+      number: checkout.card.number,
+      cvv: checkout.card.cvv,
+      expirationMonth: checkout.card.expirationMonth,
+      expirationYear: checkout.card.expirationYear,
+      holderName: checkout.card.holderName,
+      holderDocument: checkout.card.holderDocument,
+      reuse: false
+    })
+    .getPaymentToken();
+  const paymentToken = tokenResult?.payment_token || tokenResult?.data?.payment_token || '';
+  if (!paymentToken) throw new Error('card_token_unavailable');
+  return paymentToken;
 };
 
 const normalizePriceSnapshot = (data, source = 'backend') => {
@@ -1188,7 +1412,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function shortStatusMessage(status) {
     switch (status) {
       case 'aguardando_pix':
-      case 'aguardando_stripe':
+      case 'aguardando_credit_card':
         return UX_MESSAGES.webhook_pending;
       case 'pago_fiat':
       case 'pago_pix':
@@ -1335,6 +1559,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     state.totalPayAmount = 0;
     state.platformFee = 0;
     state.selectedPaymentMethod = null;
+    state.cardCheckoutStep = 1;
     state.walletAddress = '';
     state.connected = false;
     currentBuyId = null;
@@ -1366,6 +1591,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (step3PixCopy) step3PixCopy.value = '';
     if (sellDepositBlock) sellDepositBlock.classList.add('hidden');
     if (sellDepositAddressInput) sellDepositAddressInput.value = '';
+    setCardCheckoutStep(1);
     updatePaymentTxHash('');
     paymentMethodButtons.forEach(button => {
       button.classList.remove('selected');
@@ -1584,7 +1810,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  async function createBuyOrder() {
+  async function createBuyOrder(options = {}) {
     if (currentBuyId) return { buyId: currentBuyId, accessToken: currentBuyAccessToken };
     if (buyOrderPromise) return buyOrderPromise;
 
@@ -1595,25 +1821,42 @@ document.addEventListener('DOMContentLoaded', async () => {
       const destAddr = walletAddressInput?.value?.trim();
       const phone = pixPhoneInput?.value?.replace(/\D/g, '') || '';
       const cpf = pixCpfInput?.value?.replace(/\D/g, '') || '';
+      const paymentMethod = options.paymentMethod || selectedPaymentRail().paymentMethod || 'pix';
 
       if (!amount || amount <= 0) return setOrderError('invalid_amount');
       if (!destAddr || !validateWalletAddress(destAddr)) return setOrderError('invalid_wallet');
       if (state.receiveCurrency !== 'USDT') return setOrderError('Asset nao suportado nesta fase. Use USDT para finalizar a compra.');
 
       try {
+        const payload = {
+          amountBRL,
+          amountFiat: amount,
+          fiatCurrency: state.payCurrency,
+          paymentMethod,
+          asset: 'USDT',
+          address: destAddr,
+          pixPhone: phone,
+          pixCpf: cpf
+        };
+        if (paymentMethod === 'credit_card') {
+          Object.assign(payload, {
+            paymentToken: options.paymentToken,
+            cardBrand: options.cardBrand,
+            installments: options.installments || 1,
+            customer: options.customer,
+            billingAddress: options.billingAddress,
+            card: {
+              paymentToken: options.paymentToken,
+              brand: options.cardBrand,
+              installments: options.installments || 1,
+              billingAddress: options.billingAddress
+            }
+          });
+        }
         const resp = await fetch(`${API_BASE}/api/buy`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            amountBRL,
-            amountFiat: amount,
-            fiatCurrency: state.payCurrency,
-            paymentMethod: 'pix',
-            asset: 'USDT',
-            address: destAddr,
-            pixPhone: phone,
-            pixCpf: cpf
-          })
+          body: JSON.stringify(payload)
         });
 
         if (!resp.ok) {
@@ -1634,7 +1877,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         updateOrderSummaries();
         if (orderIdEl) orderIdEl.textContent = currentBuyId || '-';
-        if (orderStatusEl) orderStatusEl.textContent = data.status || 'aguardando_pix';
+        if (orderStatusEl) orderStatusEl.textContent = data.status || (paymentMethod === 'credit_card' ? 'aguardando_credit_card' : 'aguardando_pix');
         updateFinalPaymentStatus(data.status);
         if (pixKeyDisplay) pixKeyDisplay.textContent = data.pixKey || data.payment?.pixKey || 'chavepix@nexswap.com';
         const qrUrl = normalizeQrImageSrc(data.qrCodeUrl || data.payment?.qrCodeUrl);
@@ -1642,7 +1885,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (qrCodeImg && qrUrl) qrCodeImg.src = qrUrl;
         if (step3PixQr && qrUrl) step3PixQr.src = qrUrl;
         if (step3PixCopy) step3PixCopy.value = pixCopy;
-        if (statusMessage) statusMessage.textContent = UX_MESSAGES.webhook_pending;
+        if (statusMessage) statusMessage.textContent = paymentMethod === 'credit_card' ? 'Aguardando confirmacao da Efi.' : UX_MESSAGES.webhook_pending;
         showUxMessage('webhook_pending', 'info');
         if (currentBuyId) startBuyStream(currentBuyId);
         return data;
@@ -1656,6 +1899,47 @@ document.addEventListener('DOMContentLoaded', async () => {
     })();
 
     return buyOrderPromise;
+  }
+
+  async function createCreditCardBuyOrder() {
+    const checkout = collectCardCheckoutInput();
+    if (!validateCardCheckoutInput(checkout)) {
+      showUxMessage('card_fields_required', 'warning');
+      return null;
+    }
+    if (!checkout.rail.cardBrand) {
+      showUxMessage('payment_method_required', 'warning');
+      return null;
+    }
+    try {
+      if (continueBtn) {
+        continueBtn.disabled = true;
+        continueBtn.textContent = 'Tokenizando...';
+      }
+      const paymentToken = await generateEfiPaymentToken(checkout);
+      if (continueBtn) continueBtn.textContent = 'Criando cobranca...';
+      const data = await createBuyOrder({
+        paymentMethod: 'credit_card',
+        paymentToken,
+        cardBrand: checkout.rail.cardBrand,
+        installments: 1,
+        customer: checkout.customer,
+        billingAddress: checkout.billingAddress
+      });
+      if (!data) return null;
+      showUxMessage('webhook_pending', 'info');
+      updateStep(5);
+      return data;
+    } catch (error) {
+      console.error(error);
+      showUxMessage(error?.message || 'card_token_unavailable', 'error');
+      return null;
+    } finally {
+      if (continueBtn) {
+        continueBtn.disabled = false;
+        if (state.currentStep === 3) setCardCheckoutStep(state.cardCheckoutStep);
+      }
+    }
   }
 
   async function createSellOrder() {
@@ -1894,6 +2178,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                btn.classList.add('selected');
                // Store the selected method element in state
                state.selectedPaymentMethod = btn;
+               state.cardCheckoutStep = 1;
                updateStep3PaymentPreview(false);
                console.log("Selected payment method:", btn.dataset.method);
            });
@@ -1901,6 +2186,32 @@ document.addEventListener('DOMContentLoaded', async () => {
   } else {
        console.warn("Elements with class 'payment-method' not found.");
   }
+
+  const maskedInputs = [
+      ['cardNumber', value => digitsOnly(value).slice(0, 19).replace(/(.{4})/g, '$1 ').trim()],
+      ['cardExpiry', value => {
+          const digits = digitsOnly(value).slice(0, 4);
+          return digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
+      }],
+      ['cardCvv', value => digitsOnly(value).slice(0, 4)],
+      ['cardCpf', value => {
+          const digits = digitsOnly(value).slice(0, 11);
+          return digits
+            .replace(/^(\d{3})(\d)/, '$1.$2')
+            .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+            .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4');
+      }],
+      ['cardPhone', value => digitsOnly(value).slice(0, 11)],
+      ['billingZipcode', value => digitsOnly(value).slice(0, 8)],
+      ['billingState', value => String(value || '').replace(/[^a-zA-Z]/g, '').slice(0, 2).toUpperCase()]
+  ];
+  maskedInputs.forEach(([id, formatter]) => {
+      const input = document.getElementById(id);
+      if (!input) return;
+      input.addEventListener('input', () => {
+          input.value = formatter(input.value);
+      });
+  });
 
   if (step3BypassBtn) {
       step3BypassBtn.addEventListener('click', async () => {
@@ -2027,6 +2338,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                       return; // Stay on step 3 if no method is selected
                   }
                   // No data to store in state here, selection is already in state.selectedPaymentMethod
+                  if (selectedPaymentRail().paymentMethod === 'credit_card') {
+                      if (advanceCreditCardCheckout()) await createCreditCardBuyOrder();
+                      return;
+                  }
                   if (state.selectedPaymentMethod.dataset.method !== 'pix') {
                       updateStep3PaymentPreview(true);
                       return;
