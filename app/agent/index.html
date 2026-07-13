@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChainFX Agent Runtime Monitor</title>
+    <link rel="stylesheet" href="../shared/console.css">
+  </head>
+  <body class="console-page" data-workspace="agent">
+    <div class="console-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">CFX</div>
+          <div><strong>ChainFX</strong><span>Runtime Monitor</span></div>
+        </div>
+        <nav class="nav-section" aria-label="Agent Console">
+          <button class="nav-button active" data-section-target="overview">Overview</button>
+          <button class="nav-button" data-section-target="agents">Agents</button>
+          <button class="nav-button" data-section-target="capabilities">Capabilities</button>
+          <button class="nav-button" data-section-target="marketplace">Marketplace</button>
+          <button class="nav-button" data-section-target="purchases">Purchases</button>
+          <button class="nav-button" data-section-target="executions">Executions</button>
+          <button class="nav-button" data-section-target="wallet">Wallet & Balance</button>
+          <button class="nav-button" data-section-target="usage">Usage & Costs</button>
+          <button class="nav-button" data-section-target="settlements">Settlements</button>
+          <button class="nav-button" data-section-target="credentials">API Credentials</button>
+          <button class="nav-button" data-section-target="webhooks">Webhooks</button>
+          <button class="nav-button" data-section-target="policies">Policies</button>
+          <button class="nav-button" data-section-target="logs">Logs</button>
+          <button class="nav-button" data-section-target="settings">Settings</button>
+        </nav>
+        <div class="sidebar-footer">
+          Agent → Capability → Provider → Payment → Execution → Metering → Settlement
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div class="title-block">
+            <h1>Agent Runtime Monitor</h1>
+            <p>Human dashboard for agent identities, wallets, capabilities, execution quota and settlement flow.</p>
+          </div>
+          <div class="auth-strip">
+            <span id="connectionStatus" class="badge warn">Offline</span>
+            <input id="apiBase" type="url" aria-label="API base URL">
+            <input id="apiKey" type="password" aria-label="API key" placeholder="Bearer API key">
+            <button id="saveConnection" class="btn primary" type="button">Connect</button>
+          </div>
+        </header>
+
+        <section class="section active" data-section="overview">
+          <div id="metricGrid" class="metric-grid"></div>
+          <div class="grid-2">
+            <article class="panel">
+              <div class="panel-head"><h2>Agent Spend Over Time</h2><span class="badge">14 days</span></div>
+              <div id="spendChart" class="chart"></div>
+            </article>
+            <article class="panel">
+              <div class="panel-head"><h2>Activity Feed</h2><span class="badge ok">Live</span></div>
+              <ul id="activityFeed" class="activity-list"></ul>
+            </article>
+          </div>
+          <article class="panel" style="margin-top:16px">
+            <div class="panel-head"><h2>Policy Alerts</h2><span class="badge warn">Attention</span></div>
+            <ul id="alertList" class="alert-list"></ul>
+          </article>
+        </section>
+
+        <section class="section" data-section="agents">
+          <article class="panel">
+            <div class="panel-head"><h2>Agents</h2><button class="btn primary" data-section-target="credentials" type="button">+ Create Agent</button></div>
+            <div id="agentsTable" class="table-wrap"></div>
+          </article>
+          <article class="panel" style="margin-top:16px">
+            <div id="agentDetail"></div>
+          </article>
+        </section>
+
+        <section class="section" data-section="capabilities">
+          <article class="panel">
+            <div class="panel-head"><h2>Authorized Capabilities</h2><span class="badge">Contracts + quota</span></div>
+            <div class="filters">
+              <span class="filter-pill">All</span><span class="filter-pill">AI</span><span class="filter-pill">Compliance</span><span class="filter-pill">Finance</span><span class="filter-pill">Memory</span>
+            </div>
+            <div class="grid-3" data-capability-grid></div>
+          </article>
+        </section>
+
+        <section class="section" data-section="marketplace">
+          <article class="panel">
+            <div class="panel-head"><h2>Capability Marketplace</h2><button class="btn primary" type="button">Purchase Access</button></div>
+            <div class="filters">
+              <span class="filter-pill">All</span><span class="filter-pill">AI</span><span class="filter-pill">Data</span><span class="filter-pill">Compliance</span><span class="filter-pill">Finance</span><span class="filter-pill">Documents</span><span class="filter-pill">Infrastructure</span>
+            </div>
+            <div class="grid-3" data-capability-grid></div>
+          </article>
+        </section>
+
+        <section class="section" data-section="purchases">
+          <article class="panel">
+            <div class="panel-head"><h2>Purchases</h2><span class="badge">Payment lifecycle</span></div>
+            <div id="purchasesTable" class="table-wrap"></div>
+          </article>
+          <article class="panel" style="margin-top:16px">
+            <div class="panel-head"><h2>Purchase Detail Flow</h2><span class="badge ok">Access grant</span></div>
+            <ul id="purchaseTimeline" class="timeline"></ul>
+          </article>
+        </section>
+
+        <section class="section" data-section="executions">
+          <article class="panel">
+            <div class="panel-head"><h2>Executions</h2><span class="badge">Request audit</span></div>
+            <div id="executionsTable" class="table-wrap"></div>
+          </article>
+          <article class="panel" style="margin-top:16px">
+            <div class="panel-head"><h2>Execution Detail</h2><span class="badge">Cost breakdown</span></div>
+            <div id="executionDetail"></div>
+          </article>
+        </section>
+
+        <section class="section" data-section="wallet">
+          <article class="panel">
+            <div class="panel-head">
+              <h2>Wallet & Balance</h2>
+              <div><button class="btn">Deposit</button> <button class="btn">Withdraw</button> <button class="btn">Transfer</button></div>
+            </div>
+            <div id="walletPanel"></div>
+          </article>
+        </section>
+
+        <section class="section" data-section="usage">
+          <div id="usageCostCards" class="metric-grid"></div>
+          <article class="panel">
+            <div class="panel-head"><h2>Usage by Capability</h2><span class="badge">Provider + ChainFX fees</span></div>
+            <div id="usageCostTable" class="table-wrap"></div>
+          </article>
+        </section>
+
+        <section class="section" data-section="settlements">
+          <article class="panel">
+            <div class="panel-head"><h2>Settlements</h2><span class="badge warn">Provider ledger</span></div>
+            <div id="settlementsTable" class="table-wrap"></div>
+          </article>
+        </section>
+
+        <section class="section" data-section="credentials">
+          <article class="panel">
+            <div class="panel-head"><h2>Create Agent</h2><span class="badge">Secret shown once</span></div>
+            <form id="createAgentForm" class="form-grid">
+              <label>Agent name<input name="name" required placeholder="Treasury Agent"></label>
+              <label>Environment<select name="environment"><option>Sandbox</option><option>Production</option></select></label>
+              <label class="span-2">Description<input name="description" placeholder="Treasury automation and settlement agent"></label>
+              <label>Agent type<select name="type"><option>Internal</option><option>External</option><option>Autonomous</option></select></label>
+              <label>Wallet<input name="wallet" required placeholder="0x..."></label>
+              <label>Wallet mode<select name="walletMode"><option value="existing">Connect existing wallet</option><option value="managed">Generate managed wallet</option><option value="treasury">Use treasury wallet</option></select></label>
+              <label>Daily spending limit<input name="dailyLimitUsdt" value="500"></label>
+              <label>Monthly spending limit<input name="monthlyLimitUsdt" value="5000"></label>
+              <label>Maximum per transaction<input name="maxTransactionUsdt" value="100"></label>
+              <label>Allowed assets<input name="allowedAssets" value="USDT,USDC"></label>
+              <label>Allowed capabilities<input name="allowedCapabilities" value="document_ocr,aml_screening,llm_chat"></label>
+              <label>Allowed providers<input name="allowedProviders" value="openai,chainfx-ocr-http"></label>
+              <label>Require real provider<select name="requireRealProvider"><option value="false">Disabled</option><option value="true">Enabled</option></select></label>
+              <label>Mock fallback<select name="mockFallback"><option value="false">Disabled</option><option value="true">Enabled</option></select></label>
+              <label class="span-2">Permissions<input name="permissions" value="capabilities:read,capabilities:purchase,capabilities:execute,trades:create,settlements:read,webhooks:write"></label>
+              <div class="span-2"><button class="btn primary" type="submit">Generate Agent Credential</button></div>
+            </form>
+            <pre id="agentSecretResult" style="margin-top:14px">Agent ID, Client ID, Agent Secret and MCP endpoint will appear once after creation.</pre>
+          </article>
+        </section>
+
+        <section class="section" data-section="webhooks">
+          <article class="panel">
+            <div class="panel-head"><h2>Webhooks</h2><button class="btn primary">+ Add Endpoint</button></div>
+            <div class="form-grid">
+              <label>Endpoint URL<input placeholder="https://example.com/chainfx/webhook"></label>
+              <label>Environment<select><option>Sandbox</option><option>Production</option></select></label>
+              <label class="span-2">Events<input value="purchase.completed,capability.executed,capability.failed,settlement.completed,quota.low"></label>
+              <label class="span-2">Signing secret<input placeholder="whsec_..."></label>
+            </div>
+          </article>
+        </section>
+
+        <section class="section" data-section="policies"><article class="panel"><div class="panel-head"><h2>Policies</h2><span class="badge ok">Institutional controls</span></div><div id="policiesPanel"></div></article></section>
+        <section class="section" data-section="logs"><article class="panel"><h2>Logs</h2><p class="muted">Use the Executions and Activity sections for request ID, idempotency key, provider, cost and audit trail.</p></article></section>
+        <section class="section" data-section="settings"><article class="panel"><h2>Settings</h2><p class="muted">Workspace settings, notifications, team access and environment controls.</p></article></section>
+      </main>
+    </div>
+    <script type="module" src="../shared/console.js"></script>
+  </body>
+</html>

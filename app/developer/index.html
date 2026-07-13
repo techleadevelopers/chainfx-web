@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChainFX Developer Console</title>
+    <link rel="stylesheet" href="../shared/console.css">
+  </head>
+  <body class="console-page" data-workspace="developer">
+    <main id="developerLoginView" class="developer-login">
+      <form id="developerLoginForm" class="developer-login-card" autocomplete="on">
+        <img class="developer-login-logo" src="https://res.cloudinary.com/limpeja/image/upload/v1783623705/Green_Modern_Marketing_Logo-removebg-preview_1_yivrrc.png" alt="ChainFX">
+        <div>
+          <h1>Developer Console</h1>
+          <p>Acesse projetos, API keys, MCP, produtos e billing.</p>
+        </div>
+        <label>Login<input id="developerLoginEmail" name="email" type="text" autocomplete="username" required placeholder="email@empresa.com"></label>
+        <label>Senha<input id="developerLoginPassword" name="password" type="password" autocomplete="current-password" required placeholder="Senha"></label>
+        <p id="developerLoginError" class="developer-login-error" hidden></p>
+        <button id="developerLoginSubmit" class="btn primary" type="submit">Entrar</button>
+      </form>
+    </main>
+
+    <div id="developerConsoleShell" class="console-shell hidden">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">CFX</div>
+          <div><strong>ChainFX</strong><span>Developers</span></div>
+        </div>
+        <nav class="nav-section" aria-label="Developer Console">
+          <button class="nav-button active" data-section-target="overview">Overview</button>
+          <button class="nav-button" data-section-target="projects">Projects</button>
+          <button class="nav-button" data-section-target="apikeys">API Keys</button>
+          <button class="nav-button" data-section-target="mcp">MCP Connections</button>
+          <button class="nav-button" data-section-target="capabilities">Capabilities</button>
+          <button class="nav-button" data-section-target="products">Products</button>
+          <button class="nav-button" data-section-target="requests">Requests</button>
+          <button class="nav-button" data-section-target="webhooks">Webhooks</button>
+          <button class="nav-button" data-section-target="provider">Publish Capability</button>
+          <button class="nav-button" data-section-target="billing">Billing</button>
+          <button class="nav-button" data-section-target="logs">Logs</button>
+          <button class="nav-button" data-section-target="settings">Settings</button>
+        </nav>
+        <div class="sidebar-footer">
+          Build, publish, meter and settle APIs for autonomous agents.
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div class="title-block">
+            <h1>Developer Console</h1>
+            <p>Projects, API keys, MCP clients, capabilities, provider publishing, logs and billing.</p>
+          </div>
+          <div class="auth-strip">
+            <span id="connectionStatus" class="badge warn">Offline</span>
+            <select aria-label="Project"><option>Agent Production</option><option>Agent Sandbox</option><option>Internal Treasury</option></select>
+            <input id="apiBase" type="url" aria-label="API base URL">
+            <input id="apiKey" class="hidden" type="password" aria-label="API key" placeholder="Bearer API key">
+            <button id="saveConnection" class="btn primary hidden" type="button">Connect</button>
+            <button id="developerLogout" class="btn" type="button">Sair</button>
+          </div>
+        </header>
+
+        <section class="section active" data-section="overview">
+          <div id="metricGrid" class="metric-grid"></div>
+          <div class="grid-2">
+            <article class="panel">
+              <div class="panel-head"><h2>Requests Over Time</h2><span class="badge">p50 / p95 / p99</span></div>
+              <div id="spendChart" class="chart">
+                <div class="bar" style="height:40%" data-label="Mon"></div><div class="bar" style="height:55%" data-label="Tue"></div><div class="bar" style="height:48%" data-label="Wed"></div><div class="bar" style="height:80%" data-label="Thu"></div><div class="bar" style="height:72%" data-label="Fri"></div>
+              </div>
+            </article>
+            <article class="panel">
+              <div class="panel-head"><h2>Recent Events</h2><span class="badge ok">Live</span></div>
+              <ul id="developerEvents" class="activity-list"></ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="section" data-section="projects">
+          <article class="panel">
+            <div class="panel-head"><h2>Projects</h2><button class="btn primary">+ Create Project</button></div>
+            <form id="projectForm" class="form-grid" style="margin-bottom:16px">
+              <label>Project name<input name="name" required placeholder="Production Platform"></label>
+              <label>Environment<select name="environment"><option value="sandbox">Sandbox</option><option value="production">Production</option></select></label>
+              <label class="span-2">Description<input name="description" placeholder="Main production integration for agents and API traffic"></label>
+              <label>Spending limit USDT<input name="spendingLimitUsdt" value="10000"></label>
+              <label>Status<select name="status"><option value="active">Active</option><option value="disabled">Disabled</option><option value="archived">Archived</option></select></label>
+              <div class="span-2"><button class="btn primary" type="submit">Create Project</button></div>
+            </form>
+            <div id="projectsTable" class="table-wrap"></div>
+          </article>
+        </section>
+
+        <section class="section" data-section="apikeys">
+          <article class="panel">
+            <div class="panel-head"><h2>API Keys</h2><button class="btn primary">+ Create API Key</button></div>
+            <form id="apiKeyForm" class="form-grid" style="margin-bottom:16px">
+              <label>Key name<input name="name" required placeholder="Production server key"></label>
+              <label>Project<select id="apiKeyProject" name="projectId"></select></label>
+              <label>Environment<select name="environment"><option value="sandbox">Sandbox</option><option value="production">Production</option></select></label>
+              <label>Expiration days<input name="expirationDays" type="number" min="0" value="90"></label>
+              <label>IP restrictions<input name="ipRestrictions" placeholder="203.0.113.0/24, 198.51.100.10"></label>
+              <label>Rate limit<input name="rateLimitPerMinute" type="number" min="1" value="600"></label>
+              <label>Spending limit USDT<input name="spendingLimitUsdt" value="1000"></label>
+              <label class="span-2">Scopes<input name="scopes" value="rates:read,orders:read,orders:create,capabilities:read,capabilities:purchase,capabilities:execute,mcp:connect,webhooks:write,admin:read"></label>
+              <div class="span-2"><button class="btn primary" type="submit">Create API Key</button></div>
+            </form>
+            <p class="muted">Secret keys appear once. Existing keys are always masked.</p>
+            <pre id="apiKeySecretResult" style="margin-bottom:16px">Create or rotate a key to reveal its secret once.</pre>
+            <div id="apiKeysTable" class="table-wrap"></div>
+          </article>
+        </section>
+
+        <section class="section" data-section="mcp">
+          <article class="panel">
+            <div class="panel-head"><h2>MCP Connections</h2><button class="btn primary">+ Connect MCP Client</button></div>
+            <div class="filters">
+              <span class="filter-pill">Claude Desktop</span><span class="filter-pill">OpenAI Agent</span><span class="filter-pill">Cursor</span><span class="filter-pill">Codex</span><span class="filter-pill">LangGraph</span><span class="filter-pill">CrewAI</span><span class="filter-pill">Custom Client</span>
+            </div>
+            <div id="mcpConnections" class="grid-2"></div>
+          </article>
+        </section>
+
+        <section class="section" data-section="capabilities">
+          <article class="panel">
+            <div class="panel-head"><h2>Capabilities</h2><button class="btn primary" data-section-target="provider">+ Publish Capability</button></div>
+            <div class="grid-3" data-capability-grid></div>
+          </article>
+        </section>
+
+        <section class="section" data-section="products">
+          <article class="panel">
+            <div class="panel-head"><h2>Products</h2><span class="badge">Plans + pricing</span></div>
+            <div id="productsTable" class="table-wrap"></div>
+          </article>
+        </section>
+
+        <section class="section" data-section="requests">
+          <article class="panel">
+            <div class="panel-head"><h2>API Explorer</h2><button id="explorerSend" class="btn primary" type="button">Send Request</button></div>
+            <div class="explorer">
+              <div id="endpointList" class="endpoint-list"></div>
+              <div>
+                <h3><span id="explorerMethod">POST</span> <span id="explorerPath">/agent/v1/trade/quote</span></h3>
+                <textarea id="explorerBody" style="width:100%;min-height:280px;border:1px solid var(--line);border-radius:8px;padding:12px">{ "payAsset": "USDT", "receiveAsset": "USDC", "amount": 100 }</textarea>
+              </div>
+              <div>
+                <h3>Response</h3>
+                <pre id="explorerResult">Status, duration, request ID and formatted response appear here.</pre>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="section" data-section="webhooks">
+          <article class="panel">
+            <div class="panel-head"><h2>Webhooks</h2><button class="btn primary">+ Add Endpoint</button></div>
+            <div class="form-grid">
+              <label>Endpoint URL<input placeholder="https://example.com/webhook"></label>
+              <label>Environment<select><option>Sandbox</option><option>Production</option></select></label>
+              <label class="span-2">Events<input value="payment.created,payment.completed,purchase.completed,capability.executed,capability.failed,settlement.completed,quota.low"></label>
+              <label class="span-2">Description<input placeholder="Production settlement webhook"></label>
+            </div>
+          </article>
+        </section>
+
+        <section class="section" data-section="provider">
+          <article class="panel">
+            <div class="panel-head"><h2>Publish Capability</h2><button class="btn primary">Publish to Sandbox</button></div>
+            <div class="form-grid">
+              <label>Capability ID<input placeholder="document_ocr"></label>
+              <label>Display name<input placeholder="Document OCR"></label>
+              <label>Category<select><option>AI</option><option>Compliance</option><option>Finance</option><option>Documents</option><option>Infrastructure</option></select></label>
+              <label>Version<input value="v1"></label>
+              <label class="span-2">Description<input placeholder="Extract text and structured fields from documents."></label>
+              <label class="span-2">Input JSON Schema<textarea>{ "type": "object", "properties": { "documentUrl": { "type": "string" } } }</textarea></label>
+              <label class="span-2">Output JSON Schema<textarea>{ "type": "object", "properties": { "text": { "type": "string" } } }</textarea></label>
+              <label>Execution URL<input placeholder="https://provider.example.com/execute"></label>
+              <label>Health check<input placeholder="https://provider.example.com/health"></label>
+              <label>Timeout<input value="30s"></label>
+              <label>Region<input value="global"></label>
+              <label>Price per unit<input value="0.08 USDT"></label>
+              <label>Settlement wallet<input placeholder="0x..."></label>
+            </div>
+            <div id="providerPublish" style="margin-top:16px"></div>
+          </article>
+        </section>
+
+        <section class="section" data-section="billing">
+          <article class="panel">
+            <div class="panel-head"><h2>Billing</h2><span class="badge">Costs + provider revenue</span></div>
+            <div id="billingPanel" class="table-wrap"></div>
+          </article>
+        </section>
+
+        <section class="section" data-section="logs">
+          <article class="panel">
+            <h2>Logs</h2>
+            <p class="muted">Filter by environment, project, agent, API key, endpoint, tool, status and date. Logs expose request ID, cost, units and copyable curl/JSON payloads through the API Explorer and dashboard endpoints.</p>
+          </article>
+        </section>
+
+        <section class="section" data-section="settings">
+          <article class="panel"><h2>Settings</h2><p class="muted">Team permissions, documentation links, notifications and production controls.</p></article>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="../shared/console.js"></script>
+  </body>
+</html>
