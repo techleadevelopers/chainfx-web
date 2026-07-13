@@ -799,7 +799,7 @@
 <body>
   <section class="admin-login" id="adminLogin" aria-labelledby="adminLoginTitle">
     <form class="login-card" id="adminLoginForm">
-      <img src="https://res.cloudinary.com/limpeja/image/upload/v1783623705/Green_Modern_Marketing_Logo-removebg-preview_1_yivrrc.png" alt="ChainFX">
+      <img src="https://res.cloudinary.com/limpeja/image/upload/v1783827392/ChatGPT_Image_11_de_jul._de_2026__14_58_51-removebg-preview_gkr7aj.png" alt="ChainFX">
       <h1 id="adminLoginTitle">Admin operacional</h1>
       <p>Entre com seu email e senha de administrador. O painel só libera dados depois que o backend confirmar a sessão.</p>
       <div class="login-form">
@@ -828,7 +828,7 @@
   <div class="shell admin-locked" id="adminShell" aria-hidden="true">
     <aside class="sidebar">
       <div class="brand">
-        <img src="https://res.cloudinary.com/limpeja/image/upload/v1783623705/Green_Modern_Marketing_Logo-removebg-preview_1_yivrrc.png" alt="ChainFX">
+        <img src="https://res.cloudinary.com/limpeja/image/upload/v1783827392/ChatGPT_Image_11_de_jul._de_2026__14_58_51-removebg-preview_gkr7aj.png" alt="ChainFX">
       </div>
       <nav class="nav" aria-label="Admin">
         <button class="active" data-section="overview" type="button">
@@ -1138,9 +1138,9 @@
           '',
         adminEmail: localStorage.getItem('SWAPPY_ADMIN_EMAIL') || '',
         adminUser: null,
-        transactions: loadLocal('swappy.admin.transactions', []),
-        events: loadLocal('swappy.admin.events', []),
-        telemetry: loadLocal('swappy.admin.telemetry', []),
+        transactions: [],
+        events: [],
+        telemetry: [],
         alerts: []
       };
 
@@ -1379,18 +1379,13 @@
           return;
         } catch (error) {
           logTelemetry('/api/admin/overview', 'unavailable', performance.now() - started, error.message);
+          state.transactions = [];
+          state.events = [];
+          state.alerts = [{ type: 'admin_overview', item: error.message, at: new Date().toISOString() }];
+          $('rawJson').textContent = JSON.stringify({ error: error.message }, null, 2);
+          renderAll();
+          return;
         }
-
-        const fallbackStarted = performance.now();
-        try {
-          const logs = await request('/developers/logs?limit=100');
-          if (Array.isArray(logs.events)) mergeEvents(logs.events);
-          logTelemetry('/developers/logs', 'ok', performance.now() - fallbackStarted);
-        } catch (error) {
-          logTelemetry('/developers/logs', 'unavailable', performance.now() - fallbackStarted, error.message);
-        }
-        persist();
-        renderAll();
       }
 
       async function loadOrderById() {
@@ -1732,9 +1727,7 @@
       }
 
       function persist() {
-        localStorage.setItem('swappy.admin.transactions', JSON.stringify(state.transactions));
-        localStorage.setItem('swappy.admin.events', JSON.stringify(state.events));
-        localStorage.setItem('swappy.admin.telemetry', JSON.stringify(state.telemetry));
+        sessionStorage.setItem('swappy.admin.telemetry', JSON.stringify(state.telemetry.slice(-200)));
       }
 
       function updateApiKeyLabel() {
