@@ -134,6 +134,113 @@ Swappy financial é uma stack de on/off-ramp focada em “Sell” (usuário envi
 
 Frontend acessa `http://localhost:3000/api/price` por padrão; defina `window.API_BASE` no console se usar outra origem.
 
+## Agent Console e Developer Console
+
+Workspaces adicionados no frontend Vite:
+
+- `http://localhost:5173/app/agent/`
+- `http://localhost:5173/app/developer/`
+
+Arquivos principais:
+
+- `app/agent/index.html`: Agent Console.
+- `app/developer/index.html`: Developer Console.
+- `app/shared/console.css`: design system compartilhado, alinhado ao visual da `index.html`.
+- `app/shared/console.js`: cliente HTTP, render, forms, API Explorer e actions.
+- `vite.config.js`: entradas Vite `agentConsole` e `developerConsole`.
+
+### Backend esperado
+
+Por padrão, os consoles usam:
+
+```text
+http://localhost:8080
+```
+
+O backend pode ser alterado no topo da interface pelo campo `API base URL`. A API key deve ser enviada como Bearer no campo `API key`.
+
+Endpoints consumidos:
+
+- `GET /app/agent/summary`
+- `GET /app/developer/summary`
+- `POST /agent/connect`
+- `GET /agent/{id}/policy`
+- `PATCH /agent/{id}/policy`
+- `GET /developer/projects`
+- `POST /developer/projects`
+- `PATCH /developer/projects/{id}`
+- `GET /developer/api-keys`
+- `POST /developer/projects/{id}/api-keys`
+- `POST /developer/api-keys/{id}/rotate`
+- `POST /developer/api-keys/{id}/disabled`
+- `POST /developer/api-keys/{id}/revoked`
+
+### Funcionalidade entregue
+
+Agent Console:
+
+- overview de agentes, saldo, gasto, quota e settlements;
+- lista de agents;
+- marketplace visual de capabilities;
+- purchases, executions, wallet, usage/costs e settlements;
+- criação de agente com policy real;
+- envio de `allowedAssets`, `allowedCapabilities`, `allowedProviders`, `permissions`, limites e fallback;
+- leitura de policy real no resumo.
+
+Developer Console:
+
+- overview técnico;
+- CRUD inicial de Projects;
+- criação de API Keys reais por projeto;
+- secret exibido uma única vez;
+- rotate, disable e revoke de API key;
+- listagem de scopes, status e usage;
+- MCP connection config;
+- API Explorer inicial;
+- provider publish form visual;
+- billing/webhooks/logs visuais.
+
+### Build
+
+```bash
+npm run build
+```
+
+Saídas geradas:
+
+- `dist/app/agent/index.html`
+- `dist/app/developer/index.html`
+
+### E2E/MCP
+
+Os testes E2E/MCP ficam no backend Go (`payment-gateway/tests/e2e`) e são opt-in:
+
+```env
+RUN_E2E_TESTS=false
+RUN_TESTNET_PAYMENT_TESTS=false
+RUN_LIVE_PAYMENT_TESTS=false
+E2E_BASE_URL=http://localhost:8080
+E2E_API_KEY=
+E2E_AGENT_WALLET=0x0000000000000000000000000000000000001001
+E2E_PAYER_WALLET=0x0000000000000000000000000000000000001001
+E2E_DEST_WALLET=0x0000000000000000000000000000000000001001
+E2E_PAYMENT_ASSET=USDT
+E2E_PIX_KEY=e2e@example.com
+E2E_TEST_WALLET_PRIVATE_KEY=
+E2E_TEST_TX_HASH=
+E2E_TEST_LOG_INDEX=0
+LIVE_PAYMENT_MAX_USD=1.00
+LIVE_PAYMENT_CONFIRMATION_REQUIRED=true
+```
+
+Rodar E2E:
+
+```powershell
+$env:RUN_E2E_TESTS="true"
+$env:E2E_API_KEY="sk_test_cfx_..."
+go test ./tests/e2e -v
+```
+
 ## Configuração (.env)
 ```
 RPC_URL=...              # RPC da rede (use sepolia/goerli para testes)
