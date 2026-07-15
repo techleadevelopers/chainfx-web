@@ -104,20 +104,20 @@
   }
 
 .order-summary-step2 p {
-  margin: 0px 0; /* EspaÃ§amento entre os parÃ¡grafos (Pagar e Receber) */
+  margin: 0px 0; /* EspaÃ§amento entre os parágrafos (Pagar e Receber) */
   font-size: 0.9em; /* Tamanho da fonte um pouco maior */
   color: #333; /* Cor do texto principal */
   
 }
 
 .order-summary-step2 strong {
-  color: #6c63ff; /* Cor de destaque para os valores (roxa primÃ¡ria) */
+  color: #6c63ff; /* Cor de destaque para os valores (roxa primária) */
   font-weight: 500; /* Deixa os valores em negrito */
   
 }
 
 
-/* Ajuste para o layout do card se necessÃ¡rio */
+/* Ajuste para o layout do card se necessário */
 
 
 @keyframes buttonGlow {
@@ -170,7 +170,7 @@
 #three-background {
   position: fixed;
   inset: 0;
-  z-index: -2; /* atrÃ¡s de partÃ­culas/background-glow */
+  z-index: -2; /* atrás de partÃ­culas/background-glow */
   pointer-events: none;
   display: none;
 }
@@ -209,7 +209,7 @@
 .background-glow {
   position: fixed;
   inset: 0;
-  z-index: -2; /* atrÃ¡s de partÃ­culas/background-glow */
+  z-index: -2; /* atrás de partÃ­culas/background-glow */
   pointer-events: none;
   background:
     radial-gradient(circle at 3% 2%, rgba(123, 63, 228, 0.28) 0%, rgba(10, 14, 39, 0) 5%),
@@ -278,7 +278,7 @@
   display: flex;
   align-items: center;
   position: relative;
-  height: 40px; /* mantÃ©m header na mesma altura */
+  height: 40px; /* mantém header na mesma altura */
   margin-left: -6px; /* puxa ligeiramente para a esquerda */
 }
 
@@ -1204,7 +1204,7 @@ body.pricing-mode .pricing-view {
   margin-bottom: 30px;
   margin-top: 10px;
   font-weight: 700;
-  min-height: 2.4em; /* mantÃ©m altura estÃ¡vel mesmo enquanto o texto Ã© reescrito */
+  min-height: 2.4em; /* mantém altura estável mesmo enquanto o texto é reescrito */
 }
 
 .hero-title .title-text {
