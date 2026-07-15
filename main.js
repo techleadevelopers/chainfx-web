@@ -1114,7 +1114,7 @@ const updateStep = (step) => {
       if (state.action === 'sell') {
         if (paymentStatusLabel) paymentStatusLabel.textContent = paymentStatusLabel.textContent || 'Aguardando deposito';
         if (paymentBtcAmountDisplay) paymentBtcAmountDisplay.textContent = `${(state.payAmount || 0).toFixed(6)} USDT`;
-        if (paymentWalletDisplay) paymentWalletDisplay.textContent = priceState.sellWallet;
+        if (paymentWalletDisplay && !paymentWalletDisplay.textContent) paymentWalletDisplay.textContent = getReceiveDisplayValue();
       } else {
         if (paymentStatusLabel) paymentStatusLabel.textContent = 'Pagamento identificado';
         if (paymentBtcAmountDisplay) paymentBtcAmountDisplay.textContent = getReceiveDisplayValue();
@@ -1691,7 +1691,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const status = data.status || 'aguardando_deposito';
     if (orderStatusEl) orderStatusEl.textContent = status;
     if (paymentStatusLabelEl) paymentStatusLabelEl.textContent = sellStatusMessage(status);
-    if (statusMessage) statusMessage.textContent = sellStatusMessage(status);
+    if (statusMessage) statusMessage.textContent = '';
     const tx = data.depositTx || data.deposit_tx || data.txHash || data.tx_hash || '';
     if (tx) updatePaymentTxHash(tx);
     const depositAmount = data.depositAmount || data.deposit_amount;
@@ -1959,11 +1959,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
       const selectedNetwork = normalizeSellNetwork(state.sellNetwork);
+      const payoutBRL = parseFloat(receiveAmountInput?.value || '0') || 0;
       const resp = await fetch(`${API_BASE}/api/order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amountUSDT,
+          amountBRL: payoutBRL,
           asset: 'USDT',
           network: selectedNetwork,
           pixCpf: cpf,
@@ -1984,18 +1986,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       setSelectedSellNetwork(data.network || selectedNetwork);
       state.totalPayAmount = amountUSDT;
       state.platformFee = Number(data.spreadBRL || data.feeBRL || 0) || 0;
-      if (receiveAmountInput && data.payoutBRL) receiveAmountInput.value = Number(data.payoutBRL).toFixed(2);
+      const pixReceiveBRL = Number(data.payoutBRL || payoutBRL || receiveAmountInput?.value || 0);
+      if (receiveAmountInput && pixReceiveBRL > 0) receiveAmountInput.value = pixReceiveBRL.toFixed(2);
       if (orderIdEl) orderIdEl.textContent = currentSellId || '-';
       if (orderStatusEl) orderStatusEl.textContent = data.status || 'aguardando_deposito';
       if (depositAddressEl) depositAddressEl.textContent = data.depositAddress || data.address || priceState.sellWallet;
       if (sellDepositAddressInput) sellDepositAddressInput.value = data.depositAddress || data.address || priceState.sellWallet;
       if (paymentBtcAmountEl) paymentBtcAmountEl.textContent = `${amountUSDT.toFixed(6)} USDT`;
-      if (paymentWalletEl) paymentWalletEl.textContent = data.depositAddress || data.address || priceState.sellWallet;
+      if (paymentWalletEl) paymentWalletEl.textContent = pixReceiveBRL > 0 ? `R$ ${pixReceiveBRL.toFixed(2).replace('.', ',')}` : getReceiveDisplayValue();
       if (paymentStatusLabelEl) paymentStatusLabelEl.textContent = 'Aguardando deposito';
       if (sellDepositBlock) sellDepositBlock.classList.remove('hidden');
       updatePaymentTxHash(data.depositTx || data.txHash || '');
       updateOrderSummaries();
       applySellStatus(data);
+      updateStep(5);
       if (currentSellId) startSellStream(currentSellId);
       return data;
     } catch (err) {
@@ -2265,17 +2269,23 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
   }
 
-  if (sellDepositCopyBtn && sellDepositAddressInput) {
+  if (sellDepositCopyBtn) {
       sellDepositCopyBtn.addEventListener('click', async () => {
-          const value = sellDepositAddressInput.value || '';
+          const value = document.getElementById('sellDepositWallet')?.textContent?.trim() || sellDepositAddressInput?.value || '';
           if (!value) return;
           try {
               if (navigator.clipboard?.writeText) {
                   await navigator.clipboard.writeText(value);
               } else {
-                  sellDepositAddressInput.select();
+                  const temp = document.createElement('textarea');
+                  temp.value = value;
+                  temp.setAttribute('readonly', '');
+                  temp.style.position = 'fixed';
+                  temp.style.opacity = '0';
+                  document.body.appendChild(temp);
+                  temp.select();
                   document.execCommand('copy');
-                  sellDepositAddressInput.blur();
+                  temp.remove();
               }
               sellDepositCopyBtn.classList.add('copied');
               setTimeout(() => sellDepositCopyBtn.classList.remove('copied'), 1300);
