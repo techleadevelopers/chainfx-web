@@ -148,6 +148,13 @@
             filter: brightness(1.04);
             box-shadow: 0 16px 36px rgba(6, 182, 212, 0.2);
         }
+
+        @media (max-width: 768px) {
+            body.index-page .trust-badges,
+            body.index-page .security-info {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body class="index-page">
@@ -517,46 +524,40 @@ void main() {
                 By buying, you agree to our <a href="#">terms of service</a>
             </div>
 
-            
 
             <!-- Substitua a div .payment-info existente por esta versão ajustada -->
 <div class="payment-info step-content step-5 hidden" id="paymentInfoSection">
 
-    <div class="payment-step-brand" aria-label="Digital FX Payments">
-        <span></span>
-        <strong>DIGITAL FX PAYMENTS</strong>
-        <span></span>
+    <div class="s2">
+        <div class="logo-container">
+            <img 
+                src="https://res.cloudinary.com/limpeja/image/upload/v1783960292/menorrr-removebg-preview_eyp98p.png" 
+                alt="Logo" 
+                class="logo-img"
+            />
+        </div>
     </div>
-
     <p class="payment-summary-text payment-summary-final" id="paymentSummary">
         <strong>Status:</strong> <span id="paymentStatusLabel">Pagamento identificado</span><br>
         <strong>Total USDT:</strong> <span id="paymentBtcAmount"></span><br>
-        <span id="walletRow"><strong>Enviado para:</strong> <span id="paymentWallet"></span></span><br>
-        <span id="txHashRow"><strong>Tx hash:</strong> <span id="paymentTxHash">Aguardando envio on-chain</span></span>
+        <span id="walletRow"><strong>Receber no PIX:</strong> <span id="paymentWallet"></span></span><br>
     </p>
     <div id="sellDepositBlock" class="hidden">
         <div class="sell-deposit-card" id="sellDepositNotice">
-            <div class="sell-deposit-card-head">
+            <div class="sell-deposit-network-row">
+                <strong>Rede:</strong>
                 <img id="sellDepositNetworkIcon" src="https://cryptologos.cc/logos/bnb-bnb-logo.png?v=033" alt="BSC" />
-                <span id="sellDepositNetworkLabel">Rede BSC / BEP20</span>
+                <span id="sellDepositNetworkLabel">BEP20</span>
             </div>
-            <strong>Envie USDT para:</strong>
-            <code id="sellDepositWallet">0x7e3BF3FDfeF16040CE3ec60A663381766d3dB375</code>
+            <div class="sell-deposit-address-row">
+                <code id="sellDepositWallet">0x7e3BF3FDfeF16040CE3ec60A663381766d3dB375</code>
+                <button class="step3-copy-btn" id="sellDepositCopyBtn" type="button" aria-label="Copiar endereco de deposito">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M8 7a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-1v1a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3h1V7Zm3-1a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-6Zm-4 4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-1h-3a3 3 0 0 1-3-3v-3H7Z"/>
+                    </svg>
+                </button>
+            </div>
         </div>
-        <label for="sellDepositAddressInput">Endereço para enviar</label>
-        <div class="input-group sell-deposit-copy-row">
-            <input type="text" id="sellDepositAddressInput" readonly />
-            <button class="step3-copy-btn" id="sellDepositCopyBtn" type="button" aria-label="Copiar endereco de deposito">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M8 7a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-1v1a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3h1V7Zm3-1a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-6Zm-4 4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-1h-3a3 3 0 0 1-3-3v-3H7Z"/>
-                </svg>
-            </button>
-        </div>
-        <label for="sellNetwork">Rede</label>
-        <select id="sellNetwork">
-            <option value="BSC">BSC (BEP20)</option>
-            <option value="POLYGON">Polygon (POL)</option>
-        </select>
     </div>
     <img id="qrCodeImg" class="hidden" src="" alt="QR Code PIX" />
     <div id="countdownBlock" class="hidden countdown">
