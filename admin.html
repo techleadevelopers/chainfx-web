@@ -67,6 +67,10 @@
       padding-top: 0;
     }
 
+    body.admin-page {
+      padding-top: 0 !important;
+    }
+
     body::before,
     body::after {
       content: none !important;
@@ -602,6 +606,11 @@
         radial-gradient(circle at 84% 18%, rgba(59, 130, 246, 0.24), transparent 34%);
       border-color: rgba(59, 130, 246, 0.26);
       box-shadow: 0 20px 44px rgba(15, 23, 42, 0.18);
+    }
+
+    main .tests-hero .panel-head,
+    main .neon-chart .panel-head {
+      background: transparent;
     }
 
     main .tests-card,
@@ -1708,7 +1717,7 @@
     }
   </style>
 </head>
-<body>
+<body class="admin-page">
   <section class="admin-login" id="adminLogin" aria-labelledby="adminLoginTitle">
     <form class="login-card" id="adminLoginForm">
       <img src="https://res.cloudinary.com/limpeja/image/upload/v1783827392/ChatGPT_Image_11_de_jul._de_2026__14_58_51-removebg-preview_gkr7aj.png" alt="ChainFX">
