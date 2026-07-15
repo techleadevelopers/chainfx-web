@@ -344,6 +344,32 @@
   position: relative;
 }
 
+/* Estilo da div principal */
+.s2 {
+  width: 100%;
+  height: 7vh; /* ou a altura que você quiser */
+  position: relative;
+  transform: translateY(-19%);
+  display: flex;
+  justify-content: center; /* centraliza horizontalmente */
+  align-items: center;     /* centraliza verticalmente */
+}
+
+/* Container da logo */
+.logo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Estilo da imagem */
+.logo-img {
+  max-width: 150px;  /* ajuste o tamanho conforme quiser */
+  height: auto;
+  display: block;
+
+}
+
 .swap-card:has(#step3:not(.hidden)) {
   width: min(100%, 430px);
   max-width: 430px;
@@ -691,12 +717,17 @@
 
 #paymentInfoSection .payment-summary-final {
   width: 100%;
+  font-size: 0.855rem;
 }
 
 #paymentInfoSection #paymentWallet,
 #paymentInfoSection #paymentTxHash {
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+#paymentInfoSection #paymentWallet {
+  color: #145aa0;
 }
 
 .tx-hash-link {
@@ -854,7 +885,7 @@
 
 /* index.css */
 
-/* Estilos para a seÃ§Ã£o de informaÃ§Ãµes de pagamento (Ultra Moderno e Robusto - Ajustado) */
+/* Estilos para a seção de informaÃ§Ãµes de pagamento (Ultra Moderno e Robusto - Ajustado) */
 .payment-info {
   margin-top: 12px;
   padding: 0;
@@ -1195,13 +1226,39 @@
   font-size: 0.78rem;
 }
 
+.sell-deposit-network-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: #173b65;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.sell-deposit-network-row img {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.sell-deposit-address-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  gap: 8px;
+  align-items: stretch;
+}
+
 .sell-deposit-card code {
-  display: block;
+  display: flex;
+  align-items: center;
   overflow-wrap: anywhere;
   font-size: 0.76rem;
   line-height: 1.35;
   color: #145aa0;
   background: transparent;
+  min-width: 0;
 }
 
 .qr-code-container {
