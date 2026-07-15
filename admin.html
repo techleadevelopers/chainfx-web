@@ -13,6 +13,8 @@
   <link rel="stylesheet" href="css/theme.css">
   <link rel="stylesheet" href="css/responsive.css">
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap');
+
     :root {
       color-scheme: light;
       --bg:
@@ -32,6 +34,26 @@
       --red-soft: #fdecea;
       --teal: var(--secondary-color, #00E8FF);
       --shadow: 0 22px 60px rgba(15, 23, 42, 0.1);
+      --lab-font-sans: 'Outfit', Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --lab-font-mono: 'JetBrains Mono', "SFMono-Regular", Consolas, monospace;
+      --lab-bg: #f8fafc;
+      --lab-ink: #0f1729;
+      --lab-muted: #64748b;
+      --lab-border: #e2e8f0;
+      --lab-card: rgba(255, 255, 255, 0.94);
+      --lab-soft: #f1f5f9;
+      --lab-primary: #3b82f6;
+      --lab-primary-2: #0ea5e9;
+      --lab-purple: #a855f7;
+      --lab-teal: #14b8a6;
+      --lab-success: #10b981;
+      --lab-warning: #f59e0b;
+      --lab-danger: #ef4444;
+      --lab-shadow-sm: 0 1px 3px rgba(30, 58, 138, 0.08), 0 1px 2px -1px rgba(30, 58, 138, 0.06);
+      --lab-shadow-md: 0 10px 15px -3px rgba(30, 58, 138, 0.08), 0 4px 6px -4px rgba(30, 58, 138, 0.05);
+      --lab-shadow-lg: 0 20px 25px -5px rgba(30, 58, 138, 0.10), 0 8px 10px -6px rgba(30, 58, 138, 0.05);
+      --lab-shadow-xl: 0 25px 50px -12px rgba(30, 58, 138, 0.18);
+      --lab-glow: 0 8px 24px -8px rgba(37, 99, 235, 0.35);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
@@ -322,6 +344,301 @@
       gap: 14px;
     }
 
+    main {
+      font-family: var(--lab-font-sans);
+    }
+
+    main h1,
+    main h2,
+    main h3,
+    main .panel-head h2,
+    main .executive-title h2 {
+      color: var(--lab-ink);
+      font-family: var(--lab-font-mono);
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+
+    main h1 {
+      font-size: 28px;
+      font-weight: 500;
+      color: var(--lab-primary);
+    }
+
+    main .subhead,
+    main .panel-head p,
+    main .executive-title p,
+    main .empty,
+    main .notice {
+      color: var(--lab-muted);
+      font-family: var(--lab-font-sans);
+      line-height: 1.55;
+    }
+
+    main .panel,
+    main .kpi,
+    main .health-tile,
+    main .ops-tile,
+    main .metric-box,
+    main .executive-card,
+    main .ceo-block,
+    main .ceo-metric,
+    main .tests-card,
+    main .trace-node,
+    main .login-card {
+      border-color: rgba(226, 232, 240, 0.96);
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.92));
+      box-shadow: var(--lab-shadow-md);
+    }
+
+    main .panel {
+      overflow: hidden;
+      backdrop-filter: blur(18px);
+    }
+
+    main .panel:hover,
+    main .kpi:hover,
+    main .health-tile:hover,
+    main .ops-tile:hover,
+    main .metric-box:hover,
+    main .executive-card:hover,
+    main .ceo-metric:hover,
+    main .tests-card:hover {
+      border-color: rgba(59, 130, 246, 0.24);
+      box-shadow: var(--lab-shadow-lg);
+      transform: translateY(-1px);
+    }
+
+    main .panel,
+    main .kpi,
+    main .health-tile,
+    main .ops-tile,
+    main .metric-box,
+    main .executive-card,
+    main .ceo-metric,
+    main .tests-card {
+      transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease, background .18s ease;
+    }
+
+    main .panel-head {
+      background: linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(241, 245, 249, 0.72));
+      border-bottom-color: var(--lab-border);
+    }
+
+    main .kpi label,
+    main .health-tile strong,
+    main .ops-tile strong,
+    main .metric-box label,
+    main .executive-card label,
+    main .ceo-metric label,
+    main .tests-card label,
+    main th,
+    main .field label,
+    main .badge {
+      font-family: var(--lab-font-mono);
+      letter-spacing: .04em;
+    }
+
+    main .kpi label,
+    main .metric-box label,
+    main .executive-card label,
+    main .ceo-metric label,
+    main .tests-card label,
+    main .field label {
+      color: var(--lab-muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    main .kpi strong,
+    main .metric-box strong,
+    main .executive-card strong,
+    main .ceo-metric strong,
+    main .tests-card strong,
+    main .health-main,
+    main .kv-mini b,
+    main td code {
+      color: var(--lab-ink);
+      font-family: var(--lab-font-mono);
+      font-weight: 700;
+    }
+
+    main .kpi strong,
+    main .executive-card strong,
+    main .tests-card strong {
+      font-size: 28px;
+      letter-spacing: 0;
+    }
+
+    main .btn {
+      border-color: rgba(226, 232, 240, 0.98);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--lab-ink);
+      box-shadow: var(--lab-shadow-sm);
+      font-family: var(--lab-font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .02em;
+      transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background .16s ease;
+    }
+
+    main .btn:hover {
+      border-color: rgba(59, 130, 246, 0.34);
+      background: rgba(248, 250, 252, 0.98);
+      box-shadow: var(--lab-shadow-md);
+      transform: translateY(-1px);
+    }
+
+    main .btn.primary {
+      border-color: transparent;
+      background: linear-gradient(135deg, var(--lab-primary), var(--lab-primary-2));
+      color: #fff;
+      box-shadow: var(--lab-glow);
+    }
+
+    main input,
+    main select {
+      border-color: var(--lab-border);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.94);
+      color: var(--lab-ink);
+      font-family: var(--lab-font-mono);
+      font-size: 12px;
+      box-shadow: inset 0 1px 2px rgba(30, 58, 138, 0.03);
+      transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+    }
+
+    main input:focus,
+    main select:focus {
+      border-color: var(--lab-primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.14);
+    }
+
+    main table {
+      color: var(--lab-ink);
+      font-family: var(--lab-font-sans);
+      font-size: 12px;
+    }
+
+    main th {
+      background: rgba(241, 245, 249, 0.96);
+      color: var(--lab-muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    main td {
+      border-bottom-color: rgba(226, 232, 240, 0.82);
+    }
+
+    main tbody tr {
+      transition: background .14s ease;
+    }
+
+    main tbody tr:hover {
+      background: rgba(59, 130, 246, 0.035);
+    }
+
+    main .badge {
+      min-height: 24px;
+      border: 1px solid rgba(15, 23, 42, 0.05);
+      background: rgba(241, 245, 249, 0.9);
+      color: var(--lab-muted);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    main .badge.ok {
+      background: rgba(16, 185, 129, 0.12);
+      color: #047857;
+    }
+
+    main .badge.warn {
+      background: rgba(245, 158, 11, 0.14);
+      color: #92400e;
+    }
+
+    main .badge.bad {
+      background: rgba(239, 68, 68, 0.12);
+      color: #b91c1c;
+    }
+
+    main .badge.info {
+      background: rgba(59, 130, 246, 0.12);
+      color: #1d4ed8;
+    }
+
+    main .toolbar,
+    main .tests-hero,
+    main .executive-hero,
+    main .telemetry,
+    main .report-body {
+      border-radius: 8px;
+    }
+
+    main .executive-hero {
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(241, 248, 255, 0.94)),
+        radial-gradient(circle at 88% 12%, rgba(59, 130, 246, 0.18), transparent 34%);
+    }
+
+    main .executive-title h2 {
+      background: linear-gradient(135deg, var(--lab-primary), var(--lab-primary-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+    }
+
+    main .tests-hero,
+    main .neon-chart {
+      background:
+        linear-gradient(135deg, rgba(15, 23, 41, 0.98), rgba(15, 49, 78, 0.96)),
+        radial-gradient(circle at 84% 18%, rgba(59, 130, 246, 0.24), transparent 34%);
+      border-color: rgba(59, 130, 246, 0.26);
+      box-shadow: 0 20px 44px rgba(15, 23, 42, 0.18);
+    }
+
+    main .tests-card,
+    main .trace-node {
+      color: #dff8ff;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(15, 49, 78, 0.94));
+      border-color: rgba(59, 130, 246, 0.24);
+      box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18), inset 0 0 28px rgba(14, 165, 233, 0.05);
+    }
+
+    main .tests-card strong,
+    main .trace-node strong {
+      color: #ffffff;
+    }
+
+    main .tests-card label,
+    main .tests-card span,
+    main .trace-node span,
+    main .tests-hero p {
+      color: rgba(226, 242, 255, 0.72);
+    }
+
+    main .tests-control-grid input,
+    main .tests-control-grid select {
+      border-color: rgba(96, 165, 250, 0.30);
+      background: rgba(255, 255, 255, 0.08);
+      color: #eefcff;
+    }
+
+    main .pre {
+      border: 1px solid rgba(59, 130, 246, 0.14);
+      background: #0f1729;
+      color: #e2ecff;
+      font-family: var(--lab-font-mono);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
     .panel-head {
       display: flex;
       align-items: center;
@@ -394,6 +711,143 @@
     .badge.warn { background: var(--amber-soft); color: var(--amber); }
     .badge.bad { background: var(--red-soft); color: var(--red); }
     .badge.info { background: rgba(6, 182, 212, 0.12); color: #087f98; }
+
+    .nav-heading {
+      margin: 14px 8px 6px;
+      color: #718096;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .health-strip {
+      display: grid;
+      grid-template-columns: repeat(9, minmax(112px, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .health-tile,
+    .ops-tile {
+      min-height: 74px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+    }
+
+    .health-tile {
+      display: grid;
+      align-content: start;
+      gap: 8px;
+      min-width: 0;
+      min-height: 112px;
+    }
+
+    .health-tile strong,
+    .ops-tile strong {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: #102033;
+      font-size: 13px;
+    }
+
+    .health-tile span,
+    .ops-tile span {
+      color: var(--muted);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .health-main {
+      color: #102033;
+      font-size: 12px;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+
+    .health-mini {
+      display: grid;
+      gap: 4px;
+    }
+
+    .health-mini-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-width: 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    .health-mini-row b {
+      color: #102033;
+      font-size: 11px;
+      font-weight: 800;
+      text-align: right;
+      overflow-wrap: anywhere;
+    }
+
+    .health-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--green);
+      box-shadow: 0 0 0 3px rgba(8, 127, 91, 0.12);
+    }
+
+    .health-dot.warn {
+      background: var(--amber);
+      box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.12);
+    }
+
+    .health-dot.bad {
+      background: var(--red);
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+    }
+
+    .ops-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .ops-tile {
+      min-height: 124px;
+    }
+
+    .ops-tile .kv-mini {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .kv-mini div {
+      padding: 8px;
+      border-radius: 8px;
+      background: var(--panel-soft);
+    }
+
+    .kv-mini label {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .kv-mini b {
+      display: block;
+      margin-top: 4px;
+      color: #102033;
+      font-size: 13px;
+    }
 
     .split {
       display: grid;
@@ -651,6 +1105,136 @@
       gap: 12px;
     }
 
+    .tests-hero {
+      position: relative;
+      overflow: hidden;
+      padding: 16px;
+      color: #dff8ff;
+      background:
+        linear-gradient(135deg, rgba(7, 18, 38, 0.98), rgba(6, 40, 65, 0.96)),
+        radial-gradient(circle at 84% 18%, rgba(0, 232, 255, 0.22), transparent 34%);
+      border-color: rgba(0, 232, 255, 0.28);
+    }
+
+    .tests-hero h2,
+    .tests-hero p { margin: 0; }
+
+    .tests-hero p {
+      margin-top: 6px;
+      color: rgba(223, 248, 255, 0.74);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .tests-control-grid {
+      display: grid;
+      grid-template-columns: minmax(250px, 1fr) minmax(170px, .7fr) 110px 110px 140px auto auto auto;
+      gap: 10px;
+      align-items: end;
+      margin-top: 14px;
+    }
+
+    .tests-control-grid label { color: rgba(223, 248, 255, 0.72); }
+
+    .tests-control-grid input,
+    .tests-control-grid select {
+      color: #eefcff;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(0, 232, 255, 0.2);
+    }
+
+    .tests-control-grid select option {
+      color: #102033;
+      background: #ffffff;
+    }
+
+    .tests-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .tests-card {
+      min-height: 104px;
+      padding: 14px;
+      color: #dff8ff;
+      background: linear-gradient(180deg, rgba(7, 18, 38, 0.96), rgba(10, 31, 52, 0.92));
+      border: 1px solid rgba(0, 232, 255, 0.18);
+      box-shadow: 0 18px 44px rgba(2, 8, 23, 0.18), inset 0 0 28px rgba(0, 232, 255, 0.04);
+    }
+
+    .tests-card label {
+      display: block;
+      color: rgba(223, 248, 255, 0.66);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .tests-card strong {
+      display: block;
+      margin-top: 10px;
+      color: #ffffff;
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .tests-card span {
+      display: block;
+      margin-top: 8px;
+      color: rgba(223, 248, 255, 0.62);
+      font-size: 12px;
+    }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.8fr);
+      gap: 14px;
+    }
+
+    .neon-chart {
+      min-height: 360px;
+      padding: 12px;
+      background: linear-gradient(180deg, rgba(8, 20, 38, 0.98), rgba(10, 27, 47, 0.94));
+      border-color: rgba(0, 232, 255, 0.18);
+    }
+
+    .chart-canvas {
+      width: 100%;
+      height: 330px;
+    }
+
+    .tests-table table { min-width: 1180px; }
+
+    .trace-flow {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 8px;
+      padding: 12px;
+    }
+
+    .trace-node {
+      min-height: 74px;
+      padding: 10px;
+      border: 1px solid rgba(0, 232, 255, 0.18);
+      border-radius: 8px;
+      color: #dff8ff;
+      background: linear-gradient(180deg, rgba(8, 20, 38, 0.96), rgba(11, 35, 59, 0.92));
+    }
+
+    .trace-node strong {
+      display: block;
+      font-size: 13px;
+    }
+
+    .trace-node span {
+      display: block;
+      margin-top: 6px;
+      color: rgba(223, 248, 255, 0.62);
+      font-size: 11px;
+      overflow-wrap: anywhere;
+    }
+
     .pre {
       margin: 0;
       min-height: 220px;
@@ -771,28 +1355,356 @@
       user-select: none;
     }
 
-    @media (max-width: 980px) {
-      .shell { grid-template-columns: 1fr; }
-      .sidebar {
-        position: relative;
-        height: auto;
+    @media (max-width: 1199px) {
+      .shell {
+        grid-template-columns: 220px minmax(0, 1fr);
       }
-      .sidebar-foot { position: static; margin-top: 16px; }
+
+      .sidebar {
+        padding: 16px 10px;
+      }
+
+      .nav button {
+        min-height: 38px;
+        padding: 0 8px;
+        font-size: 13px;
+      }
+
+      main {
+        padding: 18px;
+      }
+
+      .kpis,
+      .executive-summary,
+      .tests-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .health-strip {
+        grid-template-columns: repeat(4, minmax(120px, 1fr));
+      }
+
+      .toolbar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .tests-control-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .split,
+      .chart-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .ceo-block.wide .ceo-metrics,
+      .report-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .trace-flow {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 768px) {
+      body {
+        background:
+          linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(245, 249, 255, 0.94)),
+          url('https://res.cloudinary.com/limpeja/image/upload/v1783193641/ChatGPT_Image_4_de_jul._de_2026_16_32_44_angzza.png') 54% 0 / 150% auto no-repeat fixed,
+          #ffffff;
+      }
+
+      .shell {
+        display: block;
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        height: auto;
+        padding: 10px 12px 12px;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+      }
+
+      .brand {
+        justify-content: flex-start;
+        padding: 0 4px 8px;
+        margin-bottom: 8px;
+      }
+
+      .brand img {
+        width: 132px;
+      }
+
+      .nav {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 2px 2px 8px;
+        scroll-snap-type: x proximity;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .nav-heading,
+      .sidebar-foot {
+        display: none;
+      }
+
+      .nav button {
+        flex: 0 0 auto;
+        width: auto;
+        min-height: 36px;
+        padding: 0 11px;
+        border: 1px solid rgba(17, 80, 168, 0.12);
+        background: rgba(255, 255, 255, 0.72);
+        scroll-snap-align: start;
+        white-space: nowrap;
+      }
+
+      .nav svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      main {
+        width: min(100%, calc(100vw - 24px));
+        margin: 0 auto;
+        padding: 14px 0 28px;
+      }
+
       .topbar,
+      .executive-title,
+      .panel-head {
+        display: grid;
+        grid-template-columns: 1fr;
+        align-items: start;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      .subhead,
+      .panel-head p,
+      .executive-title p {
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .top-actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .btn {
+        width: 100%;
+        min-width: 0;
+        padding: 0 10px;
+      }
+
+      .kpis,
       .split,
       .toolbar,
       .telemetry,
+      .ops-grid,
+      .tests-control-grid,
+      .tests-grid,
+      .chart-grid,
+      .trace-flow,
       .report-grid,
       .executive-summary,
       .ceo-grid,
-      .ceo-block.wide .ceo-metrics,
-      .kpis {
+      .ceo-metrics,
+      .ceo-block.wide .ceo-metrics {
         grid-template-columns: 1fr;
       }
-      .ceo-metrics { grid-template-columns: 1fr; }
-      .executive-title { display: grid; }
-      main { padding: 14px; }
-      .top-actions { flex-wrap: wrap; }
+
+      .health-strip {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        scroll-snap-type: x proximity;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .health-tile {
+        flex: 0 0 160px;
+        min-height: 112px;
+        scroll-snap-align: start;
+      }
+
+      .panel,
+      .health-tile,
+      .ops-tile,
+      .metric-box,
+      .executive-card,
+      .ceo-metric,
+      .tests-card {
+        border-radius: 8px;
+      }
+
+      .panel-head {
+        gap: 8px;
+        padding: 12px;
+      }
+
+      .kpi,
+      .ceo-block,
+      .executive-hero,
+      .tests-hero,
+      .report-body,
+      .telemetry,
+      .tests-card {
+        padding: 12px;
+      }
+
+      .kpi {
+        min-height: 96px;
+      }
+
+      .kpi strong,
+      .executive-card strong,
+      .tests-card strong {
+        font-size: 22px;
+      }
+
+      .toolbar,
+      .tests-control-grid {
+        padding: 10px;
+      }
+
+      .table-wrap {
+        border-radius: 0 0 8px 8px;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      table {
+        min-width: 760px;
+        font-size: 12px;
+      }
+
+      th,
+      td {
+        padding: 9px 10px;
+      }
+
+      .chart-canvas {
+        height: 280px;
+      }
+
+      .neon-chart {
+        min-height: 310px;
+      }
+
+      .pre {
+        max-height: 380px;
+        font-size: 11px;
+      }
+
+      .toast {
+        right: 12px;
+        bottom: 12px;
+        max-width: calc(100vw - 24px);
+      }
+    }
+
+    @media (max-width: 520px) {
+      .admin-login {
+        padding: 14px;
+        background:
+          linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(239, 248, 255, 0.9)),
+          url('https://res.cloudinary.com/limpeja/image/upload/v1783193641/ChatGPT_Image_4_de_jul._de_2026_16_32_44_angzza.png') 48% 0 / 170% auto no-repeat fixed,
+          #f7faff;
+      }
+
+      .login-card {
+        padding: 18px;
+        border-radius: 14px;
+      }
+
+      .login-card img {
+        width: 138px;
+      }
+
+      .top-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .btn {
+        min-height: 40px;
+      }
+
+      .executive-pill {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .ops-tile .kv-mini {
+        grid-template-columns: 1fr;
+      }
+
+      .tests-control-grid .btn,
+      .toolbar .btn {
+        min-height: 42px;
+      }
+
+      .health-tile {
+        flex-basis: 150px;
+      }
+
+      table {
+        min-width: 680px;
+      }
+    }
+
+    @media (max-width: 420px) {
+      main {
+        width: min(100%, calc(100vw - 18px));
+        padding-top: 10px;
+      }
+
+      .sidebar {
+        padding-left: 9px;
+        padding-right: 9px;
+      }
+
+      .brand img {
+        width: 118px;
+      }
+
+      .nav button {
+        min-height: 34px;
+        padding: 0 9px;
+        font-size: 12px;
+      }
+
+      .health-tile {
+        flex-basis: 140px;
+      }
+
+      .panel-head h2 {
+        font-size: 15px;
+      }
+
+      .kpi strong,
+      .metric-box strong,
+      .executive-card strong,
+      .tests-card strong {
+        font-size: 20px;
+      }
+
+      input,
+      select {
+        min-height: 40px;
+      }
     }
   </style>
 </head>
@@ -801,11 +1713,11 @@
     <form class="login-card" id="adminLoginForm">
       <img src="https://res.cloudinary.com/limpeja/image/upload/v1783827392/ChatGPT_Image_11_de_jul._de_2026__14_58_51-removebg-preview_gkr7aj.png" alt="ChainFX">
       <h1 id="adminLoginTitle">Admin operacional</h1>
-      <p>Entre com seu email e senha de administrador. O painel só libera dados depois que o backend confirmar a sessão.</p>
+      <p>Entre com seu email e senha de administrador. O painel libera dados depois que o backend confirmar a sessão.</p>
       <div class="login-form">
         <div class="field">
-          <label for="loginApiBase">Backend</label>
-          <input id="loginApiBase" type="url" autocomplete="url" placeholder="https://api.example.com">
+          <label for="loginConsoleKey">Palavra-chave</label>
+          <input id="loginConsoleKey" type="password" autocomplete="off" placeholder="Palavra-chave do console">
         </div>
         <div class="field">
           <label for="loginEmail">Email</label>
@@ -831,25 +1743,56 @@
         <img src="https://res.cloudinary.com/limpeja/image/upload/v1783827392/ChatGPT_Image_11_de_jul._de_2026__14_58_51-removebg-preview_gkr7aj.png" alt="ChainFX">
       </div>
       <nav class="nav" aria-label="Admin">
+        <div class="nav-heading">Command</div>
         <button class="active" data-section="overview" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z"/></svg>
-          Dashboard CEO
+          Overview
+        </button>
+        <button data-section="operations" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
+          Operations
         </button>
         <button data-section="transactions" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
-          Transacoes
+          Payments
         </button>
-        <button data-section="audit" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          Auditoria
+        <div class="nav-heading">Platform</div>
+        <button data-section="developers" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg>
+          Developers
+        </button>
+        <button data-section="mcp" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"/><path d="M5 8h14"/><path d="M5 16h14"/><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/></svg>
+          MCP
+        </button>
+        <button data-section="infrastructure" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/></svg>
+          Infrastructure
+        </button>
+        <button data-section="security" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
+          Security
+        </button>
+        <div class="nav-heading">Analysis</div>
+        <button data-section="telemetry" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+          Observability
+        </button>
+        <button data-section="tests" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16l3-5 4 3 5-8"/><path d="M15 6h5v5"/></svg>
+          Tests
+        </button>
+        <button data-section="eips" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12l3 5-9 13L3 8l3-5Z"/><path d="M3 8h18"/><path d="m8 8 4 13 4-13"/><path d="m6 3 2 5 4-5 4 5 2-5"/></svg>
+          EIPs
         </button>
         <button data-section="reports" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
-          Relatorios
+          Reports
         </button>
-        <button data-section="telemetry" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-          Telemetria
+        <button data-section="audit" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Audit
         </button>
       </nav>
       <div class="sidebar-foot">
@@ -873,6 +1816,90 @@
           <button class="btn primary" id="exportCsvBtn" type="button">Exportar CSV</button>
         </div>
       </header>
+
+      <section class="health-strip" aria-label="Infrastructure status">
+        <div class="health-tile">
+          <strong><i class="health-dot" id="healthApiDot"></i>API</strong>
+          <div class="health-main" id="healthApi">Checking</div>
+          <div class="health-mini">
+            <div class="health-mini-row"><span>Latency</span><b id="healthApiLatency">--</b></div>
+            <div class="health-mini-row"><span>Requests</span><b id="healthApiRequests">--</b></div>
+            <div class="health-mini-row"><span>Error</span><b id="healthApiError">--</b></div>
+          </div>
+        </div>
+        <div class="health-tile">
+          <strong><i class="health-dot" id="healthPgDot"></i>PostgreSQL</strong>
+          <div class="health-main" id="healthPg">--</div>
+          <div class="health-mini">
+            <div class="health-mini-row"><span>Connections</span><b id="healthPgConnections">--</b></div>
+            <div class="health-mini-row"><span>Slow</span><b id="healthPgSlow">--</b></div>
+            <div class="health-mini-row"><span>Pool Wait</span><b id="healthPgWait">--</b></div>
+          </div>
+        </div>
+        <div class="health-tile">
+          <strong><i class="health-dot" id="healthRedisDot"></i>Redis</strong>
+          <div class="health-main" id="healthRedis">--</div>
+          <div class="health-mini">
+            <div class="health-mini-row"><span>Mode</span><b id="healthRedisMode">--</b></div>
+            <div class="health-mini-row"><span>State</span><b id="healthRedisState">--</b></div>
+            <div class="health-mini-row"><span>Use</span><b id="healthRedisUse">optional</b></div>
+          </div>
+        </div>
+        <div class="health-tile">
+          <strong><i class="health-dot" id="healthRpcDot"></i>RPC</strong>
+          <div class="health-main" id="healthRpc">--</div>
+          <div class="health-mini">
+            <div class="health-mini-row"><span>Latency</span><b id="healthRpcLatency">--</b></div>
+            <div class="health-mini-row"><span>Health</span><b id="healthRpcHealth">--</b></div>
+            <div class="health-mini-row"><span>Fallback</span><b id="healthRpcFallback">--</b></div>
+          </div>
+        </div>
+        <div class="health-tile">
+          <strong><i class="health-dot" id="healthPspDot"></i>PSP</strong>
+          <div class="health-main" id="healthPsp">--</div>
+          <div class="health-mini">
+            <div class="health-mini-row"><span>PIX</span><b id="healthPspPix">--</b></div>
+            <div class="health-mini-row"><span>Errors</span><b id="healthPspErrors">--</b></div>
+            <div class="health-mini-row"><span>Status</span><b id="healthPspState">--</b></div>
+          </div>
+        </div>
+        <div class="health-tile">
+          <strong><i class="health-dot" id="healthWorkersDot"></i>Workers</strong>
+          <div class="health-main" id="healthWorkers">--</div>
+          <div class="health-mini">
+            <div class="health-mini-row"><span>Queue</span><b id="healthWorkersQueue">--</b></div>
+            <div class="health-mini-row"><span>Retries</span><b id="healthWorkersRetries">--</b></div>
+            <div class="health-mini-row"><span>Last Run</span><b id="healthWorkersLast">--</b></div>
+          </div>
+        </div>
+        <div class="health-tile">
+          <strong><i class="health-dot" id="healthMcpDot"></i>MCP</strong>
+          <div class="health-main" id="healthMcp">--</div>
+          <div class="health-mini">
+            <div class="health-mini-row"><span>P95</span><b id="healthMcpP95">--</b></div>
+            <div class="health-mini-row"><span>Calls</span><b id="healthMcpCalls">--</b></div>
+            <div class="health-mini-row"><span>Errors</span><b id="healthMcpErrors">--</b></div>
+          </div>
+        </div>
+        <div class="health-tile">
+          <strong><i class="health-dot" id="healthMobileDot"></i>Mobile</strong>
+          <div class="health-main" id="healthMobile">--</div>
+          <div class="health-mini">
+            <div class="health-mini-row"><span>P95</span><b id="healthMobileP95">--</b></div>
+            <div class="health-mini-row"><span>Requests</span><b id="healthMobileRequests">--</b></div>
+            <div class="health-mini-row"><span>Errors</span><b id="healthMobileErrors">--</b></div>
+          </div>
+        </div>
+        <div class="health-tile">
+          <strong><i class="health-dot" id="healthSecurityDot"></i>Security</strong>
+          <div class="health-main" id="healthSecurity">--</div>
+          <div class="health-mini">
+            <div class="health-mini-row"><span>Penalty</span><b id="healthSecurityPenalty">--</b></div>
+            <div class="health-mini-row"><span>429</span><b id="healthSecurity429">--</b></div>
+            <div class="health-mini-row"><span>Invalid</span><b id="healthSecurityInvalid">--</b></div>
+          </div>
+        </div>
+      </section>
 
       <section class="grid kpis">
         <div class="panel kpi">
@@ -996,6 +2023,44 @@
         </div>
       </section>
 
+      <section class="section" id="operations">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Operations</h2>
+              <p>Workers, filas, retentativas e ultimo ciclo operacional em um layout de NOC.</p>
+            </div>
+            <span class="badge ok" id="opsStatus">Running</span>
+          </div>
+          <div class="ops-grid">
+            <div class="ops-tile">
+              <strong><i class="health-dot"></i>Price Worker</strong><span id="workerPriceStatus">Running</span>
+              <div class="kv-mini"><div><label>Latency</label><b id="workerPriceLatency">--</b></div><div><label>Last Run</label><b id="workerPriceLast">--</b></div></div>
+            </div>
+            <div class="ops-tile">
+              <strong><i class="health-dot"></i>Payment Worker</strong><span id="workerPaymentStatus">Running</span>
+              <div class="kv-mini"><div><label>Queue</label><b id="workerPaymentQueue">--</b></div><div><label>Retries</label><b id="workerPaymentRetries">0</b></div></div>
+            </div>
+            <div class="ops-tile">
+              <strong><i class="health-dot"></i>On-chain Worker</strong><span id="workerChainStatus">Running</span>
+              <div class="kv-mini"><div><label>RPC</label><b id="workerChainRpc">--</b></div><div><label>Pending</label><b id="workerChainPending">--</b></div></div>
+            </div>
+            <div class="ops-tile">
+              <strong><i class="health-dot"></i>Webhook Worker</strong><span id="workerWebhookStatus">Running</span>
+              <div class="kv-mini"><div><label>Delivered</label><b id="workerWebhookDelivered">--</b></div><div><label>Retries</label><b id="workerWebhookRetries">0</b></div></div>
+            </div>
+            <div class="ops-tile">
+              <strong><i class="health-dot"></i>Mobile API</strong><span id="opsMobileStatus">Ready</span>
+              <div class="kv-mini"><div><label>P95</label><b id="opsMobileP95">--</b></div><div><label>Errors</label><b id="opsMobileErrors">0</b></div></div>
+            </div>
+            <div class="ops-tile">
+              <strong><i class="health-dot"></i>Settlement</strong><span id="opsSettlementStatus">Ready</span>
+              <div class="kv-mini"><div><label>Pending</label><b id="opsSettlementPending">--</b></div><div><label>P95</label><b id="opsSettlementP95">--</b></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="section" id="transactions">
         <div class="panel">
           <div class="toolbar">
@@ -1048,6 +2113,86 @@
             </table>
           </div>
           <div class="empty" id="transactionsEmpty">Nenhuma transacao carregada.</div>
+        </div>
+      </section>
+
+      <section class="section" id="developers">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Developers</h2>
+              <p>API keys, RPM, erros, quota e webhooks vistos pelo console administrativo.</p>
+            </div>
+            <span class="badge info">M2M surface</span>
+          </div>
+          <div class="ops-grid">
+            <div class="ops-tile"><strong>API Keys</strong><span>Credenciais ativas</span><div class="kv-mini"><div><label>Active</label><b id="devOpsApiKeys">0</b></div><div><label>RPM</label><b id="devOpsRpm">0</b></div></div></div>
+            <div class="ops-tile"><strong>Requests</strong><span>Tráfego administrativo e testes</span><div class="kv-mini"><div><label>Errors</label><b id="devOpsErrors">0</b></div><div><label>Latency</label><b id="devOpsLatency">0 ms</b></div></div></div>
+            <div class="ops-tile"><strong>Webhooks</strong><span>Eventos entregues e retentativas</span><div class="kv-mini"><div><label>Delivered</label><b id="devOpsWebhooks">0</b></div><div><label>Retries</label><b id="devOpsWebhookRetries">0</b></div></div></div>
+            <div class="ops-tile"><strong>Quota</strong><span>Chamadas registradas</span><div class="kv-mini"><div><label>Used</label><b id="devOpsQuota">0</b></div><div><label>Window</label><b>24h</b></div></div></div>
+            <div class="ops-tile"><strong>API Explorer</strong><span>Endpoints M2M disponíveis no console developer</span><div class="kv-mini"><div><label>Surface</label><b>Agent v1</b></div><div><label>MCP</label><b id="devOpsMcp">--</b></div></div></div>
+            <div class="ops-tile"><strong>Products</strong><span>Capabilities e planos publicados</span><div class="kv-mini"><div><label>Top</label><b id="devOpsTopProduct">--</b></div><div><label>Take rate</label><b id="devOpsTakeRate">0%</b></div></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="mcp">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>MCP</h2>
+              <p>Servidor MCP, tools, resources, prompts, capabilities e M2M agent rail.</p>
+            </div>
+            <span class="badge ok" id="mcpOpsStatus">Healthy</span>
+          </div>
+          <div class="ops-grid">
+            <div class="ops-tile"><strong>MCP Server</strong><span>/mcp/initialize, tools/list, resources/list</span><div class="kv-mini"><div><label>Latency</label><b id="mcpOpsLatency">--</b></div><div><label>Errors</label><b id="mcpOpsErrors">0</b></div></div></div>
+            <div class="ops-tile"><strong>Tools</strong><span>Read, quote, dry-run e AI tools</span><div class="kv-mini"><div><label>Calls</label><b id="mcpOpsCalls">0</b></div><div><label>Public</label><b>9</b></div></div></div>
+            <div class="ops-tile"><strong>Resources</strong><span>Registry, grants, policy, intents</span><div class="kv-mini"><div><label>Known</label><b>12</b></div><div><label>Read P95</label><b id="mcpOpsResourceP95">--</b></div></div></div>
+            <div class="ops-tile"><strong>Capabilities</strong><span>Marketplace capability network</span><div class="kv-mini"><div><label>Executed</label><b id="mcpOpsCapabilities">0</b></div><div><label>Top</label><b id="mcpOpsTop">--</b></div></div></div>
+            <div class="ops-tile"><strong>Agent Pay</strong><span>M2M payment intent surface</span><div class="kv-mini"><div><label>Status</label><b id="mcpOpsPayStatus">Ready</b></div><div><label>Last</label><b id="mcpOpsPayLast">--</b></div></div></div>
+            <div class="ops-tile"><strong>Routing</strong><span>chooseRoute + dryRunCapability</span><div class="kv-mini"><div><label>Mode</label><b>best_available</b></div><div><label>Fallback</label><b id="mcpOpsFallback">--</b></div></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="infrastructure">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Infrastructure</h2>
+              <p>API, PostgreSQL, Redis, RPC, PSP, workers, MCP e mobile no mesmo plano operacional.</p>
+            </div>
+            <span class="badge" id="infraSnapshotAt">snapshot local</span>
+          </div>
+          <div class="ops-grid">
+            <div class="ops-tile"><strong>BSC RPC</strong><span>Health, requests, errors e circuit breaker</span><div class="kv-mini"><div><label>Latency</label><b id="infraRpcLatency">--</b></div><div><label>Fallback Node</label><b id="infraRpcFallback">--</b></div></div></div>
+            <div class="ops-tile"><strong>PostgreSQL</strong><span>Pool e disponibilidade</span><div class="kv-mini"><div><label>Pool</label><b id="infraPgPool">--</b></div><div><label>Wait</label><b id="infraPgWait">--</b></div></div></div>
+            <div class="ops-tile"><strong>Redis</strong><span>Cache, rate limit e penalty state futuro</span><div class="kv-mini"><div><label>Status</label><b id="infraRedisStatus">--</b></div><div><label>Mode</label><b>optional</b></div></div></div>
+            <div class="ops-tile"><strong>PSP</strong><span>PIX e liquidação fiat</span><div class="kv-mini"><div><label>Latency</label><b id="infraPspLatency">--</b></div><div><label>Errors</label><b id="infraPspErrors">0</b></div></div></div>
+            <div class="ops-tile"><strong>Workers</strong><span>Fila e idade do job mais antigo</span><div class="kv-mini"><div><label>Queue</label><b id="infraWorkerQueue">--</b></div><div><label>Oldest</label><b id="infraWorkerOldest">--</b></div></div></div>
+            <div class="ops-tile"><strong>Mobile</strong><span>Health e cauda de latência</span><div class="kv-mini"><div><label>P95</label><b id="infraMobileP95">--</b></div><div><label>Errors</label><b id="infraMobileErrors">0</b></div></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="security">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Security</h2>
+              <p>Penalty Box, rate limit, abuso de IP, replay e chaves inválidas.</p>
+            </div>
+            <span class="badge ok" id="securityMode">Penalty Box enabled</span>
+          </div>
+          <div class="ops-grid">
+            <div class="ops-tile"><strong>Penalty Box</strong><span>Ban progressivo conservador</span><div class="kv-mini"><div><label>Active Bans</label><b id="secActiveBans">--</b></div><div><label>Violations</label><b id="secViolations">--</b></div></div></div>
+            <div class="ops-tile"><strong>Rate Limit</strong><span>429 e throttling</span><div class="kv-mini"><div><label>429</label><b id="secRate429">0</b></div><div><label>Blocked</label><b id="secBlocked">--</b></div></div></div>
+            <div class="ops-tile"><strong>Invalid API Keys</strong><span>Auth falha antes do handler</span><div class="kv-mini"><div><label>401</label><b id="secInvalidKeys">0</b></div><div><label>403</label><b id="secForbidden">0</b></div></div></div>
+            <div class="ops-tile"><strong>Replay Attacks</strong><span>Idempotency e nonce</span><div class="kv-mini"><div><label>Detected</label><b id="secReplay">--</b></div><div><label>Policy</label><b>deny</b></div></div></div>
+            <div class="ops-tile"><strong>Top IPs</strong><span>Requer backend aggregation</span><div class="kv-mini"><div><label>Top</label><b id="secTopIp">--</b></div><div><label>NAT safe</label><b>temp ban</b></div></div></div>
+            <div class="ops-tile"><strong>MCP Abuse</strong><span>Tools/call protegido por rate + penalty</span><div class="kv-mini"><div><label>Errors</label><b id="secMcpErrors">0</b></div><div><label>Class</label><b>mcp</b></div></div></div>
+          </div>
         </div>
       </section>
 
@@ -1118,30 +2263,352 @@
           </div>
         </div>
       </section>
+
+      <section class="section" id="tests">
+        <div class="panel tests-hero">
+          <div class="panel-head" style="border-bottom-color: rgba(0, 232, 255, 0.16); padding: 0 0 12px;">
+            <div>
+              <h2>Tests & Observability</h2>
+              <p>Runner de smoke, latencia, throughput e observabilidade mirando a cloud ChainFX. Os resultados ficam em memoria local por pelo menos 5 minutos e alimentam os graficos em tempo real.</p>
+            </div>
+            <span class="executive-pill" id="testsRunState">idle</span>
+          </div>
+          <div class="tests-control-grid">
+            <div class="field">
+              <label for="testsBaseUrl">Cloud alvo</label>
+              <input id="testsBaseUrl" type="url" value="https://stablecoin-payment-gateway-production-3ee2.up.railway.app">
+            </div>
+            <div class="field">
+              <label for="testsBearer">Bearer opcional</label>
+              <input id="testsBearer" type="password" autocomplete="off" placeholder="sk_live...">
+            </div>
+            <div class="field">
+              <label for="testsDuration">Duração</label>
+              <select id="testsDuration">
+                <option value="300" selected>5 min</option>
+                <option value="60">1 min</option>
+                <option value="600">10 min</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="testsConcurrency">Usuários</label>
+              <select id="testsConcurrency">
+                <option value="10">10</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="testsProfile">Perfil</label>
+              <select id="testsProfile">
+                <option value="smoke" selected>Smoke geral</option>
+                <option value="web">Web</option>
+                <option value="mobile">Mobile</option>
+                <option value="mcp">MCP paralelo</option>
+                <option value="api">API Developer</option>
+                <option value="full">Plataforma completa</option>
+              </select>
+            </div>
+            <button class="btn primary" id="startTestsBtn" type="button">Iniciar</button>
+            <button class="btn warn" id="stopTestsBtn" type="button">Parar</button>
+            <button class="btn" id="purgeMobileTestsBtn" type="button">Apagar testes</button>
+          </div>
+        </div>
+
+        <div class="tests-grid">
+          <div class="panel tests-card"><label>Disponibilidade</label><strong id="testsAvailability">--</strong><span id="testsAvailabilityHint">sem amostras</span></div>
+          <div class="panel tests-card"><label>P95 geral</label><strong id="testsP95">--</strong><span>P50/P99 por endpoint abaixo</span></div>
+          <div class="panel tests-card"><label>Throughput</label><strong id="testsRps">0 req/s</strong><span id="testsRpm">0 req/min</span></div>
+          <div class="panel tests-card"><label>Usuários simultâneos</label><strong id="testsUsers">0</strong><span id="testsProgress">0s executados</span></div>
+          <div class="panel tests-card"><label>Usuários de teste</label><strong id="testsCreatedUsers">0</strong><span id="testsPurgeHint">pendentes para purge</span></div>
+          <div class="panel tests-card"><label>CPU</label><strong id="testsCpu">--</strong><span>via /api/admin/overview quando disponÃ­vel</span></div>
+          <div class="panel tests-card"><label>RAM</label><strong id="testsRam">--</strong><span>browser/backend quando disponí­vel</span></div>
+          <div class="panel tests-card"><label>Filas</label><strong id="testsQueues">--</strong><span>workers/blockchain/settlement</span></div>
+          <div class="panel tests-card"><label>PIX / USDT</label><strong id="testsSettlement">--</strong><span>latência de liquidação observada</span></div>
+        </div>
+
+        <div class="chart-grid">
+          <div class="panel neon-chart">
+            <div class="panel-head" style="border-bottom-color: rgba(0, 232, 255, 0.12);">
+              <div>
+                <h2 style="color:#dff8ff">Latência P50/P95/P99</h2>
+                <p style="color:rgba(223,248,255,.62)">Janela rolante mantida por 5 minutos no navegador.</p>
+              </div>
+            </div>
+            <div class="chart-canvas" id="latencyChart"></div>
+          </div>
+          <div class="panel neon-chart">
+            <div class="panel-head" style="border-bottom-color: rgba(0, 232, 255, 0.12);">
+              <div>
+                <h2 style="color:#dff8ff">Throughput e erros</h2>
+                <p style="color:rgba(223,248,255,.62)">Req/s, req/min e falhas por bucket.</p>
+              </div>
+            </div>
+            <div class="chart-canvas" id="throughputChart"></div>
+          </div>
+        </div>
+
+        <div class="panel tests-table">
+          <div class="panel-head">
+            <div>
+              <h2>Wallets de probe</h2>
+              <p>Enderecos internos usados pelo runner. Para real-run, financie essas wallets em testnet e configure as chaves no backend.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Wallet</th>
+                  <th>Endereco</th>
+                  <th>Native wei</th>
+                  <th>USDC raw</th>
+                  <th>Fonte</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="eipsWalletBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel tests-table">
+          <div class="panel-head">
+            <div>
+              <h2>Endpoints medidos</h2>
+              <p>P50, P95, P99, máximo, média, req/s, req/min, timeout e taxa de erro.</p>
+            </div>
+            <button class="btn" id="exportTestsBtn" type="button">Exportar JSON</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Area</th>
+                  <th>Endpoint</th>
+                  <th>Amostras</th>
+                  <th>P50</th>
+                  <th>P95</th>
+                  <th>P99</th>
+                  <th>Média</th>
+                  <th>Máx</th>
+                  <th>Req/s</th>
+                  <th>Req/min</th>
+                  <th>Erros</th>
+                  <th>Trace</th>
+                </tr>
+              </thead>
+              <tbody id="testsEndpointBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="testsEmpty">Nenhum teste executado nesta sessão.</div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Trace distribuÃ­do</h2>
+              <p>IDs gerados por request para correlacionar Mobile, Gateway, Worker, Blockchain, Settlement, Webhook e Notification.</p>
+            </div>
+            <code id="testsCorrelationId">--</code>
+          </div>
+          <div class="trace-flow">
+            <div class="trace-node"><strong>Mobile</strong><span id="traceMobile">request-id</span></div>
+            <div class="trace-node"><strong>Gateway</strong><span id="traceGateway">trace-id</span></div>
+            <div class="trace-node"><strong>Worker</strong><span id="traceWorker">correlation-id</span></div>
+            <div class="trace-node"><strong>Blockchain</strong><span id="traceBlockchain">rpc latency</span></div>
+            <div class="trace-node"><strong>Settlement</strong><span id="traceSettlement">pending</span></div>
+            <div class="trace-node"><strong>Webhook</strong><span id="traceWebhook">delivery</span></div>
+            <div class="trace-node"><strong>Notification</strong><span id="traceNotification">push</span></div>
+          </div>
+          <div class="telemetry">
+            <pre class="pre" id="testsJson">[]</pre>
+            <pre class="pre" id="testsObservabilityJson">{}</pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="eips">
+        <div class="panel tests-hero">
+          <div class="panel-head" style="border-bottom-color: rgba(0, 232, 255, 0.16); padding: 0 0 12px;">
+            <div>
+              <h2>Ethereum EIPs</h2>
+              <p>Telemetria visual de EIP-712 typed intents, EIP-2612 opcional, EIP-3009 para USDC e fases futuras de 4337/7702 no rail MCP/mobile.</p>
+            </div>
+            <span class="executive-pill" id="eipsRunState">idle</span>
+          </div>
+          <div class="tests-control-grid">
+            <div class="field">
+              <label for="eipsBaseUrl">Cloud alvo</label>
+              <input id="eipsBaseUrl" type="url" value="https://stablecoin-payment-gateway-production-3ee2.up.railway.app">
+            </div>
+            <div class="field">
+              <label for="eipsBearer">Bearer opcional</label>
+              <input id="eipsBearer" type="password" autocomplete="off" placeholder="sk_live...">
+            </div>
+            <div class="field">
+              <label for="eipsAsset">Asset</label>
+              <select id="eipsAsset">
+                <option value="USDC" selected>USDC / EIP-3009</option>
+                <option value="USDT">USDT / Custodial relay</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="eipsAmount">Amount base-unit</label>
+              <input id="eipsAmount" type="text" value="1000000">
+            </div>
+            <div class="field">
+              <label for="eipsProbeCountInput">Probes</label>
+              <input id="eipsProbeCountInput" type="number" min="1" max="50" value="10">
+            </div>
+            <div class="field">
+              <label for="eipsConcurrencyInput">Concorrencia</label>
+              <input id="eipsConcurrencyInput" type="number" min="1" max="10" value="3">
+            </div>
+            <label class="login-row" style="align-self:center;color:rgba(223,248,255,.72)">
+              <input id="eipsRealRun" type="checkbox">
+              Real-run testnet
+            </label>
+            <button class="btn primary" id="runEipsBtn" type="button">Executar EIPs</button>
+            <button class="btn" id="exportEipsBtn" type="button">Exportar JSON</button>
+          </div>
+        </div>
+
+        <div class="tests-grid">
+          <div class="panel tests-card"><label>Modo suite</label><strong id="eipsMode">--</strong><span id="eipsNetwork">network aguardando</span></div>
+          <div class="panel tests-card"><label>EIP-712</label><strong id="eips712Status">--</strong><span id="eipsDomain">domain aguardando</span></div>
+          <div class="panel tests-card"><label>EIP-3009</label><strong id="eips3009Status">--</strong><span id="eips3009Hint">USDC transferWithAuthorization</span></div>
+          <div class="panel tests-card"><label>EIP-2612</label><strong id="eips2612Status">--</strong><span id="eips2612Hint">permit por token</span></div>
+          <div class="panel tests-card"><label>4337 / 7702</label><strong id="eipsFutureStatus">--</strong><span id="eipsFutureHint">fase futura guardada</span></div>
+          <div class="panel tests-card"><label>P95 probes</label><strong id="eipsP95">--</strong><span id="eipsProbeCount">0 probes</span></div>
+          <div class="panel tests-card"><label>Tx mineradas</label><strong id="eipsMined">0</strong><span id="eipsGas">gas aguardando</span></div>
+          <div class="panel tests-card"><label>Falhas</label><strong id="eipsErrors">0</strong><span id="eipsErrorsHint">sem execucao</span></div>
+        </div>
+
+        <div class="chart-grid">
+          <div class="panel neon-chart">
+            <div class="panel-head" style="border-bottom-color: rgba(0, 232, 255, 0.12);">
+              <div>
+                <h2 style="color:#dff8ff">Latencia EIPs</h2>
+                <p style="color:rgba(223,248,255,.62)">Capabilities, prepare typedData e MCP tool prepare.</p>
+              </div>
+            </div>
+            <div class="chart-canvas" id="eipsLatencyChart"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Typed data atual</h2>
+                <p>Digest, domain separation, rail escolhido e payload assinado.</p>
+              </div>
+              <code id="eipsDigest">--</code>
+            </div>
+            <pre class="pre" id="eipsTypedDataJson">{}</pre>
+          </div>
+        </div>
+
+        <div class="panel tests-table">
+          <div class="panel-head">
+            <div>
+              <h2>Probes Ethereum/EIPs</h2>
+              <p>GET capabilities, prepare HTTP, prepare MCP e verificação de camada de nonce/signature.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Area</th>
+                  <th>Endpoint</th>
+                  <th>Status</th>
+                  <th>Latencia</th>
+                  <th>Rail</th>
+                  <th>Gas</th>
+                  <th>Tx</th>
+                  <th>Trace</th>
+                </tr>
+              </thead>
+              <tbody id="eipsProbeBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="eipsEmpty">Nenhum teste EIP executado nesta sessao.</div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Resposta bruta</h2>
+              <p>Snapshot dos endpoints EIP e MCP para auditoria visual.</p>
+            </div>
+          </div>
+          <div class="telemetry">
+            <pre class="pre" id="eipsJson">[]</pre>
+            <pre class="pre" id="eipsCapabilitiesJson">{}</pre>
+          </div>
+          <pre class="pre" id="eipsLogsJson">[]</pre>
+        </div>
+      </section>
     </main>
   </div>
 
   <div class="toast" id="toast"></div>
 
   <script type="module">
+    import React from 'https://esm.sh/react@18.3.1';
+    import { createRoot } from 'https://esm.sh/react-dom@18.3.1/client';
+    import {
+      CartesianGrid,
+      Legend,
+      Line,
+      LineChart,
+      ResponsiveContainer,
+      Tooltip,
+      XAxis,
+      YAxis
+    } from 'https://esm.sh/recharts@2.15.2?deps=react@18.3.1,react-dom@18.3.1';
+
     (() => {
       const DEFAULT_API =
         window.SWAPPED_API_BASE_URL ||
         import.meta.env.VITE_SWAPPED_API_BASE_URL ||
         localStorage.getItem('SWAPPED_API_BASE_URL') ||
-        'http://localhost:3000';
+        'https://stablecoin-payment-gateway-production-3ee2.up.railway.app';
       const state = {
         apiBase: DEFAULT_API.replace(/\/$/, ''),
         apiKey:
           sessionStorage.getItem('SWAPPY_ADMIN_SESSION') ||
           localStorage.getItem('SWAPPY_ADMIN_SESSION') ||
           '',
+        consoleKey: sessionStorage.getItem('SWAPPY_ADMIN_CONSOLE_KEY') || '',
         adminEmail: localStorage.getItem('SWAPPY_ADMIN_EMAIL') || '',
         adminUser: null,
         transactions: [],
         events: [],
         telemetry: [],
-        alerts: []
+        alerts: [],
+        tests: {
+          running: false,
+          stop: false,
+          startedAt: 0,
+          durationMs: 0,
+          concurrency: 0,
+          samples: [],
+          buckets: [],
+          observability: {},
+          createdUsers: loadLocal('CHAINFX_MOBILE_TEST_USERS', []),
+          charts: {},
+          workers: []
+        },
+        eips: {
+          running: false,
+          samples: [],
+          capabilities: null,
+          prepared: null,
+          suite: null,
+          wallets: [],
+          charts: {}
+        }
       };
 
       const $ = (id) => document.getElementById(id);
@@ -1157,14 +2624,20 @@
 
       document.addEventListener('DOMContentLoaded', () => {
         $('apiBaseLabel').textContent = state.apiBase;
-        $('loginApiBase').value = state.apiBase;
+        $('loginConsoleKey').value = state.consoleKey;
         $('loginEmail').value = state.adminEmail;
+        $('testsBearer').value = sessionStorage.getItem('CHAINFX_TEST_BEARER') || '';
+        $('eipsBearer').value = sessionStorage.getItem('CHAINFX_EIP_BEARER') || '';
         $('rememberLogin').checked = Boolean(localStorage.getItem('SWAPPY_ADMIN_SESSION'));
         updateApiKeyLabel();
         bindLogin();
         bindNavigation();
         bindActions();
+        initTestCharts();
+        initEipCharts();
         renderAll();
+        renderTests();
+        renderEips();
         if (state.apiKey) {
           validateAdminSession({ silent: true });
         } else {
@@ -1175,14 +2648,14 @@
       function bindLogin() {
         $('adminLoginForm').addEventListener('submit', async (event) => {
           event.preventDefault();
-          state.apiBase = $('loginApiBase').value.trim().replace(/\/$/, '');
+          state.consoleKey = $('loginConsoleKey').value.trim();
           state.adminEmail = $('loginEmail').value.trim();
           const password = $('loginPassword').value;
-          if (!state.apiBase || !state.adminEmail || !password) {
-            $('loginError').textContent = 'Informe backend, email e senha.';
+          if (!state.consoleKey || !state.adminEmail || !password) {
+            $('loginError').textContent = 'Informe palavra-chave, email e senha.';
             return;
           }
-          localStorage.setItem('SWAPPED_API_BASE_URL', state.apiBase);
+          sessionStorage.setItem('SWAPPY_ADMIN_CONSOLE_KEY', state.consoleKey);
           $('apiBaseLabel').textContent = state.apiBase;
           await loginAdmin(password);
         });
@@ -1195,7 +2668,7 @@
         try {
           const response = await fetch(`${state.apiBase}/api/admin/login`, {
             method: 'POST',
-            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            headers: adminHeaders({ contentType: true }),
             body: JSON.stringify({ email: state.adminEmail, password })
           });
           const text = await response.text();
@@ -1270,7 +2743,9 @@
       function clearAdminKey() {
         state.apiKey = '';
         state.adminUser = null;
+        state.consoleKey = '';
         sessionStorage.removeItem('SWAPPY_ADMIN_SESSION');
+        sessionStorage.removeItem('SWAPPY_ADMIN_CONSOLE_KEY');
         localStorage.removeItem('SWAPPY_ADMIN_SESSION');
         updateApiKeyLabel();
       }
@@ -1282,6 +2757,8 @@
             document.querySelectorAll('.section').forEach((section) => section.classList.remove('active'));
             button.classList.add('active');
             $(button.dataset.section).classList.add('active');
+            if (button.dataset.section === 'tests') resizeTestCharts();
+            if (button.dataset.section === 'eips') resizeEipCharts();
           });
         });
       }
@@ -1297,7 +2774,7 @@
         });
 
         $('configureKeyBtn').addEventListener('click', () => {
-          $('loginApiBase').value = state.apiBase;
+          $('loginConsoleKey').value = state.consoleKey;
           $('loginEmail').value = state.adminEmail;
           $('loginPassword').value = '';
           setLocked(true);
@@ -1310,6 +2787,7 @@
 
         $('logoutBtn').addEventListener('click', () => {
           clearAdminKey();
+          $('loginConsoleKey').value = '';
           $('loginPassword').value = '';
           setLocked(true);
           toast('Sessao encerrada.');
@@ -1333,6 +2811,14 @@
         $('exportJsonBtn').addEventListener('click', () => download('swappy-transacoes.json', JSON.stringify(state.transactions, null, 2), 'application/json'));
         $('exportAuditBtn').addEventListener('click', () => download('swappy-auditoria.json', JSON.stringify(auditRows(), null, 2), 'application/json'));
         $('exportTelemetryBtn').addEventListener('click', () => download('swappy-telemetria.json', JSON.stringify({ telemetry: state.telemetry, alerts: state.alerts }, null, 2), 'application/json'));
+        $('startTestsBtn').addEventListener('click', startPlatformTests);
+        $('stopTestsBtn').addEventListener('click', stopPlatformTests);
+        $('purgeMobileTestsBtn').addEventListener('click', purgeMobileTestUsers);
+        $('exportTestsBtn').addEventListener('click', () => download('chainfx-platform-tests.json', JSON.stringify(testReport(), null, 2), 'application/json'));
+        $('runEipsBtn').addEventListener('click', runEipTests);
+        $('exportEipsBtn').addEventListener('click', () => download('chainfx-eip-tests.json', JSON.stringify(eipReport(), null, 2), 'application/json'));
+        window.addEventListener('resize', resizeTestCharts);
+        window.addEventListener('resize', resizeEipCharts);
       }
 
       async function refreshBackend() {
@@ -1416,9 +2902,1004 @@
         }
       }
 
+      function initTestCharts() {
+        const latencyEl = $('latencyChart');
+        const throughputEl = $('throughputChart');
+        if (latencyEl && !state.tests.charts.latency) {
+          state.tests.charts.latency = createRoot(latencyEl);
+        }
+        if (throughputEl && !state.tests.charts.throughput) {
+          state.tests.charts.throughput = createRoot(throughputEl);
+        }
+        updateTestCharts();
+      }
+
+      function resizeTestCharts() {
+        updateTestCharts();
+      }
+
+      function initEipCharts() {
+        const latencyEl = $('eipsLatencyChart');
+        if (latencyEl && !state.eips.charts.latency) {
+          state.eips.charts.latency = createRoot(latencyEl);
+        }
+        updateEipCharts();
+      }
+
+      function resizeEipCharts() {
+        updateEipCharts();
+      }
+
+      async function runEipTests() {
+        if (state.eips.running) return;
+        state.eips.running = true;
+        state.eips.samples = [];
+        state.eips.capabilities = null;
+        state.eips.prepared = null;
+        state.eips.suite = null;
+        state.eips.wallets = [];
+        $('eipsRunState').textContent = 'running';
+        $('runEipsBtn').disabled = true;
+        $('eipsBaseUrl').value = $('eipsBaseUrl').value.trim().replace(/\/$/, '') || state.apiBase;
+        sessionStorage.setItem('CHAINFX_EIP_BEARER', $('eipsBearer').value.trim());
+        try {
+          const capabilities = await runEipProbe('EIP Catalog', 'GET /agent/v1/eips', 'GET', '/agent/v1/eips');
+          state.eips.capabilities = capabilities;
+          const status = await runEipProbe('EIP Test Suite', 'GET /agent/v1/eips/test-suite', 'GET', '/agent/v1/eips/test-suite');
+          state.eips.wallets = status.wallets || [];
+          const sample = eipSampleIntent(capabilities);
+          const prepared = await runEipProbe('EIP-712 HTTP', 'POST /agent/v1/eips/prepare', 'POST', '/agent/v1/eips/prepare', {
+            intentType: 'M2MIntent',
+            message: sample
+          });
+          state.eips.prepared = prepared?.prepared || null;
+          await runEipProbe('MCP Tool', 'POST /mcp/tools/call prepareEIPTypedIntent', 'POST', '/mcp/tools/call', {
+            name: 'prepareEIPTypedIntent',
+            arguments: { intentType: 'M2MIntent', message: sample }
+          });
+          await runEipProbe('EIP-712 Verify', 'POST /agent/v1/eips/verify unsigned', 'POST', '/agent/v1/eips/verify', {
+            intentType: 'M2MIntent',
+            message: sample,
+            signature: ''
+          }, { accept: [400] });
+          const suite = await runEipProbe('Active Probes', 'POST /agent/v1/eips/test-suite', 'POST', '/agent/v1/eips/test-suite', {
+            count: Number($('eipsProbeCountInput').value || 10),
+            concurrency: Number($('eipsConcurrencyInput').value || 3),
+            asset: $('eipsAsset').value,
+            amountRaw: $('eipsAmount').value.trim() || '1000000',
+            realRun: $('eipsRealRun').checked
+          });
+          state.eips.suite = suite;
+          state.eips.wallets = suite.wallets || state.eips.wallets;
+          (suite.results || []).forEach((result) => {
+            state.eips.samples.push({
+              at: result.at || new Date().toISOString(),
+              area: 'Transactional Probe',
+              endpoint: result.event || 'probe',
+              status: result.status === 'ok' ? 200 : 500,
+              ok: result.status === 'ok',
+              latency: Number(result.execution_latency_ms || 0),
+              rail: result.rail || '',
+              traceId: result.tx_hash || result.nonce || cryptoRandomId(),
+              gasUsed: result.gas_used || 0,
+              txHash: result.tx_hash || '',
+              error: result.error || '',
+              response: result
+            });
+          });
+          $('eipsRunState').textContent = 'finished';
+          toast('Teste Ethereum/EIPs finalizado.');
+        } catch (error) {
+          $('eipsRunState').textContent = 'error';
+          toast(error.message || 'Falha no teste EIP.');
+        } finally {
+          state.eips.running = false;
+          $('runEipsBtn').disabled = false;
+          renderEips();
+        }
+      }
+
+      async function runEipProbe(area, label, method, path, body, options = {}) {
+        const base = $('eipsBaseUrl').value.trim().replace(/\/$/, '') || state.apiBase;
+        const headers = { Accept: 'application/json' };
+        const bearer = $('eipsBearer').value.trim();
+        if (bearer) headers.Authorization = bearer.toLowerCase().startsWith('bearer ') ? bearer : `Bearer ${bearer}`;
+        if (state.consoleKey) headers['X-Admin-Console-Key'] = state.consoleKey;
+        if (body) headers['Content-Type'] = 'application/json';
+        const traceId = `eip_${cryptoRandomId()}`;
+        headers['X-Trace-Id'] = traceId;
+        headers['X-Request-Id'] = traceId;
+        const started = performance.now();
+        let status = 0;
+        let data = {};
+        let ok = false;
+        let error = '';
+        try {
+          const response = await fetch(`${base}${path}`, {
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : undefined
+          });
+          status = response.status;
+          const text = await response.text();
+          if (text) {
+            try { data = JSON.parse(text); } catch { data = { raw: text }; }
+          }
+          ok = response.ok || (options.accept || []).includes(response.status);
+          if (!ok) error = data.error || data.message || `${response.status} ${response.statusText}`;
+        } catch (err) {
+          error = err.message || 'network error';
+        }
+        const latency = Math.round(performance.now() - started);
+        const rail = data?.prepared?.rail?.preferredRail || data?.verification?.rail?.preferredRail || data?.content?.[0]?.json?.prepared?.rail?.preferredRail || '';
+        state.eips.samples.push({ at: new Date().toISOString(), area, endpoint: label, status, ok, latency, rail, traceId, error, response: data });
+        renderEips();
+        if (!ok && !(options.accept || []).includes(status)) throw new Error(error || `${label} falhou`);
+        return data;
+      }
+
+      function eipSampleIntent(capabilities) {
+        const selected = $('eipsAsset').value;
+        const asset = (capabilities?.assets || []).find((item) => item.symbol === selected) || {};
+        const deadline = Math.floor(Date.now() / 1000) + 900;
+        return {
+          payer: '0x830000000000000000000000000000000000019a',
+          recipient: '0x840000000000000000000000000000000000019a',
+          asset: asset.symbol || selected,
+          amount: $('eipsAmount').value.trim() || '1000000',
+          feeBps: 100,
+          nonce: `admin-eip-${Date.now()}-${cryptoRandomId()}`,
+          deadline,
+          idempotencyKey: `admin-eip-${deadline}`
+        };
+      }
+
+      function renderEips() {
+        const samples = state.eips.samples || [];
+        const latencies = samples.map((sample) => sample.latency).filter(Number.isFinite).sort((a, b) => a - b);
+        const p95 = percentile(latencies, 95);
+        const errors = samples.filter((sample) => !sample.ok).length;
+        const capabilities = state.eips.capabilities || {};
+        const suite = state.eips.suite || {};
+        const suiteSummary = suite.summary || {};
+        const assets = capabilities.assets || [];
+        const usdc = assets.find((asset) => asset.symbol === 'USDC') || {};
+        const usdt = assets.find((asset) => asset.symbol === 'USDT') || {};
+        const domain = capabilities.domain || state.eips.prepared?.domain || {};
+        setText('eipsMode', suite.mode || (state.eips.wallets.length ? 'ready' : '--'));
+        setText('eipsNetwork', suite.network ? `network ${suite.network}` : 'network aguardando');
+        setText('eips712Status', capabilities.domain || state.eips.prepared ? 'enabled' : '--');
+        setText('eipsDomain', domain.chainId ? `${domain.name || 'ChainFX'} v${domain.version || '1'} / chain ${domain.chainId}` : 'domain aguardando');
+        setText('eips3009Status', usdc.supports_eip3009 ? 'enabled' : '--');
+        setText('eips3009Hint', usdc.preferredRail || 'USDC transferWithAuthorization');
+        setText('eips2612Status', assets.some((asset) => asset.supports_eip2612) ? 'optional' : 'token-gated');
+        setText('eips2612Hint', usdt.symbol ? 'USDT sem permit no core' : 'permit por token');
+        setText('eipsFutureStatus', 'planned');
+        setText('eipsFutureHint', '4337 fase 2 / 7702 fase 3');
+        setText('eipsP95', p95 ? `${p95} ms` : '--');
+        setText('eipsProbeCount', `${samples.length} probes`);
+        setText('eipsMined', String(suiteSummary.real_mined || samples.filter((sample) => sample.txHash).length || 0));
+        setText('eipsGas', suiteSummary.avg_gas ? `avg ${suiteSummary.avg_gas} / max ${suiteSummary.max_gas}` : 'gas aguardando');
+        setText('eipsErrors', String(errors));
+        setText('eipsErrorsHint', errors ? 'ver tabela' : 'sem falhas criticas');
+        setText('eipsDigest', shorten(state.eips.prepared?.digest || '--'));
+        $('eipsTypedDataJson').textContent = JSON.stringify(state.eips.prepared || {}, null, 2);
+        $('eipsJson').textContent = JSON.stringify(samples.slice(-60), null, 2);
+        $('eipsCapabilitiesJson').textContent = JSON.stringify({ capabilities, suite }, null, 2);
+        $('eipsWalletBody').innerHTML = (state.eips.wallets || []).map((wallet) => `
+          <tr>
+            <td>${escapeHtml(wallet.id || '--')}</td>
+            <td><code>${escapeHtml(wallet.address || '--')}</code></td>
+            <td><code>${escapeHtml(shorten(wallet.nativeBalanceWei || '--'))}</code></td>
+            <td><code>${escapeHtml(shorten(wallet.usdcBalanceRaw || '--'))}</code></td>
+            <td>${escapeHtml(wallet.source || '--')}</td>
+            <td><span class="badge ${wallet.status === 'IDLE' ? 'ok' : 'info'}">${escapeHtml(wallet.status || '--')}</span></td>
+          </tr>
+        `).join('');
+        $('eipsProbeBody').innerHTML = samples.map((sample) => `
+          <tr>
+            <td>${escapeHtml(sample.area)}</td>
+            <td><code>${escapeHtml(sample.endpoint)}</code></td>
+            <td>${sample.ok ? '<span class="badge ok">ok</span>' : `<span class="badge bad">${escapeHtml(String(sample.status || 'erro'))}</span>`}</td>
+            <td>${sample.latency} ms</td>
+            <td>${escapeHtml(sample.rail || '--')}</td>
+            <td>${sample.gasUsed ? escapeHtml(String(sample.gasUsed)) : '--'}</td>
+            <td><code>${escapeHtml(shorten(sample.txHash || '--'))}</code></td>
+            <td><code>${escapeHtml(shorten(sample.traceId))}</code></td>
+          </tr>
+        `).join('');
+        const logs = (suite.results || []).flatMap((result) => result.logs || []);
+        $('eipsLogsJson').textContent = JSON.stringify(logs.slice(-80), null, 2);
+        $('eipsEmpty').style.display = samples.length ? 'none' : 'block';
+        updateEipCharts();
+      }
+
+      function updateEipCharts() {
+        const samples = state.eips.samples || [];
+        renderRechartsLine(state.eips.charts.latency, {
+          data: samples.map((sample) => ({
+            label: sample.endpoint.replace(/^\w+\s+/, '').slice(0, 34),
+            latency: sample.latency,
+            gas: Number(sample.gasUsed || 0)
+          })),
+          lines: [
+            { key: 'latency', name: 'Latencia', color: chartColor('teal') },
+            { key: 'gas', name: 'Gas', color: chartColor('amber') }
+          ],
+          yUnit: ' ms'
+        });
+      }
+
+      function eipReport() {
+        return {
+          generatedAt: new Date().toISOString(),
+          target: $('eipsBaseUrl').value.trim().replace(/\/$/, '') || state.apiBase,
+          capabilities: state.eips.capabilities,
+          prepared: state.eips.prepared,
+          suite: state.eips.suite,
+          wallets: state.eips.wallets,
+          samples: state.eips.samples
+        };
+      }
+
+      function cryptoRandomId() {
+        if (window.crypto?.getRandomValues) {
+          const bytes = new Uint8Array(8);
+          window.crypto.getRandomValues(bytes);
+          return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+        }
+        return Math.random().toString(16).slice(2, 18);
+      }
+
+      async function startPlatformTests() {
+        if (state.tests.running) return;
+        state.tests.running = true;
+        state.tests.stop = false;
+        state.tests.startedAt = Date.now();
+        state.tests.durationMs = Number($('testsDuration').value || 300) * 1000;
+        state.tests.concurrency = Number($('testsConcurrency').value || 25);
+        state.tests.samples = [];
+        state.tests.buckets = [];
+        state.tests.observability = {};
+        state.tests.workers = [];
+        state.tests.mobileSession = null;
+        state.tests.mobileSessionPromise = null;
+        $('testsBaseUrl').value = $('testsBaseUrl').value.trim().replace(/\/$/, '') || state.apiBase;
+        sessionStorage.setItem('CHAINFX_TEST_BEARER', $('testsBearer').value.trim());
+        $('testsRunState').textContent = 'running';
+        $('startTestsBtn').disabled = true;
+        $('stopTestsBtn').disabled = false;
+        toast('Teste de plataforma iniciado.');
+
+        const tick = setInterval(() => {
+          if (!state.tests.running) {
+            clearInterval(tick);
+            return;
+          }
+          sampleObservability();
+          renderTests();
+        }, 2000);
+
+        const endpoints = testEndpoints($('testsProfile').value);
+        for (let i = 0; i < state.tests.concurrency; i += 1) {
+          state.tests.workers.push(testWorker(i, endpoints));
+        }
+        await Promise.allSettled(state.tests.workers);
+        clearInterval(tick);
+        state.tests.running = false;
+        $('testsRunState').textContent = 'finished';
+        $('startTestsBtn').disabled = false;
+        $('stopTestsBtn').disabled = false;
+        sampleObservability();
+        renderTests();
+        toast('Teste de plataforma finalizado.');
+      }
+
+      function stopPlatformTests() {
+        state.tests.stop = true;
+        $('testsRunState').textContent = 'stopping';
+      }
+
+      async function testWorker(index, endpoints) {
+        const context = { mobile: state.tests.mobileSession || null };
+        while (!state.tests.stop && Date.now() - state.tests.startedAt < state.tests.durationMs) {
+          const endpoint = endpoints[index % endpoints.length];
+          await runProbe(endpoint, context);
+          await sleep(90 + Math.random() * 160);
+          index += state.tests.concurrency;
+        }
+      }
+
+      async function ensureMobileSession(context) {
+        if (context.mobile?.accessToken) return context.mobile;
+        if (state.tests.mobileSession?.accessToken) {
+          context.mobile = state.tests.mobileSession;
+          return context.mobile;
+        }
+        if (state.tests.mobileSessionPromise) {
+          context.mobile = await state.tests.mobileSessionPromise;
+          return context.mobile;
+        }
+        state.tests.mobileSessionPromise = createMobileSession(context).finally(() => {
+          state.tests.mobileSessionPromise = null;
+        });
+        context.mobile = await state.tests.mobileSessionPromise;
+        return context.mobile;
+      }
+
+      async function createMobileSession(context) {
+        const suffix = `${Date.now()}${Math.random().toString(16).slice(2)}`;
+        const password = `ChainFX#${suffix.slice(-10)}`;
+        const email = `loadtest+${suffix}@chainfx.local`;
+        const walletAddress = randomEvmAddress();
+        const session = { email, password, walletAddress, accessToken: '', refreshToken: '' };
+        context.mobile = session;
+        rememberMobileTestUser(email);
+
+        const register = await runProbe({
+          area: 'Mobile Auth',
+          method: 'POST',
+          path: '/api/mobile/auth/register',
+          body: () => ({ email, password, full_name: 'ChainFX Load Test', phone: '+5511999999999' }),
+          timeoutMs: 12000,
+          setup: true
+        }, context);
+        session.accessToken = register?.accessToken || register?.access_token || '';
+        session.refreshToken = register?.refreshToken || register?.refresh_token || '';
+        if (!session.accessToken) throw new Error('mobile register nao retornou accessToken');
+
+        const refreshed = await runProbe({
+          area: 'Mobile Auth',
+          method: 'POST',
+          path: '/api/mobile/auth/refresh',
+          body: () => ({ refreshToken: session.refreshToken }),
+          timeoutMs: 12000,
+          setup: true
+        }, context);
+        session.accessToken = refreshed?.accessToken || refreshed?.access_token || session.accessToken;
+        session.refreshToken = refreshed?.refreshToken || refreshed?.refresh_token || session.refreshToken;
+
+        await runProbe({
+          area: 'Mobile Wallet',
+          method: 'POST',
+          path: '/api/mobile/wallet/generate',
+          mobileAuth: true,
+          accept: [409],
+          body: () => ({ wallet_address: walletAddress }),
+          timeoutMs: 12000,
+          setup: true
+        }, context);
+        state.tests.mobileSession = session;
+        return session;
+      }
+
+      async function runProbe(endpoint, context = {}) {
+        const base = $('testsBaseUrl').value.trim().replace(/\/$/, '') || state.apiBase;
+        const trace = createTrace();
+        const started = performance.now();
+        const method = endpoint.method || 'GET';
+        let resolvedPath = '';
+        let status = 0;
+        let ok = false;
+        let error = '';
+        let data = null;
+        let timer = null;
+        try {
+          if (endpoint.mobileAuth) {
+            await ensureMobileSession(context);
+          }
+          resolvedPath = typeof endpoint.path === 'function' ? endpoint.path(context) : endpoint.path;
+          resolvedPath = String(resolvedPath || '').trim();
+          if (!resolvedPath) throw new Error('endpoint sem path resolvido');
+          const url = /^https?:\/\//i.test(resolvedPath)
+            ? resolvedPath
+            : `${base}${resolvedPath.startsWith('/') ? '' : '/'}${resolvedPath}`;
+          const body = endpoint.body ? JSON.stringify(endpoint.body(context)) : undefined;
+          const controller = new AbortController();
+          timer = setTimeout(() => controller.abort(), endpoint.timeoutMs || 9000);
+          const bearer = $('testsBearer').value.trim();
+          const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-Trace-Id': trace.traceId,
+            'X-Request-Id': trace.requestId,
+            'X-Correlation-Id': trace.correlationId
+          };
+          const chainfxBearer = /^sk_(live|test|dev)_/.test(bearer) ? bearer : '';
+          if (endpoint.chainfxAuth && chainfxBearer) headers.Authorization = `Bearer ${chainfxBearer}`;
+          if (endpoint.adminAuth && state.apiKey) headers.Authorization = `Bearer ${state.apiKey}`;
+          if (endpoint.mobileAuth && context.mobile?.accessToken) headers.Authorization = `Bearer ${context.mobile.accessToken}`;
+          if (endpoint.idempotency) headers['X-Idempotency-Key'] = `admintest_${trace.requestId}`.slice(0, 120);
+          const response = await fetch(url, {
+            method,
+            headers,
+            body,
+            signal: controller.signal
+          });
+          status = response.status;
+          const throttled = response.status === 429;
+          ok = response.ok || (endpoint.accept || []).includes(response.status) || (throttled && endpoint.rateLimitOk);
+          if (!ok) error = `${response.status} ${response.statusText}`;
+          if (throttled && endpoint.rateLimitOk) error = 'rate limited';
+          const text = await response.text();
+          if (text) {
+            try { data = JSON.parse(text); } catch { data = { raw: text }; }
+          }
+          if (data && typeof endpoint.capture === 'function') {
+            endpoint.capture(data, context);
+          }
+        } catch (err) {
+          error = err?.name === 'AbortError' ? 'timeout' : (err?.message || 'request failed');
+        } finally {
+          if (timer) clearTimeout(timer);
+        }
+
+        const latency = Math.round(performance.now() - started);
+        const sample = {
+          at: new Date().toISOString(),
+          ts: Date.now(),
+          area: endpoint.area,
+          endpoint: endpoint.label || `${method} ${resolvedPath || '[unresolved]'}`,
+          status,
+          ok,
+          throttled: status === 429,
+          error,
+          latency,
+          traceId: trace.traceId,
+          requestId: trace.requestId,
+          correlationId: trace.correlationId
+        };
+        state.tests.samples.push(sample);
+        pruneTestSamples();
+        updateTrace(sample);
+        return data;
+      }
+
+      function rememberMobileTestUser(email) {
+        email = String(email || '').toLowerCase();
+        if (!email) return;
+        if (!state.tests.createdUsers.includes(email)) {
+          state.tests.createdUsers.push(email);
+          state.tests.createdUsers = state.tests.createdUsers.slice(-1000);
+          localStorage.setItem('CHAINFX_MOBILE_TEST_USERS', JSON.stringify(state.tests.createdUsers));
+        }
+      }
+
+      async function purgeMobileTestUsers() {
+        const emails = state.tests.createdUsers.filter(Boolean);
+        if (!emails.length) {
+          toast('Nenhum usuario de teste pendente.');
+          return;
+        }
+        if (!state.apiKey || !state.consoleKey) {
+          toast('Entre no admin antes de apagar dados de teste.');
+          return;
+        }
+        $('purgeMobileTestsBtn').disabled = true;
+        $('purgeMobileTestsBtn').textContent = 'Apagando...';
+        try {
+          const response = await fetch(`${state.apiBase}/api/admin/mobile-test/purge`, {
+            method: 'POST',
+            headers: adminHeaders({ contentType: true }),
+            body: JSON.stringify({ emails })
+          });
+          const text = await response.text();
+          let data = {};
+          if (text) {
+            try { data = JSON.parse(text); } catch { data = { raw: text }; }
+          }
+          if (!response.ok) throw new Error(data.error || `${response.status} ${response.statusText}`);
+          const deletedEmails = new Set((data.emails || emails).map((email) => String(email).toLowerCase()));
+          state.tests.createdUsers = state.tests.createdUsers.filter((email) => !deletedEmails.has(String(email).toLowerCase()));
+          localStorage.setItem('CHAINFX_MOBILE_TEST_USERS', JSON.stringify(state.tests.createdUsers));
+          $('testsObservabilityJson').textContent = JSON.stringify({ purge: data }, null, 2);
+          renderTests();
+          toast(`Purge concluido: ${data.deletedUsers || 0} usuarios removidos.`);
+        } catch (error) {
+          toast(error.message || 'Falha ao apagar dados de teste.');
+        } finally {
+          $('purgeMobileTestsBtn').disabled = false;
+          $('purgeMobileTestsBtn').textContent = 'Apagar testes';
+        }
+      }
+
+      function testEndpoints(profile) {
+        const infra = [
+          { area: 'Infra', method: 'GET', path: '/readyz', timeoutMs: 6000 },
+          { area: 'Infra', method: 'GET', path: '/healthz', accept: [404], timeoutMs: 6000 }
+        ];
+        const web = [
+          { area: 'Web', method: 'GET', path: '/', timeoutMs: 8000 },
+          { area: 'Web', method: 'GET', path: '/admin', timeoutMs: 8000 },
+          { area: 'Web', method: 'GET', path: '/app/developer/', accept: [404], timeoutMs: 8000 },
+          { area: 'Web', method: 'GET', path: '/app/agent/', accept: [404], timeoutMs: 8000 }
+        ];
+        const captureId = (...paths) => (data, ctx) => {
+          for (const path of paths) {
+            let value = data;
+            for (const key of path.split('.')) value = value?.[key];
+            if (typeof value === 'string' && value) return value;
+          }
+          return '';
+        };
+        const mobile = [
+          { area: 'Mobile Health', method: 'GET', path: '/api/mobile/health', timeoutMs: 6000 },
+          { area: 'Mobile Phase5 Assets', method: 'GET', path: '/api/mobile/assets', timeoutMs: 7000, capture: (data, ctx) => { ctx.asset = data.assets?.find((a) => a.symbol === 'USDT')?.symbol || data.assets?.[0]?.symbol || 'USDT'; ctx.toAsset = data.assets?.find((a) => a.symbol === 'USDC')?.symbol || (ctx.asset === 'USDT' ? 'USDC' : 'USDT'); } },
+          { area: 'Mobile Phase5 Assets', method: 'GET', path: (ctx) => `/api/mobile/assets/${encodeURIComponent(ctx.asset || 'USDT')}`, timeoutMs: 7000 },
+          { area: 'Mobile Phase5 Assets', method: 'GET', path: (ctx) => `/api/mobile/assets/${encodeURIComponent(ctx.asset || 'USDT')}/rate`, timeoutMs: 7000 },
+          { area: 'Mobile Phase5 Countries', method: 'GET', path: '/api/mobile/countries', timeoutMs: 7000, capture: (data, ctx) => { ctx.country = data.countries?.find((c) => c.code === 'BR')?.code || data.countries?.[0]?.code || 'BR'; } },
+          { area: 'Mobile Phase5 Countries', method: 'GET', path: '/api/mobile/countries/detect', timeoutMs: 7000 },
+          { area: 'Mobile Phase5 Countries', method: 'GET', path: (ctx) => `/api/mobile/countries/${encodeURIComponent(ctx.country || 'BR')}`, timeoutMs: 7000 },
+          { area: 'Mobile Phase5 Countries', method: 'GET', path: (ctx) => `/api/mobile/countries/${encodeURIComponent(ctx.country || 'BR')}/rails`, timeoutMs: 7000, capture: (data, ctx) => { ctx.rail = data.rails?.find((r) => String(r.name).toLowerCase().includes('pix'))?.name || data.rails?.[0]?.name || 'PIX'; } },
+          { area: 'Mobile Auth', method: 'GET', path: '/api/mobile/user/profile', mobileAuth: true, timeoutMs: 9000 },
+          { area: 'Mobile Wallet', method: 'GET', path: '/api/mobile/wallet/address', mobileAuth: true, timeoutMs: 9000 },
+          { area: 'Mobile Wallet', method: 'GET', path: '/api/mobile/wallet/balance', mobileAuth: true, timeoutMs: 9000 },
+          { area: 'Mobile Wallet', method: 'GET', path: '/api/mobile/wallet/tokens', mobileAuth: true, timeoutMs: 9000 },
+          { area: 'Mobile Wallet', method: 'POST', path: '/api/mobile/wallet/transfer', mobileAuth: true, body: (ctx) => ({ to: randomEvmAddress(), amount: '0.01', asset: ctx.asset || 'USDT', network: 'BSC' }), timeoutMs: 9000 },
+          { area: 'Mobile Wallet', method: 'GET', path: '/api/mobile/wallet/history', mobileAuth: true, timeoutMs: 9000 },
+          { area: 'Mobile Orders Buy', method: 'POST', path: '/api/mobile/order/buy', mobileAuth: true, idempotency: true, body: (ctx) => ({ amount_brl: 100, asset: ctx.asset || 'USDT', dest_address: ctx.mobile?.walletAddress || randomEvmAddress(), payment_method: 'pix', customer_name: 'ChainFX Load Test', customer_email: ctx.mobile?.email || 'loadtest@chainfx.local', customer_cpf: '00000000000' }), timeoutMs: 15000, capture: (data, ctx) => { ctx.buyOrderId = captureId('id', 'order.id', 'buy_order.id', 'order_id')(data, ctx); } },
+          { area: 'Mobile Orders Buy', method: 'GET', path: (ctx) => ctx.buyOrderId ? `/api/mobile/order/${encodeURIComponent(ctx.buyOrderId)}` : '/api/mobile/orders', mobileAuth: true, accept: [404], timeoutMs: 9000 },
+          { area: 'Mobile Orders Sell', method: 'POST', path: '/api/mobile/order/sell', mobileAuth: true, idempotency: true, body: (ctx) => ({ amount_usdt: 1, asset: ctx.asset || 'USDT', pix_key: '+5511999999999', pix_phone: '+5511999999999', pix_cpf: '00000000000' }), timeoutMs: 15000, capture: (data, ctx) => { ctx.sellOrderId = captureId('id', 'order.id', 'order_id')(data, ctx); } },
+          { area: 'Mobile Orders Swap', method: 'POST', path: '/api/mobile/order/swap', mobileAuth: true, idempotency: true, body: (ctx) => ({ from_asset: ctx.asset || 'USDT', to_asset: ctx.toAsset || 'USDC', amount: 1 }), timeoutMs: 9000 },
+          { area: 'Mobile Orders', method: 'GET', path: '/api/mobile/orders', mobileAuth: true, timeoutMs: 9000 },
+          { area: 'Mobile Settings', method: 'GET', path: '/api/mobile/settings', mobileAuth: true, timeoutMs: 9000 },
+          { area: 'Mobile Settings', method: 'PUT', path: '/api/mobile/settings', mobileAuth: true, body: () => ({ dark_mode: true, language: 'pt-BR', currency: 'BRL', notifications_enabled: true, daily_limit: 1000 }), timeoutMs: 9000 },
+          { area: 'Mobile KYC', method: 'GET', path: '/api/mobile/kyc/limits', mobileAuth: true, timeoutMs: 9000 },
+          { area: 'Mobile KYC', method: 'POST', path: '/api/mobile/kyc/submit', mobileAuth: true, accept: [409], body: () => ({ level: 1, document_type: 'rg', document_url: 'https://example.com/test-doc.png', selfie_url: 'https://example.com/test-selfie.png' }), timeoutMs: 12000, capture: (data, ctx) => { ctx.kycId = captureId('id', 'kyc_request.id')(data, ctx); } },
+          { area: 'Mobile KYC', method: 'GET', path: '/api/mobile/kyc/status', mobileAuth: true, timeoutMs: 9000 },
+          { area: 'Mobile KYC', method: 'GET', path: '/api/mobile/kyc/history', mobileAuth: true, timeoutMs: 9000 },
+          { area: 'Mobile DCA', method: 'POST', path: '/api/mobile/dca/create', mobileAuth: true, idempotency: true, accept: [409], body: (ctx) => ({ token_symbol: ctx.asset || 'USDT', amount_brl: 100, frequency: 'daily' }), timeoutMs: 12000, capture: (data, ctx) => { ctx.dcaId = captureId('id', 'strategy.id')(data, ctx); } },
+          { area: 'Mobile DCA', method: 'GET', path: '/api/mobile/dca/strategies', mobileAuth: true, timeoutMs: 9000 },
+          { area: 'Mobile DCA', method: 'GET', path: (ctx) => ctx.dcaId ? `/api/mobile/dca/${encodeURIComponent(ctx.dcaId)}/status` : '/api/mobile/dca/strategies', mobileAuth: true, timeoutMs: 9000 },
+          { area: 'Mobile Swap', method: 'POST', path: '/api/mobile/swap/quote', mobileAuth: true, body: (ctx) => ({ from_asset: ctx.asset || 'USDT', to_asset: ctx.toAsset || 'USDC', amount: 1, slippage: 0.005 }), timeoutMs: 12000 },
+          { area: 'Mobile Swap', method: 'POST', path: '/api/mobile/swap/execute', mobileAuth: true, idempotency: true, body: (ctx) => ({ from_asset: ctx.asset || 'USDT', to_asset: ctx.toAsset || 'USDC', amount: 1, slippage: 0.005 }), timeoutMs: 15000, capture: (data, ctx) => { ctx.swapId = captureId('id', 'swap.id')(data, ctx); } },
+          { area: 'Mobile Swap', method: 'GET', path: (ctx) => ctx.swapId ? `/api/mobile/swap/${encodeURIComponent(ctx.swapId)}` : '/api/mobile/swaps', mobileAuth: true, accept: [404], timeoutMs: 9000 },
+          { area: 'Mobile Swap', method: 'GET', path: '/api/mobile/swaps', mobileAuth: true, timeoutMs: 9000 },
+          { area: 'Mobile Webhooks', method: 'GET', path: '/api/mobile/webhooks/events', timeoutMs: 7000 },
+          { area: 'Mobile Webhooks', method: 'GET', path: '/api/mobile/webhooks', mobileAuth: true, timeoutMs: 9000 }
+        ];
+        const mcpTool = (name, args = {}, options = {}) => ({
+          area: options.area || 'MCP Tool',
+          method: 'POST',
+          path: '/mcp/tools/call',
+          label: `POST /mcp/tools/call ${name}`,
+          chainfxAuth: true,
+          rateLimitOk: true,
+          body: (ctx) => ({ name, arguments: typeof args === 'function' ? args(ctx) : args }),
+          timeoutMs: options.timeoutMs || 12000,
+          accept: options.accept || [],
+          capture: options.capture
+        });
+        const mcpRead = (uri, options = {}) => ({
+          area: options.area || 'MCP Resource',
+          method: 'POST',
+          path: '/mcp/resources/read',
+          label: options.label || `POST /mcp/resources/read ${typeof uri === 'function' ? 'dynamic' : uri}`,
+          chainfxAuth: true,
+          body: (ctx) => ({ uri: typeof uri === 'function' ? uri(ctx) : uri }),
+          timeoutMs: options.timeoutMs || 12000,
+          accept: options.accept || []
+        });
+        const capabilityCapture = (data, ctx) => {
+          const caps = data.capabilities || data.result?.capabilities || data.contents?.[0]?.json || [];
+          const list = Array.isArray(caps) ? caps : (Array.isArray(caps.capabilities) ? caps.capabilities : []);
+          const first = list.find((item) => item?.id === 'document_ocr') || list.find((item) => item?.id) || {};
+          ctx.capability = first.id || ctx.capability || 'document_ocr';
+        };
+        const testAgentWallet = '0x830000000000000000000000000000000000019a';
+        const mcpBase = [
+          { area: 'MCP Core', method: 'POST', path: '/mcp/initialize', label: 'POST /mcp/initialize', body: () => ({}), timeoutMs: 7000 },
+          { area: 'MCP Core', method: 'POST', path: '/mcp/tools/list', label: 'POST /mcp/tools/list', body: () => ({}), timeoutMs: 9000 },
+          { area: 'MCP Core', method: 'POST', path: '/mcp/resources/list', label: 'POST /mcp/resources/list', body: () => ({}), timeoutMs: 9000 },
+          { area: 'MCP Core', method: 'POST', path: '/mcp/prompts/list', label: 'POST /mcp/prompts/list', body: () => ({}), timeoutMs: 9000 },
+          mcpRead('chainfx://rates/latest'),
+          mcpRead('chainfx://marketplace/capabilities'),
+          mcpRead('chainfx://marketplace/products'),
+          mcpRead('chainfx://agent/assets'),
+          mcpRead('chainfx://webhooks/events'),
+          mcpRead('chainfx://webhooks/subscriptions'),
+          mcpRead('chainfx://mcp/registry'),
+          mcpRead((ctx) => `chainfx://capability-contracts/${ctx.capability || 'document_ocr'}`, { label: 'POST /mcp/resources/read chainfx://capability-contracts/:id' }),
+          mcpRead(() => `chainfx://agent/grants/${testAgentWallet}`, { label: 'POST /mcp/resources/read chainfx://agent/grants/:wallet' }),
+          mcpRead(() => `chainfx://agent/policy/${testAgentWallet}`, { label: 'POST /mcp/resources/read chainfx://agent/policy/:wallet' }),
+          mcpRead(() => `chainfx://agent/intents/${testAgentWallet}`, { label: 'POST /mcp/resources/read chainfx://agent/intents/:wallet' })
+        ];
+        const mcp = [
+          mcpTool('get_rates'),
+          mcpTool('searchCapabilities', { query: 'ocr', paymentAsset: 'USDT' }, { capture: capabilityCapture }),
+          mcpTool('listCapabilities', {}, { capture: capabilityCapture }),
+          mcpTool('getCapability', (ctx) => ({ capability: ctx.capability || 'document_ocr' })),
+          mcpTool('getCapabilityContract', (ctx) => ({ capability: ctx.capability || 'document_ocr', version: 'v1' })),
+          mcpTool('chooseRoute', (ctx) => ({ capability: ctx.capability || 'document_ocr', routingMode: 'best_available', units: 1 })),
+          mcpTool('dryRunCapability', (ctx) => ({ capability: ctx.capability || 'document_ocr', operation: 'extract_text', routingMode: 'best_available', units: 1, input: { documentUrl: 'https://example.com/test.pdf' } })),
+          mcpTool('listAssets'),
+          mcpTool('quote', { payAsset: 'USDT', receiveAsset: 'USDC', amount: 10, amountType: 'pay' }),
+          mcpTool('trade', { payAsset: 'USDT', receiveAsset: 'USDC', amount: 10, agentWallet: testAgentWallet }),
+          mcpTool('list_webhook_events'),
+          mcpTool('list_webhook_subscriptions'),
+          mcpTool('listAgentGrants', { agentWallet: testAgentWallet }),
+          mcpTool('getAgentPolicy', { agentWallet: testAgentWallet }),
+          mcpTool('listAgentPaymentIntents', { agentWallet: testAgentWallet }),
+          mcpTool('market_analysis', { asset: 'USDT', quoteAsset: 'BRL', horizon: 'short' }, { area: 'MCP AI', timeoutMs: 20000, accept: [400, 503] }),
+          mcpTool('trade_recommendation', { asset: 'USDT', quoteAsset: 'BRL', riskProfile: 'conservative' }, { area: 'MCP AI', timeoutMs: 20000, accept: [400, 503] }),
+          mcpTool('price_prediction', { asset: 'USDT', quoteAsset: 'BRL', horizon: 'short' }, { area: 'MCP AI', timeoutMs: 20000, accept: [400, 503] }),
+          mcpTool('detect_anomalies', { asset: 'USDT', window: '1h' }, { area: 'MCP AI', timeoutMs: 20000, accept: [400, 503] }),
+          mcpTool('summarize_transactions', { limit: 5 }, { area: 'MCP AI', timeoutMs: 20000, accept: [400, 503] })
+        ];
+        const capabilityHttp = [
+          { area: 'Capability HTTP', method: 'GET', path: '/.well-known/ai-services.json', label: 'GET /.well-known/ai-services.json', accept: [404], timeoutMs: 7000 },
+          { area: 'Capability HTTP', method: 'GET', path: '/mcp/capabilities.json', label: 'GET /mcp/capabilities.json', timeoutMs: 9000, capture: capabilityCapture },
+          { area: 'Capability HTTP', method: 'GET', path: '/marketplace/capabilities', label: 'GET /marketplace/capabilities', timeoutMs: 9000, capture: capabilityCapture },
+          { area: 'Capability HTTP', method: 'GET', path: (ctx) => `/marketplace/capabilities/${encodeURIComponent(ctx.capability || 'document_ocr')}`, label: 'GET /marketplace/capabilities/:id', timeoutMs: 9000 },
+          { area: 'Capability HTTP', method: 'GET', path: (ctx) => `/marketplace/capabilities/${encodeURIComponent(ctx.capability || 'document_ocr')}/contract`, label: 'GET /marketplace/capabilities/:id/contract', timeoutMs: 9000 },
+          { area: 'Capability HTTP', method: 'GET', path: '/marketplace/products', label: 'GET /marketplace/products', timeoutMs: 9000 },
+          { area: 'Agent M2M', method: 'GET', path: '/agent/v1/capabilities', label: 'GET /agent/v1/capabilities', timeoutMs: 9000 },
+          { area: 'Agent M2M', method: 'GET', path: (ctx) => `/agent/v1/capabilities/${encodeURIComponent(ctx.capability || 'document_ocr')}/contract`, label: 'GET /agent/v1/capabilities/:capability/contract', timeoutMs: 9000 },
+          { area: 'Agent M2M', method: 'GET', path: '/agent/v1/assets', label: 'GET /agent/v1/assets', timeoutMs: 9000 },
+          { area: 'Agent M2M', method: 'GET', path: `/agent/v1/pricing/${testAgentWallet}`, label: 'GET /agent/v1/pricing/:wallet', timeoutMs: 9000 },
+          { area: 'Agent M2M', method: 'POST', path: (ctx) => `/agent/v1/capabilities/${encodeURIComponent(ctx.capability || 'document_ocr')}/route`, label: 'POST /agent/v1/capabilities/:capability/route', chainfxAuth: true, accept: [401], body: () => ({ routingMode: 'best_available', units: 1 }), timeoutMs: 12000 },
+          { area: 'Agent M2M', method: 'POST', path: '/agent/v1/trade/quote', label: 'POST /agent/v1/trade/quote', idempotency: true, body: () => ({ payAsset: 'USDT', receiveAsset: 'USDC', amount: 10, amountType: 'pay', agentWallet: testAgentWallet, destinationWallet: testAgentWallet }), timeoutMs: 15000, capture: (data, ctx) => { ctx.tradeIntentId = captureId('intent.id', 'tradeIntent.id', 'tradeIntentId', 'id')(data, ctx); } },
+          { area: 'Agent M2M', method: 'POST', path: '/agent/v1/pay', label: 'POST /agent/v1/pay', chainfxAuth: true, accept: [401], idempotency: true, body: () => ({ type: 'pix', amount_brl: '10.00', pix_key: '+5511999999999', beneficiary_name: 'ChainFX Admin Test', idempotency_key: `admintest_${Date.now()}`, agent_wallet: testAgentWallet }), timeoutMs: 15000 }
+        ];
+        const api = [
+          { area: 'API Developer', method: 'GET', path: '/api/rates', timeoutMs: 6000 },
+          { area: 'API Developer', method: 'GET', path: '/api/quote?amountBRL=100', accept: [404, 405], timeoutMs: 7000 },
+          { area: 'Admin', method: 'GET', path: '/api/admin/overview?limit=1', adminAuth: true, accept: [401], timeoutMs: 7000 }
+        ];
+        if (profile === 'web') return infra.concat(web);
+        if (profile === 'mobile') return infra.concat(mobile);
+        if (profile === 'mcp') return mcpBase.concat(mcp, capabilityHttp);
+        if (profile === 'api') return infra.concat(api);
+        if (profile === 'full') return infra.concat(web, mobile, mcpBase, mcp, capabilityHttp, api);
+        return infra.concat(web.slice(0, 1), mobile.slice(0, 2), mcpBase, mcp.slice(0, 1), capabilityHttp.slice(0, 3));
+      }
+
+      async function sampleObservability() {
+        const base = $('testsBaseUrl').value.trim().replace(/\/$/, '') || state.apiBase;
+        const obs = {
+          sampledAt: new Date().toISOString(),
+          cpu: '--',
+          ram: browserMemoryText(),
+          redis: '--',
+          postgres: '--',
+          workerQueue: '--',
+          blockchainQueue: '--',
+          pendingDeposits: '--',
+          pendingSettlements: '--',
+          pixLatency: '--',
+          usdtSettlementLatency: '--',
+          rpcLatency: '--'
+        };
+        const started = performance.now();
+        try {
+          const headers = { 'Accept': 'application/json' };
+          Object.assign(headers, adminHeaders());
+          const response = await fetch(`${base}/api/admin/overview?limit=10`, { headers });
+          const data = response.ok ? await response.json() : {};
+          const metrics = data.metrics || data.readiness || data;
+          const runtimeObs = data.observability || {};
+          obs.cpu = cpuText(runtimeObs.cpu) || metricText(metrics, ['cpu', 'cpu_percent', 'cpuPercent']);
+          obs.ram = memoryText(runtimeObs.memory) || metricText(metrics, ['ram', 'memory', 'memory_percent', 'memoryPercent']) || obs.ram;
+          obs.redis = redisText(runtimeObs.redis) || statusText(metrics.redis || metrics.redisStatus);
+          obs.postgres = postgresText(runtimeObs.postgres) || statusText(metrics.postgres || metrics.database || metrics.db);
+          obs.workerQueue = requestLogQueueText(runtimeObs.requestLogs) || metricText(metrics, ['workerQueue', 'worker_queue', 'queue_depth']);
+          obs.blockchainQueue = metricText(metrics, ['blockchainQueue', 'blockchain_queue', 'onchainPending']);
+          obs.pendingDeposits = metricText(metrics, ['pendingDeposits', 'pending_deposits']);
+          obs.pendingSettlements = metricText(metrics, ['pendingSettlements', 'pending_settlements']);
+          obs.pixLatency = metricText(metrics, ['pixLatency', 'pix_latency_ms']);
+          obs.usdtSettlementLatency = metricText(metrics, ['usdtSettlementLatency', 'settlement_latency_ms']);
+          obs.rpcLatency = metricText(metrics, ['rpcLatency', 'rpc_latency_ms']) || `${Math.round(performance.now() - started)} ms`;
+        } catch {
+          obs.rpcLatency = `${Math.round(performance.now() - started)} ms`;
+        }
+        state.tests.observability = obs;
+      }
+
+      function renderTests() {
+        const samples = visibleTestSamples();
+        const summary = summarizeSamples(samples);
+        const byEndpoint = endpointSummaries(samples);
+        const elapsed = state.tests.startedAt ? Math.round((Date.now() - state.tests.startedAt) / 1000) : 0;
+        const ok = samples.filter((sample) => sample.ok).length;
+        const availability = samples.length ? (ok / samples.length) * 100 : 0;
+        setText('testsAvailability', samples.length ? `${availability.toFixed(2)}%` : '--');
+        setText('testsAvailabilityHint', `${ok}/${samples.length} respostas OK`);
+        setText('testsP95', summary.count ? `${summary.p95} ms` : '--');
+        setText('testsRps', `${summary.rps.toFixed(1)} req/s`);
+        setText('testsRpm', `${Math.round(summary.rpm)} req/min`);
+        setText('testsUsers', String(state.tests.running ? state.tests.concurrency : 0));
+        setText('testsProgress', `${elapsed}s executados`);
+        setText('testsCreatedUsers', String(state.tests.createdUsers.length));
+        setText('testsPurgeHint', state.tests.createdUsers.length ? 'clique em Apagar testes' : 'sem usuarios pendentes');
+
+        const obs = state.tests.observability || {};
+        setText('testsCpu', obs.cpu || '--');
+        setText('testsRam', obs.ram || '--');
+        setText('testsQueues', `W ${obs.workerQueue || '--'} / B ${obs.blockchainQueue || '--'}`);
+        setText('testsSettlement', `PIX ${obs.pixLatency || '--'} / USDT ${obs.usdtSettlementLatency || '--'}`);
+        $('testsObservabilityJson').textContent = JSON.stringify(obs, null, 2);
+        $('testsJson').textContent = JSON.stringify(samples.slice(-80), null, 2);
+
+        $('testsEndpointBody').innerHTML = byEndpoint.map((row) => `
+          <tr>
+            <td>${escapeHtml(row.area)}</td>
+            <td><code>${escapeHtml(row.endpoint)}</code></td>
+            <td>${row.count}</td>
+            <td>${row.p50} ms</td>
+            <td>${row.p95} ms</td>
+            <td>${row.p99} ms</td>
+            <td>${row.avg} ms</td>
+            <td>${row.max} ms</td>
+            <td>${row.rps.toFixed(1)}</td>
+            <td>${Math.round(row.rpm)}</td>
+            <td><span class="badge ${row.errors ? 'bad' : 'ok'}">${row.errors}</span></td>
+            <td><code>${escapeHtml(shorten(row.lastTrace || ''))}</code></td>
+          </tr>
+        `).join('');
+        $('testsEmpty').style.display = byEndpoint.length ? 'none' : 'block';
+        updateTestCharts();
+      }
+
+      function updateTestCharts() {
+        const samples = visibleTestSamples();
+        const buckets = bucketSamples(samples);
+        const chartRows = buckets.map((bucket) => ({
+          label: new Date(bucket.ts).toLocaleTimeString('pt-BR'),
+          p50: bucket.p50,
+          p95: bucket.p95,
+          p99: bucket.p99,
+          max: bucket.max,
+          rps: Number(bucket.rps.toFixed(2)),
+          errors: bucket.errors
+        }));
+        renderRechartsLine(state.tests.charts.latency, {
+          data: chartRows,
+          yUnit: ' ms',
+          lines: [
+            { key: 'p50', name: 'P50', color: chartColor('teal') },
+            { key: 'p95', name: 'P95', color: chartColor('green') },
+            { key: 'p99', name: 'P99', color: chartColor('amber') },
+            { key: 'max', name: 'MAX', color: chartColor('red') }
+          ]
+        });
+        renderRechartsLine(state.tests.charts.throughput, {
+          data: chartRows,
+          lines: [
+            { key: 'rps', name: 'Req/s', color: chartColor('teal') },
+            { key: 'errors', name: 'Erros', color: chartColor('red') }
+          ]
+        });
+      }
+
+      function renderRechartsLine(root, config) {
+        if (!root) return;
+        const h = React.createElement;
+        const data = config.data || [];
+        const lines = config.lines || [];
+        const axisColor = 'rgba(223,248,255,.62)';
+        const gridColor = 'rgba(0,232,255,.10)';
+        root.render(h(ResponsiveContainer, { width: '100%', height: '100%' },
+          h(LineChart, { data, margin: { top: 28, right: 18, bottom: 26, left: 18 } },
+            h(CartesianGrid, { stroke: gridColor, strokeDasharray: '3 3', vertical: false }),
+            h(XAxis, {
+              dataKey: 'label',
+              tick: { fill: axisColor, fontSize: 11 },
+              axisLine: { stroke: 'rgba(0,232,255,.18)' },
+              tickLine: false,
+              minTickGap: 18
+            }),
+            h(YAxis, {
+              tick: { fill: axisColor, fontSize: 11 },
+              axisLine: false,
+              tickLine: false,
+              width: 46,
+              tickFormatter: (value) => `${value}${config.yUnit || ''}`
+            }),
+            h(Tooltip, {
+              cursor: { stroke: 'rgba(0,232,255,.22)' },
+              contentStyle: {
+                background: 'rgba(6, 18, 32, .94)',
+                border: '1px solid rgba(0,232,255,.20)',
+                borderRadius: 8,
+                color: '#dff8ff'
+              },
+              labelStyle: { color: '#dff8ff' }
+            }),
+            h(Legend, {
+              verticalAlign: 'top',
+              align: 'right',
+              iconType: 'plainline',
+              wrapperStyle: { color: '#dff8ff', fontSize: 12 }
+            }),
+            ...lines.map((line) => h(Line, {
+              key: line.key,
+              type: 'monotone',
+              dataKey: line.key,
+              name: line.name,
+              stroke: line.color,
+              strokeWidth: 2,
+              dot: false,
+              activeDot: { r: 4 }
+            }))
+          )
+        ));
+      }
+
+      function chartColor(name) {
+        const styles = getComputedStyle(document.documentElement);
+        const fromVar = (key, fallback) => styles.getPropertyValue(key).trim() || fallback;
+        const colors = {
+          teal: fromVar('--teal', '#00E8FF'),
+          green: fromVar('--green', '#70ffb4'),
+          amber: fromVar('--amber', '#ffcc66'),
+          red: fromVar('--red', '#ff5d73')
+        };
+        return colors[name] || colors.teal;
+      }
+
+      function createTrace() {
+        const suffix = crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        return {
+          traceId: `trace_${suffix}`,
+          requestId: `req_${suffix}`,
+          correlationId: `corr_${suffix}`
+        };
+      }
+
+      function randomEvmAddress() {
+        const bytes = new Uint8Array(20);
+        crypto.getRandomValues(bytes);
+        return `0x${Array.from(bytes).map((item) => item.toString(16).padStart(2, '0')).join('')}`;
+      }
+
+      function updateTrace(sample) {
+        $('testsCorrelationId').textContent = sample.correlationId;
+        $('traceMobile').textContent = sample.requestId;
+        $('traceGateway').textContent = sample.traceId;
+        $('traceWorker').textContent = sample.correlationId;
+        $('traceBlockchain').textContent = sample.area === 'Infra' ? `${sample.latency} ms` : 'awaiting rpc event';
+        $('traceSettlement').textContent = sample.ok ? 'request accepted' : sample.error || 'failed';
+        $('traceWebhook').textContent = sample.endpoint.includes('/mcp/') ? 'agent call' : 'notified by backend';
+        $('traceNotification').textContent = `${sample.status || '--'} / ${sample.latency} ms`;
+      }
+
+      function pruneTestSamples() {
+        const cutoff = Date.now() - Math.max(300000, state.tests.durationMs || 300000);
+        state.tests.samples = state.tests.samples.filter((sample) => sample.ts >= cutoff).slice(-25000);
+      }
+
+      function visibleTestSamples() {
+        const cutoff = Date.now() - 300000;
+        return state.tests.samples.filter((sample) => sample.ts >= cutoff);
+      }
+
+      function summarizeSamples(samples) {
+        const latencies = samples.map((sample) => sample.latency).sort((a, b) => a - b);
+        const elapsedMs = samples.length ? Math.max(1000, Math.max(...samples.map((s) => s.ts)) - Math.min(...samples.map((s) => s.ts))) : 1000;
+        return {
+          count: samples.length,
+          p50: percentile(latencies, 50),
+          p95: percentile(latencies, 95),
+          p99: percentile(latencies, 99),
+          max: latencies.length ? latencies[latencies.length - 1] : 0,
+          avg: latencies.length ? Math.round(latencies.reduce((sum, value) => sum + value, 0) / latencies.length) : 0,
+          rps: samples.length / (elapsedMs / 1000),
+          rpm: samples.length / (elapsedMs / 60000),
+          errors: samples.filter((sample) => !sample.ok && !sample.throttled).length,
+          throttled: samples.filter((sample) => sample.throttled).length
+        };
+      }
+
+      function endpointSummaries(samples) {
+        const groups = new Map();
+        samples.forEach((sample) => {
+          const key = `${sample.area}|${sample.endpoint}`;
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(sample);
+        });
+        return Array.from(groups.entries()).map(([key, group]) => {
+          const [area, endpoint] = key.split('|');
+          const summary = summarizeSamples(group);
+          const last = group[group.length - 1] || {};
+          return { area, endpoint, lastTrace: last.traceId, ...summary };
+        }).sort((a, b) => b.p95 - a.p95);
+      }
+
+      function bucketSamples(samples) {
+        const bucketMs = 10000;
+        const buckets = new Map();
+        samples.forEach((sample) => {
+          const ts = Math.floor(sample.ts / bucketMs) * bucketMs;
+          if (!buckets.has(ts)) buckets.set(ts, []);
+          buckets.get(ts).push(sample);
+        });
+        return Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]).map(([ts, group]) => {
+          const summary = summarizeSamples(group);
+          return { ts, ...summary };
+        }).slice(-30);
+      }
+
+      function percentile(sortedValues, p) {
+        if (!sortedValues.length) return 0;
+        const idx = Math.min(sortedValues.length - 1, Math.ceil((p / 100) * sortedValues.length) - 1);
+        return Math.round(sortedValues[idx]);
+      }
+
+      function metricText(source, keys) {
+        if (!source || typeof source !== 'object') return '';
+        for (const key of keys) {
+          const value = source[key];
+          if (value == null || value === '') continue;
+          if (typeof value === 'number') return key.toLowerCase().includes('latency') ? `${Math.round(value)} ms` : String(value);
+          if (typeof value === 'boolean') return value ? 'ok' : 'falha';
+          if (typeof value === 'string') return value;
+        }
+        return '';
+      }
+
+      function statusText(value) {
+        if (value == null || value === '') return '--';
+        if (typeof value === 'boolean') return value ? 'ok' : 'falha';
+        if (typeof value === 'object') return value.ok === false ? 'falha' : 'ok';
+        return String(value);
+      }
+
+      function cpuText(value) {
+        if (!value || typeof value !== 'object') return '';
+        if (typeof value.usagePercent === 'number') return `${value.usagePercent.toFixed(1)}%`;
+        if (value.logicalCores || value.gomaxprocs) return `${value.gomaxprocs || '--'}/${value.logicalCores || '--'} cores`;
+        return '';
+      }
+
+      function memoryText(value) {
+        if (!value || typeof value !== 'object') return '';
+        if (typeof value.allocMB === 'number') return `${value.allocMB} MB alloc / ${value.sysMB || '--'} MB sys`;
+        return '';
+      }
+
+      function postgresText(value) {
+        if (!value || typeof value !== 'object') return '';
+        if (value.status) return value.status;
+        return `${value.inUse || 0}/${value.openConnections || 0} in use/open`;
+      }
+
+      function redisText(value) {
+        if (!value || typeof value !== 'object') return '';
+        return value.status || '';
+      }
+
+      function requestLogQueueText(value) {
+        if (!value || typeof value !== 'object') return '';
+        return `${value.queueDepth || 0}/${value.queueCap || 0}`;
+      }
+      function browserMemoryText() {
+        const memory = performance.memory;
+        if (!memory) return '--';
+        return `${Math.round(memory.usedJSHeapSize / 1024 / 1024)} MB`;
+      }
+
+      function testReport() {
+        const samples = visibleTestSamples();
+        return {
+          generatedAt: new Date().toISOString(),
+          target: $('testsBaseUrl').value.trim().replace(/\/$/, ''),
+          profile: $('testsProfile').value,
+          durationSeconds: Number($('testsDuration').value || 300),
+          concurrency: Number($('testsConcurrency').value || 25),
+          summary: summarizeSamples(samples),
+          endpoints: endpointSummaries(samples),
+          observability: state.tests.observability,
+          createdUsers: state.tests.createdUsers,
+          latestSamples: samples.slice(-500)
+        };
+      }
+
+      function sleep(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+      }
+
       async function request(path) {
-        const headers = { 'Accept': 'application/json' };
-        if (state.apiKey) headers.Authorization = `Bearer ${state.apiKey}`;
+        const headers = adminHeaders();
         const response = await fetch(`${state.apiBase}${path}`, { headers });
         const text = await response.text();
         let data = {};
@@ -1429,6 +3910,14 @@
           throw new Error(data.error || `${response.status} ${response.statusText}`);
         }
         return data;
+      }
+
+      function adminHeaders(options = {}) {
+        const headers = { 'Accept': 'application/json' };
+        if (options.contentType) headers['Content-Type'] = 'application/json';
+        if (state.apiKey) headers.Authorization = `Bearer ${state.apiKey}`;
+        if (state.consoleKey) headers['X-Admin-Console-Key'] = state.consoleKey;
+        return headers;
       }
 
       function normalizeRecord(input, forcedType) {
@@ -1481,6 +3970,8 @@
         renderAudit();
         renderReports();
         renderTelemetry();
+        renderTests();
+        renderOperationalUX();
       }
 
       function renderKpis() {
@@ -1634,6 +4125,158 @@
       function renderTelemetry() {
         $('telemetryJson').textContent = JSON.stringify(state.telemetry.slice(-60), null, 2);
         $('alertsJson').textContent = JSON.stringify(state.alerts, null, 2);
+        renderOperationalUX();
+      }
+
+      function renderOperationalUX() {
+        const obs = state.tests.observability || {};
+        const samples = visibleTestSamples();
+        const endpointRows = endpointSummaries(samples);
+        const mobileRows = samples.filter((sample) => String(sample.endpoint || '').includes('/api/mobile/'));
+        const mcpRows = samples.filter((sample) => String(sample.endpoint || '').includes('/mcp/'));
+        const resourceRows = samples.filter((sample) => String(sample.endpoint || '').includes('/mcp/resources/read'));
+        const paymentRows = samples.filter((sample) => /pay|settlement|order|transfer/i.test(String(sample.endpoint || '')));
+        const mobileSummary = summarizeSamples(mobileRows);
+        const mcpSummary = summarizeSamples(mcpRows);
+        const resourceSummary = summarizeSamples(resourceRows);
+        const paymentSummary = summarizeSamples(paymentRows);
+        const allSummary = summarizeSamples(samples);
+        const http401 = samples.filter((sample) => sample.status === 401).length;
+        const http403 = samples.filter((sample) => sample.status === 403).length;
+        const http429 = samples.filter((sample) => sample.status === 429 || sample.throttled).length;
+        const errors = samples.filter((sample) => !sample.ok).length;
+        const backendOnline = $('backendStatus')?.textContent === 'Online';
+        const apiState = backendOnline ? 'Online' : ($('backendStatus')?.textContent || 'Checking');
+        const pg = obs.postgres || '--';
+        const redis = obs.redis || '--';
+        const rpc = obs.rpcLatency || '--';
+        const queue = obs.workerQueue || '--';
+        const psp = obs.pixLatency || '--';
+        const mcpStatus = mcpSummary.count ? `${mcpSummary.p95} ms P95` : 'Ready';
+        const mobileStatus = mobileSummary.count ? `${mobileSummary.p95} ms P95` : 'Ready';
+
+        setText('healthApi', apiState);
+        setText('healthPg', pg);
+        setText('healthRedis', redis);
+        setText('healthRpc', rpc);
+        setText('healthPsp', psp);
+        setText('healthWorkers', queue);
+        setText('healthMcp', mcpStatus);
+        setText('healthMobile', mobileStatus);
+        setText('healthSecurity', errors || http429 || http401 ? 'Watching' : 'Clean');
+        setText('healthApiLatency', $('devLatency')?.textContent || (allSummary.count ? `${allSummary.avg} ms` : '--'));
+        setText('healthApiRequests', compactNumber(allSummary.count || state.transactions.length));
+        setText('healthApiError', allSummary.count ? `${((errors / allSummary.count) * 100).toFixed(2)}%` : '--');
+        setText('healthPgConnections', pg);
+        setText('healthPgSlow', obs.slowQueries || obs.dbSlowQueries || '0');
+        setText('healthPgWait', obs.dbWait || obs.dbWaitDuration || obs.poolWait || '--');
+        setText('healthRedisMode', /not_configured|--/i.test(redis) ? 'memory' : 'redis');
+        setText('healthRedisState', /not_configured|--/i.test(redis) ? 'not configured' : redis);
+        setText('healthRedisUse', /not_configured|--/i.test(redis) ? 'optional' : 'shared');
+        setText('healthRpcLatency', rpc);
+        setText('healthRpcHealth', parseLatency(rpc) > 1500 ? 'degraded' : 'healthy');
+        setText('healthRpcFallback', parseLatency(rpc) > 1500 ? 'watch' : 'none');
+        setText('healthPspPix', psp);
+        setText('healthPspErrors', String(samples.filter((sample) => /pix|psp/i.test(sample.endpoint || '') && !sample.ok).length));
+        setText('healthPspState', /fail|erro/i.test(psp) ? 'degraded' : 'healthy');
+        setText('healthWorkersQueue', queue);
+        setText('healthWorkersRetries', String(http429));
+        setText('healthWorkersLast', obs.sampledAt ? new Date(obs.sampledAt).toLocaleTimeString('pt-BR') : '--');
+        setText('healthMcpP95', mcpSummary.count ? `${mcpSummary.p95} ms` : '--');
+        setText('healthMcpCalls', compactNumber(mcpSummary.count));
+        setText('healthMcpErrors', String(mcpSummary.errors || 0));
+        setText('healthMobileP95', mobileSummary.count ? `${mobileSummary.p95} ms` : '--');
+        setText('healthMobileRequests', compactNumber(mobileSummary.count));
+        setText('healthMobileErrors', String(mobileSummary.errors || 0));
+        setText('healthSecurityPenalty', $('secActiveBans')?.textContent || '--');
+        setText('healthSecurity429', compactNumber(http429));
+        setText('healthSecurityInvalid', String(http401));
+        setHealthDot('healthApiDot', backendOnline ? 'ok' : 'warn');
+        setHealthDot('healthPgDot', /fail|down|erro/i.test(pg) ? 'bad' : 'ok');
+        setHealthDot('healthRedisDot', /not_configured|--/i.test(redis) ? 'warn' : 'ok');
+        setHealthDot('healthRpcDot', parseLatency(rpc) > 1500 ? 'warn' : 'ok');
+        setHealthDot('healthPspDot', /fail|erro/i.test(psp) ? 'bad' : 'ok');
+        setHealthDot('healthWorkersDot', /0\/|--/.test(queue) ? 'ok' : 'warn');
+        setHealthDot('healthMcpDot', mcpSummary.errors ? 'warn' : 'ok');
+        setHealthDot('healthMobileDot', mobileSummary.errors ? 'warn' : 'ok');
+        setHealthDot('healthSecurityDot', http403 || http401 ? 'warn' : (errors ? 'warn' : 'ok'));
+
+        setText('opsStatus', errors ? 'Degraded' : 'Running');
+        setText('workerPriceLatency', rpc);
+        setText('workerPriceLast', obs.sampledAt ? new Date(obs.sampledAt).toLocaleTimeString('pt-BR') : '--');
+        setText('workerPaymentQueue', queue);
+        setText('workerPaymentRetries', String(http429));
+        setText('workerChainRpc', rpc);
+        setText('workerChainPending', obs.pendingDeposits || '--');
+        setText('workerWebhookDelivered', String(state.events.filter((event) => JSON.stringify(event).toLowerCase().includes('webhook')).length));
+        setText('workerWebhookRetries', String(state.alerts.length));
+        setText('opsMobileP95', mobileSummary.count ? `${mobileSummary.p95} ms` : '--');
+        setText('opsMobileErrors', String(mobileSummary.errors));
+        setText('opsSettlementPending', obs.pendingSettlements || '--');
+        setText('opsSettlementP95', paymentSummary.count ? `${paymentSummary.p95} ms` : '--');
+
+        setText('devOpsApiKeys', state.apiKey ? '1' : '0');
+        setText('devOpsRpm', $('devRpm')?.textContent || '0');
+        setText('devOpsErrors', $('devErrors')?.textContent || '0');
+        setText('devOpsLatency', $('devLatency')?.textContent || '0 ms');
+        setText('devOpsWebhooks', $('devWebhooks')?.textContent || '0');
+        setText('devOpsWebhookRetries', String(state.alerts.length));
+        setText('devOpsQuota', String(state.telemetry.length + samples.length));
+        setText('devOpsMcp', mcpStatus);
+        setText('devOpsTopProduct', $('marketTopProducts')?.textContent || '--');
+        setText('devOpsTakeRate', $('marketTakeRate')?.textContent || '0%');
+
+        setText('mcpOpsLatency', mcpSummary.count ? `${mcpSummary.p95} ms` : '--');
+        setText('mcpOpsErrors', String(mcpSummary.errors));
+        setText('mcpOpsCalls', String(mcpSummary.count || Number($('aiToolCalls')?.textContent || 0)));
+        setText('mcpOpsResourceP95', resourceSummary.count ? `${resourceSummary.p95} ms` : '--');
+        setText('mcpOpsCapabilities', $('aiCapabilities')?.textContent || '0');
+        setText('mcpOpsTop', $('marketTopProducts')?.textContent || '--');
+        setText('mcpOpsPayLast', paymentRows.at(-1)?.traceId ? shorten(paymentRows.at(-1).traceId) : '--');
+        setText('mcpOpsFallback', mcpSummary.errors ? 'watch' : 'none');
+
+        setText('infraSnapshotAt', obs.sampledAt ? new Date(obs.sampledAt).toLocaleTimeString('pt-BR') : 'snapshot local');
+        setText('infraRpcLatency', rpc);
+        setText('infraRpcFallback', parseLatency(rpc) > 1500 ? 'candidate' : 'none');
+        setText('infraPgPool', pg);
+        setText('infraPgWait', '--');
+        setText('infraRedisStatus', redis);
+        setText('infraPspLatency', psp);
+        setText('infraPspErrors', String(samples.filter((sample) => /pix|psp/i.test(sample.endpoint || '') && !sample.ok).length));
+        setText('infraWorkerQueue', queue);
+        setText('infraWorkerOldest', '--');
+        setText('infraMobileP95', mobileSummary.count ? `${mobileSummary.p95} ms` : '--');
+        setText('infraMobileErrors', String(mobileSummary.errors));
+
+        setText('secActiveBans', '--');
+        setText('secViolations', http429 ? String(http429) : '--');
+        setText('secRate429', String(http429));
+        setText('secBlocked', http403 ? String(http403) : '--');
+        setText('secInvalidKeys', String(http401));
+        setText('secForbidden', String(http403));
+        setText('secReplay', endpointRows.some((row) => /409/.test(String(row.status))) ? '1+' : '--');
+        setText('secTopIp', '--');
+        setText('secMcpErrors', String(mcpSummary.errors));
+      }
+
+      function setHealthDot(id, stateName) {
+        const el = $(id);
+        if (!el) return;
+        el.classList.toggle('warn', stateName === 'warn');
+        el.classList.toggle('bad', stateName === 'bad');
+      }
+
+      function parseLatency(value) {
+        const match = String(value || '').match(/(\d+(?:\.\d+)?)/);
+        return match ? Number(match[1]) : 0;
+      }
+
+      function compactNumber(value) {
+        const number = Number(value || 0);
+        if (!Number.isFinite(number) || number <= 0) return '0';
+        if (number >= 1000000) return `${(number / 1000000).toFixed(number >= 10000000 ? 0 : 1)}M`;
+        if (number >= 1000) return `${(number / 1000).toFixed(number >= 10000 ? 0 : 1)}k`;
+        return String(Math.round(number));
       }
 
       function reportRows() {
