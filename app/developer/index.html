@@ -28,15 +28,20 @@
           <div><strong>ChainFX</strong><span>Developers</span></div>
         </div>
         <nav class="nav-section" aria-label="Developer Console">
+          <div class="nav-heading">Command</div>
           <button class="nav-button active" data-section-target="overview">Overview</button>
           <button class="nav-button" data-section-target="projects">Projects</button>
+          <div class="nav-heading">Access</div>
           <button class="nav-button" data-section-target="apikeys">API Keys</button>
           <button class="nav-button" data-section-target="mcp">MCP Connections</button>
+          <div class="nav-heading">Products</div>
           <button class="nav-button" data-section-target="capabilities">Capabilities</button>
           <button class="nav-button" data-section-target="products">Products</button>
+          <div class="nav-heading">Operations</div>
           <button class="nav-button" data-section-target="requests">Requests</button>
           <button class="nav-button" data-section-target="webhooks">Webhooks</button>
           <button class="nav-button" data-section-target="provider">Publish Capability</button>
+          <div class="nav-heading">Business</div>
           <button class="nav-button" data-section-target="billing">Billing</button>
           <button class="nav-button" data-section-target="logs">Logs</button>
           <button class="nav-button" data-section-target="settings">Settings</button>
@@ -63,6 +68,14 @@
         </header>
 
         <section class="section active" data-section="overview">
+          <div class="service-strip">
+            <article class="service-card"><strong><i class="service-dot"></i>API</strong><span>Requests, API keys, quota</span></article>
+            <article class="service-card"><strong><i class="service-dot"></i>MCP</strong><span>Tools, resources, prompts</span></article>
+            <article class="service-card"><strong><i class="service-dot"></i>Capabilities</strong><span>Contracts, routes, providers</span></article>
+            <article class="service-card"><strong><i class="service-dot"></i>Webhooks</strong><span>Events and deliveries</span></article>
+            <article class="service-card"><strong><i class="service-dot warn"></i>Billing</strong><span>Spend, fees, settlements</span></article>
+            <article class="service-card"><strong><i class="service-dot"></i>Logs</strong><span>Request IDs and audit trail</span></article>
+          </div>
           <div id="metricGrid" class="metric-grid"></div>
           <div class="grid-2">
             <article class="panel">
