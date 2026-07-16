@@ -84,7 +84,7 @@ const priceState = {
 
 const steps = { // Step definitions
   1: 'Valor', // Amount in Portuguese
-  2: 'Carteira + Pagamento', // Wallet
+  2: 'Carteira + Dados', // Wallet + payer data
   3: 'Método de Pagamento', // Payment Method
   4: 'Aguardando PIX',
   5: 'Pagamento confirmado'
@@ -114,6 +114,9 @@ const UX_MESSAGES = {
   invalid_amount: 'Valor invalido.',
   invalid_wallet: 'Wallet BSC invalida.',
   payment_method_required: 'Selecione um metodo de pagamento.',
+  payer_name_required: 'Informe o nome do pagador.',
+  payer_cpf_required: 'Informe o CPF do pagador.',
+  payer_cpf_invalid: 'CPF do pagador invalido.',
   card_fields_required: 'Preencha os dados do cartao e endereco.',
   card_token_unavailable: 'Tokenizacao Efi indisponivel.',
   backend_unavailable: 'Servico indisponivel.',
@@ -139,6 +142,7 @@ const normalizeUxMessage = (input, fallback = 'unknown') => {
   if (raw.includes('limite') || raw.includes('too many') || raw.includes('429')) return UX_MESSAGES.order_limit;
   if (raw.includes('fora dos limites') || raw.includes('valor insuficiente')) return UX_MESSAGES.order_value_limit;
   if (raw.includes('asset') || raw.includes('ativo')) return UX_MESSAGES.asset_unsupported;
+  if (raw.includes('invalid_customer_document') || raw.includes('cpf')) return UX_MESSAGES.payer_cpf_invalid;
   if (raw.includes('duplicate') || raw.includes('duplic')) return UX_MESSAGES.duplicate_payment;
   if (raw.includes('pagseguro') || raw.includes('pagbank') || raw.includes('pix')) return UX_MESSAGES.pix_missing;
   if (raw.includes('signer') || raw.includes('hmac')) return UX_MESSAGES.signer_missing;
@@ -865,6 +869,10 @@ const resolveEfiEnvironment = () => {
   return location.hostname === 'localhost' || location.hostname === '127.0.0.1' ? 'sandbox' : 'production';
 };
 
+const isLocalDevBypassEnabled = () => {
+  return ['localhost', '127.0.0.1'].includes(location.hostname);
+};
+
 const normalizeCardBrand = (method) => {
   switch (String(method || '').toLowerCase()) {
     case 'visa':
@@ -888,6 +896,30 @@ const selectedPaymentRail = () => {
 };
 
 const digitsOnly = (value) => String(value || '').replace(/\D/g, '');
+
+const formatCPF = (value) => {
+  const digits = digitsOnly(value).slice(0, 11);
+  return digits
+    .replace(/^(\d{3})(\d)/, '$1.$2')
+    .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4');
+};
+
+const isValidCPF = (value) => {
+  const cpf = digitsOnly(value);
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+  const checkDigit = (position) => {
+    let sum = 0;
+    let weight = position + 1;
+    for (let i = 0; i < position; i += 1) {
+      sum += Number(cpf[i]) * weight;
+      weight -= 1;
+    }
+    const rest = (sum * 10) % 11;
+    return rest === 10 ? 0 : rest;
+  };
+  return checkDigit(9) === Number(cpf[9]) && checkDigit(10) === Number(cpf[10]);
+};
 
 const splitExpiry = (value) => {
   const digits = digitsOnly(value);
@@ -1083,7 +1115,7 @@ const updateStep = (step) => {
    // Manage card header visibility - Hide it on the confirmation step (step 4)
    const cardHeader = document.querySelector('.card-header');
    if(cardHeader) {
-       if (step === 5) {
+       if (step === 5 && state.action !== 'sell') {
            cardHeader.classList.add('hidden');
        } else {
            cardHeader.classList.remove('hidden');
@@ -1094,6 +1126,7 @@ const updateStep = (step) => {
   if (step === 2) {
        updateOrderSummaries();
        updateSellDepositWallet();
+       syncBuyPayerInfo();
        // Maybe focus the wallet input or show a connect button
        const walletInput = document.getElementById('walletAddress');
        if (walletInput && !state.connected) {
@@ -1116,6 +1149,8 @@ const updateStep = (step) => {
         if (paymentBtcAmountDisplay) paymentBtcAmountDisplay.textContent = `${(state.payAmount || 0).toFixed(6)} USDT`;
         if (paymentWalletDisplay && !paymentWalletDisplay.textContent) paymentWalletDisplay.textContent = getReceiveDisplayValue();
       } else {
+        const paymentInfoSection = document.getElementById('paymentInfoSection');
+        if (paymentInfoSection) paymentInfoSection.classList.remove('sell-deposit-pending');
         if (paymentStatusLabel) paymentStatusLabel.textContent = 'Pagamento identificado';
         if (paymentBtcAmountDisplay) paymentBtcAmountDisplay.textContent = getReceiveDisplayValue();
         if (paymentMethodDisplay && state.selectedPaymentMethod) paymentMethodDisplay.textContent = state.selectedPaymentMethod.dataset.method.toUpperCase();
@@ -1167,6 +1202,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const paymentWalletEl = document.getElementById('paymentWallet');
   const paymentStatusLabelEl = document.getElementById('paymentStatusLabel');
   const orderErrorEl = document.getElementById('orderError');
+  const buyPayerInfo = document.getElementById('buyPayerInfo');
+  const buyCustomerNameInput = document.getElementById('buyCustomerName');
+  const buyCustomerCpfInput = document.getElementById('buyCustomerCpf');
   const pixCpfInput = document.getElementById('pixCpf');
   const pixPhoneInput = document.getElementById('pixPhone');
   const pixKeyDisplay = document.getElementById('pixKey');
@@ -1195,6 +1233,38 @@ document.addEventListener('DOMContentLoaded', async () => {
   const marketFilterButtons = document.querySelectorAll('[data-market-filter]');
   const marketRows = document.querySelectorAll('.markets-row[data-market-category]');
   const marketActionButtons = document.querySelectorAll('[data-market-action]');
+
+  function syncBuyPayerInfo() {
+    const isBuyPix = state.action === 'buy' && selectedPaymentRail().method === 'pix';
+    if (buyPayerInfo) buyPayerInfo.classList.toggle('hidden', !isBuyPix);
+  }
+
+  function collectBuyPixCustomer() {
+    return {
+      name: (buyCustomerNameInput?.value || '').trim(),
+      cpf: digitsOnly(buyCustomerCpfInput?.value || '')
+    };
+  }
+
+  function validateBuyPixCustomer() {
+    const customer = collectBuyPixCustomer();
+    if (!customer.name || customer.name.length < 3) {
+      showUxMessage('payer_name_required', 'warning');
+      buyCustomerNameInput?.focus();
+      return null;
+    }
+    if (!customer.cpf) {
+      showUxMessage('payer_cpf_required', 'warning');
+      buyCustomerCpfInput?.focus();
+      return null;
+    }
+    if (!isValidCPF(customer.cpf)) {
+      showUxMessage('payer_cpf_invalid', 'warning');
+      buyCustomerCpfInput?.focus();
+      return null;
+    }
+    return customer;
+  }
 
   function setSelectedSellNetwork(network) {
     const requested = normalizeSellNetwork(network);
@@ -1549,6 +1619,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     state.selectedPaymentMethod = null;
     paymentMethodButtons.forEach(button => button.classList.remove('selected'));
+    syncBuyPayerInfo();
     updateStep(1);
     syncTradeModeLabels();
     if (continueBtn) continueBtn.textContent = isSell ? 'Sell Now' : 'Buy Now';
@@ -1587,6 +1658,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (payAmountInput) payAmountInput.value = '';
     if (receiveAmountInput) receiveAmountInput.value = '';
     if (walletAddressInput) walletAddressInput.value = '';
+    if (buyCustomerNameInput) buyCustomerNameInput.value = '';
+    if (buyCustomerCpfInput) buyCustomerCpfInput.value = '';
     if (step3PixQr) step3PixQr.src = '/images/qrcode.png';
     if (step3PixCopy) step3PixCopy.value = '';
     if (sellDepositBlock) sellDepositBlock.classList.add('hidden');
@@ -1687,11 +1760,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     return status ? `Status: ${status}` : 'Aguardando deposito USDT.';
   }
 
+  function isSellDepositIdentifiedStatus(status) {
+    const normalized = String(status || '').toLowerCase();
+    if (!normalized || normalized.includes('aguardando_deposito') || normalized.includes('expirada') || normalized.includes('erro')) return false;
+    return ['aguardando_validacao', 'deposito_recebido', 'deposit_received', 'pago', 'paid', 'processando_payout', 'concluido', 'concluida'].some(value => normalized.includes(value));
+  }
+
+  function setSellPaymentScreenComplete(isComplete) {
+    const paymentInfoSection = document.getElementById('paymentInfoSection');
+    if (!paymentInfoSection) return;
+    const isSellPending = state.action === 'sell' && !isComplete;
+    paymentInfoSection.classList.toggle('sell-deposit-pending', isSellPending);
+    if (confirmPaymentBtn && state.action === 'sell' && state.currentStep === 5) {
+      confirmPaymentBtn.textContent = isComplete ? 'Ver Scan' : 'Confirm';
+    }
+  }
+
   function applySellStatus(data = {}) {
     const status = data.status || 'aguardando_deposito';
     if (orderStatusEl) orderStatusEl.textContent = status;
     if (paymentStatusLabelEl) paymentStatusLabelEl.textContent = sellStatusMessage(status);
     if (statusMessage) statusMessage.textContent = '';
+    setSellPaymentScreenComplete(isSellDepositIdentifiedStatus(status));
     const tx = data.depositTx || data.deposit_tx || data.txHash || data.tx_hash || '';
     if (tx) updatePaymentTxHash(tx);
     const depositAmount = data.depositAmount || data.deposit_amount;
@@ -1819,13 +1909,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       const amount = parseFloat(payAmountInput?.value || '0');
       const amountBRL = convertFiatToBrl(amount, state.payCurrency);
       const destAddr = walletAddressInput?.value?.trim();
-      const phone = pixPhoneInput?.value?.replace(/\D/g, '') || '';
-      const cpf = pixCpfInput?.value?.replace(/\D/g, '') || '';
       const paymentMethod = options.paymentMethod || selectedPaymentRail().paymentMethod || 'pix';
+      const buyPixCustomer = paymentMethod === 'pix' ? validateBuyPixCustomer() : null;
 
       if (!amount || amount <= 0) return setOrderError('invalid_amount');
       if (!destAddr || !validateWalletAddress(destAddr)) return setOrderError('invalid_wallet');
       if (state.receiveCurrency !== 'USDT') return setOrderError('Asset nao suportado nesta fase. Use USDT para finalizar a compra.');
+      if (paymentMethod === 'pix' && !buyPixCustomer) return null;
 
       try {
         const payload = {
@@ -1834,10 +1924,13 @@ document.addEventListener('DOMContentLoaded', async () => {
           fiatCurrency: state.payCurrency,
           paymentMethod,
           asset: 'USDT',
-          address: destAddr,
-          pixPhone: phone,
-          pixCpf: cpf
+          address: destAddr
         };
+        if (paymentMethod === 'pix') {
+          payload.customer = buyPixCustomer;
+          payload.cpf = buyPixCustomer.cpf;
+          payload.customerName = buyPixCustomer.name;
+        }
         if (paymentMethod === 'credit_card') {
           Object.assign(payload, {
             paymentToken: options.paymentToken,
@@ -2000,6 +2093,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateOrderSummaries();
       applySellStatus(data);
       updateStep(5);
+      setSellPaymentScreenComplete(isSellDepositIdentifiedStatus(data.status));
       if (currentSellId) startSellStream(currentSellId);
       return data;
     } catch (err) {
@@ -2183,6 +2277,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                // Store the selected method element in state
                state.selectedPaymentMethod = btn;
                state.cardCheckoutStep = 1;
+               syncBuyPayerInfo();
                updateStep3PaymentPreview(false);
                console.log("Selected payment method:", btn.dataset.method);
            });
@@ -2199,12 +2294,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       }],
       ['cardCvv', value => digitsOnly(value).slice(0, 4)],
       ['cardCpf', value => {
-          const digits = digitsOnly(value).slice(0, 11);
-          return digits
-            .replace(/^(\d{3})(\d)/, '$1.$2')
-            .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
-            .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4');
+          return formatCPF(value);
       }],
+      ['buyCustomerCpf', value => formatCPF(value)],
       ['cardPhone', value => digitsOnly(value).slice(0, 11)],
       ['billingZipcode', value => digitsOnly(value).slice(0, 8)],
       ['billingState', value => String(value || '').replace(/[^a-zA-Z]/g, '').slice(0, 2).toUpperCase()]
@@ -2218,7 +2310,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   if (step3BypassBtn) {
-      step3BypassBtn.addEventListener('click', async () => {
+      step3BypassBtn.addEventListener('click', async (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (isLocalDevBypassEnabled()) {
+              if (state.currentStep !== 3) return;
+              if (!state.selectedPaymentMethod) {
+                  state.selectedPaymentMethod = document.querySelector('.payment-method[data-method="pix"]');
+              }
+              if (orderStatusEl) orderStatusEl.textContent = 'dev_bypass_confirmed';
+              if (statusMessage) statusMessage.textContent = 'Bypass local: confirmação liberada para revisar a UX.';
+              updateStep(5);
+              updatePaymentStatusLabel('confirmed');
+              if (statusMessage) statusMessage.textContent = '';
+              return;
+          }
           if (state.currentStep !== 3 || state.selectedPaymentMethod?.dataset?.method !== 'pix') return;
           const data = await refreshBuyStatus();
           if (isPaymentIdentifiedStatus(data?.status)) updateStep(5);
@@ -2296,7 +2402,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   if (confirmPaymentBtn) {
-      confirmPaymentBtn.addEventListener('click', resetCheckoutFlow);
+      confirmPaymentBtn.addEventListener('click', async () => {
+          const isSellPendingDeposit = state.action === 'sell'
+              && state.currentStep === 5
+              && document.getElementById('paymentInfoSection')?.classList.contains('sell-deposit-pending');
+          if (isSellPendingDeposit) {
+              const data = await refreshSellStatus().catch(() => null);
+              if (!isSellDepositIdentifiedStatus(data?.status)) {
+                  showUxMessage('Aguardando deposito USDT.', 'warning');
+              }
+              return;
+          }
+          resetCheckoutFlow();
+      });
   }
 
   // Listen for clicks on the 'Continue' button
@@ -2334,6 +2452,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                   state.walletAddress = wallet; // Store validated address in state
                   if (!state.selectedPaymentMethod) {
                       showUxMessage('payment_method_required', 'warning');
+                      return;
+                  }
+                  if (selectedPaymentRail().method === 'pix' && !validateBuyPixCustomer()) {
                       return;
                   }
                   updateStep(3); // Move to Payment Method Step
