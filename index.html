@@ -150,9 +150,12 @@
         }
 
         @media (max-width: 768px) {
-            body.index-page .trust-badges,
-            body.index-page .security-info {
+            body.index-page .trust-badges {
                 display: none !important;
+            }
+
+            body.index-page .security-info {
+                display: flex;
             }
         }
     </style>
@@ -363,6 +366,21 @@ void main() {
                   </div>
               </div>
 
+              <div class="buy-payer-info hidden" id="buyPayerInfo">
+                  <div class="wallet-input">
+                      <label for="buyCustomerName">Nome do pagador</label>
+                      <div class="input-group">
+                          <input type="text" id="buyCustomerName" autocomplete="name" placeholder="Nome completo" />
+                      </div>
+                  </div>
+                  <div class="wallet-input">
+                      <label for="buyCustomerCpf">CPF do pagador</label>
+                      <div class="input-group">
+                          <input type="text" id="buyCustomerCpf" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" />
+                      </div>
+                  </div>
+              </div>
+
               <div class="sell-info hidden" id="sellInfo">
                   <div class="wallet-input sell-network-input">
                       <label>Rede para envio do USDT</label>
@@ -531,18 +549,17 @@ void main() {
     <div class="s2">
         <div class="logo-container">
             <img 
-                src="https://res.cloudinary.com/limpeja/image/upload/v1783960292/menorrr-removebg-preview_eyp98p.png" 
+                src="https://res.cloudinary.com/limpeja/image/upload/v1784082527/confirmed_sziyix.png" 
                 alt="Logo" 
                 class="logo-img"
             />
         </div>
     </div>
-    <p class="payment-summary-text payment-summary-final" id="paymentSummary">
-        <strong>Status:</strong> <span id="paymentStatusLabel">Pagamento identificado</span><br>
-        <strong>Total USDT:</strong> <span id="paymentBtcAmount"></span><br>
-        <span id="walletRow"><strong>Receber no PIX:</strong> <span id="paymentWallet"></span></span><br>
+    <p class="payment-summary-text payment-summary-final payment-complete-final" id="paymentSummary">
+        Transa&ccedil;&atilde;o Completa!
     </p>
     <div id="sellDepositBlock" class="hidden">
+        <div class="sell-deposit-title">Envie para:</div>
         <div class="sell-deposit-card" id="sellDepositNotice">
             <div class="sell-deposit-network-row">
                 <strong>Rede:</strong>
@@ -580,10 +597,10 @@ void main() {
             </div>
         </div>
     </div>
-    <div id="statusMessage"></div>
+
 
     <!-- Botão Início -->
-    <button class="confirm-payment-btn" id="confirmPaymentBtn">Início</button>
+    <button class="confirm-payment-btn" id="confirmPaymentBtn">Ver Scan</button>
 
     <!-- TERMS AQUI (logo abaixo do botão) -->
     <div class="terms payment-terms-below">
@@ -1112,6 +1129,7 @@ Content-Type: application/json
 
             <div class="pricing-breakdown">
                 <div>
+                    
                     <h2>How ChainFX charges</h2>
                     <p>Fees are deducted inside the payment flow before crypto delivery. The developer does not need to pay invoices after each transaction.</p>
                 </div>
@@ -1147,6 +1165,7 @@ Content-Type: application/json
        <path d="M9 12.2l2.1 2.1L15.3 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
      </svg>
      <span>Gateway Payments</span>
+     <img class="mobile-footer-logo" src="https://res.cloudinary.com/limpeja/image/upload/v1784086628/image-removebg-preview_14_d0a9mj.png" alt="Gateway Payments" />
    </footer>
 
    <!-- ============================================
