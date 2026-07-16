@@ -632,6 +632,10 @@
     text-align: center;
   }
 
+  body.index-page .security-info span {
+    display: none;
+  }
+
   body.index-page .trust-badge {
     width: 100%;
     justify-content: center;
@@ -694,13 +698,16 @@
   }
 
   body.index-page #sellInfo .input-group:has(#pixCpf),
-  body.index-page #sellInfo .input-group:has(#pixPhone) {
+  body.index-page #sellInfo .input-group:has(#pixPhone),
+  body.index-page #buyPayerInfo .input-group {
     min-height: 39px;
     padding: 4px 10px;
   }
 
   body.index-page #pixCpf,
-  body.index-page #pixPhone {
+  body.index-page #pixPhone,
+  body.index-page #buyCustomerName,
+  body.index-page #buyCustomerCpf {
     min-height: 30px;
     height: 30px;
     padding: 0 8px !important;
@@ -801,6 +808,17 @@
 
   body.index-page .mobile-footer-icon {
     display: none;
+  }
+
+  body.index-page .mobile-footer span {
+    display: none;
+  }
+
+  body.index-page .mobile-footer-logo {
+    display: block;
+    width: 195.72px;
+    height: auto;
+    margin: 0 auto;
   }
 
   body.index-page .methods-grid {
