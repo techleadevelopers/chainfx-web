@@ -84,6 +84,12 @@
   z-index: 1;
 }
 
+@media (min-width: 769px) {
+  body.index-page .swap-card:has(#step2:not(.hidden)) {
+    width: 108%;
+  }
+}
+
 .toggle-container {
   display: flex;
   background: var(--hover-color);
@@ -221,8 +227,21 @@
   line-height: 29px;
 }
 
+@media (min-width: 769px) {
+  body.index-page #walletGroup .input-group {
+    min-height: 43px;
+  }
+
+  body.index-page #walletAddress {
+    height: 36.3px;
+    min-height: 36.3px;
+    line-height: 36.3px;
+  }
+}
+
 #sellInfo .input-group:has(#pixCpf),
-#sellInfo .input-group:has(#pixPhone) {
+#sellInfo .input-group:has(#pixPhone),
+#buyPayerInfo .input-group {
   min-height: 39px;
   padding: 4px 10px;
   align-items: center;
@@ -230,7 +249,9 @@
 }
 
 #pixCpf,
-#pixPhone {
+#pixPhone,
+#buyCustomerName,
+#buyCustomerCpf {
   min-height: 30px;
   height: 30px;
   padding: 0 8px !important;
@@ -238,10 +259,23 @@
   line-height: 30px;
 }
 
+.buy-payer-info {
+  display: grid;
+  gap: 12px;
+}
+
 .currency-input label {
   display: block;
   margin-bottom: 8px;
   color: var(--text-color);
+  font-weight: 500;
+}
+
+.sell-deposit-title {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-color);
+  font-size: 1rem;
   font-weight: 500;
 }
 
@@ -364,7 +398,7 @@
 
 /* Estilo da imagem */
 .logo-img {
-  max-width: 150px;  /* ajuste o tamanho conforme quiser */
+  max-width: 120px;  /* ajuste o tamanho conforme quiser */
   height: auto;
   display: block;
 
@@ -720,6 +754,15 @@
   font-size: 0.855rem;
 }
 
+#paymentInfoSection .payment-complete-final {
+  font-size: 1.188rem;
+}
+
+#paymentInfoSection.sell-deposit-pending .s2,
+#paymentInfoSection.sell-deposit-pending .payment-complete-final {
+  display: none;
+}
+
 #paymentInfoSection #paymentWallet,
 #paymentInfoSection #paymentTxHash {
   overflow-wrap: anywhere;
@@ -917,6 +960,24 @@
   margin: 0;
 }
 
+.payment-complete-final {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #12324f;
+  font-family: "Inter", "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  font-size: 1.188rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  letter-spacing: 0;
+}
+
 .countdown {
   margin-top: 12px;
   font-size: 0.95rem;
@@ -951,30 +1012,39 @@
   z-index: 10000;
   display: grid;
   gap: 10px;
-  width: min(330px, calc(100% - 42px));
+  width: min(306px, calc(100% - 32px));
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
 
 .ux-message {
-  min-height: 46px;
+  position: relative;
+  min-height: 92px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 28px;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 10px 11px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.68);
-  border-left: 0;
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(228, 246, 255, 0.6), rgba(121, 213, 239, 0.6));
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  place-items: center;
+  gap: 8px;
+  padding: 13px 48px 18px;
+  border: 1px solid rgba(204, 219, 236, 0.88);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 252, 255, 0.98));
   color: #12324f;
-  box-shadow: 0 18px 42px rgba(17, 80, 168, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.84);
-  backdrop-filter: blur(16px) saturate(1.35);
-  -webkit-backdrop-filter: blur(16px) saturate(1.35);
+  box-shadow: 0 18px 42px rgba(17, 80, 168, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(14px) saturate(1.16);
+  -webkit-backdrop-filter: blur(14px) saturate(1.16);
   transform: translateY(10px) scale(0.98);
   opacity: 0;
   transition: transform 0.18s ease, opacity 0.18s ease;
   pointer-events: auto;
+}
+
+.ux-message::before {
+  content: '';
+  justify-self: center;
+  width: 63px;
+  height: 33px;
+  background: url('https://res.cloudinary.com/limpeja/image/upload/v1783962395/ChatGPT_Image_4_de_jul._de_2026__19_38_11-removebg-preview_1_otjabu.png') center / contain no-repeat;
 }
 
 .ux-message.show {
@@ -988,14 +1058,19 @@
   font-weight: 700;
   line-height: 1.35;
   text-align: center;
+  width: 100%;
 }
 
 .ux-message button {
+  position: absolute;
+  right: 13px;
+  top: 50%;
+  transform: translateY(-50%);
   width: 28px;
   height: 28px;
   border: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.46);
+  background: rgba(226, 232, 240, 0.78);
   color: #17496d;
   cursor: pointer;
   font-weight: 800;
@@ -1003,26 +1078,26 @@
 }
 
 .ux-message.success {
-  background: linear-gradient(135deg, rgba(226, 255, 245, 0.6), rgba(108, 220, 187, 0.6));
+  background: rgba(247, 253, 250, 0.96);
   color: #0c5139;
 }
 
 .ux-message.warning {
-  background: linear-gradient(135deg, rgba(239, 249, 255, 0.6), rgba(112, 202, 232, 0.6));
+  background: rgba(248, 251, 255, 0.96);
   color: #12324f;
 }
 
 .ux-message.error {
-  background: linear-gradient(135deg, rgba(255, 240, 244, 0.6), rgba(115, 204, 235, 0.6));
-  color: #6b2130;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(250, 252, 255, 0.98));
+  color: #12324f;
 }
 
 .ux-inline-message {
   margin-top: 10px;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.68);
-  background: linear-gradient(135deg, rgba(228, 246, 255, 0.6), rgba(121, 213, 239, 0.6));
+  border: 1px solid rgba(203, 213, 225, 0.82);
+  background: rgba(248, 251, 255, 0.96);
   color: #12324f;
   backdrop-filter: blur(14px) saturate(1.25);
   -webkit-backdrop-filter: blur(14px) saturate(1.25);
@@ -1326,3 +1401,4 @@
 
 .confirm-payment-btn:hover {
   opacity: 0.9;
+}
