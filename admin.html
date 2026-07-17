@@ -2398,17 +2398,17 @@
           <div class="panel-head">
             <div>
               <h2>Developers</h2>
-              <p>API keys, RPM, erros, quota e webhooks vistos pelo console administrativo.</p>
+              <p>Fluxo humano de integração REST: rates, quote, buy, sell, order status, API keys e webhooks.</p>
             </div>
-            <span class="badge info">M2M surface</span>
+            <span class="badge info">Buy/Sell REST</span>
           </div>
           <div class="ops-grid">
             <div class="ops-tile"><strong>API Keys</strong><span>Credenciais ativas</span><div class="kv-mini"><div><label>Active</label><b id="devOpsApiKeys">0</b></div><div><label>RPM</label><b id="devOpsRpm">0</b></div></div></div>
-            <div class="ops-tile"><strong>Requests</strong><span>Tráfego administrativo e testes</span><div class="kv-mini"><div><label>Errors</label><b id="devOpsErrors">0</b></div><div><label>Latency</label><b id="devOpsLatency">0 ms</b></div></div></div>
+            <div class="ops-tile"><strong>Requests</strong><span>Tráfego REST buy/sell e testes</span><div class="kv-mini"><div><label>Errors</label><b id="devOpsErrors">0</b></div><div><label>Latency</label><b id="devOpsLatency">0 ms</b></div></div></div>
             <div class="ops-tile"><strong>Webhooks</strong><span>Eventos entregues e retentativas</span><div class="kv-mini"><div><label>Delivered</label><b id="devOpsWebhooks">0</b></div><div><label>Retries</label><b id="devOpsWebhookRetries">0</b></div></div></div>
             <div class="ops-tile"><strong>Quota</strong><span>Chamadas registradas</span><div class="kv-mini"><div><label>Used</label><b id="devOpsQuota">0</b></div><div><label>Window</label><b>24h</b></div></div></div>
-            <div class="ops-tile"><strong>API Explorer</strong><span>Endpoints M2M disponíveis no console developer</span><div class="kv-mini"><div><label>Surface</label><b>Agent v1</b></div><div><label>MCP</label><b id="devOpsMcp">--</b></div></div></div>
-            <div class="ops-tile"><strong>Products</strong><span>Capabilities e planos publicados</span><div class="kv-mini"><div><label>Top</label><b id="devOpsTopProduct">--</b></div><div><label>Take rate</label><b id="devOpsTakeRate">0%</b></div></div></div>
+            <div class="ops-tile"><strong>API Explorer</strong><span>Endpoints para fallback de compra/venda cripto</span><div class="kv-mini"><div><label>Surface</label><b>REST Core</b></div><div><label>Flow</label><b id="devOpsMcp">Buy/Sell</b></div></div></div>
+            <div class="ops-tile"><strong>Orders</strong><span>Status e auditoria de ordens REST</span><div class="kv-mini"><div><label>Top route</label><b id="devOpsTopProduct">/order</b></div><div><label>Scope</label><b id="devOpsTakeRate">REST</b></div></div></div>
           </div>
         </div>
       </section>
@@ -4867,9 +4867,9 @@
         setText('devOpsWebhooks', $('devWebhooks')?.textContent || '0');
         setText('devOpsWebhookRetries', String(state.alerts.length));
         setText('devOpsQuota', String(state.telemetry.length + samples.length));
-        setText('devOpsMcp', mcpStatus);
-        setText('devOpsTopProduct', $('marketTopProducts')?.textContent || '--');
-        setText('devOpsTakeRate', $('marketTakeRate')?.textContent || '0%');
+        setText('devOpsMcp', 'Buy/Sell');
+        setText('devOpsTopProduct', '/order');
+        setText('devOpsTakeRate', 'REST');
 
         setText('mcpOpsLatency', mcpSummary.count ? `${mcpSummary.p95} ms` : '--');
         setText('mcpOpsErrors', String(mcpSummary.errors));
