@@ -2553,7 +2553,7 @@
           <div class="tests-control-grid">
             <div class="field">
               <label for="testsBaseUrl">Cloud alvo</label>
-              <input id="testsBaseUrl" type="url" value="https://stablecoin-payment-gateway-production-3ee2.up.railway.app">
+              <input id="testsBaseUrl" type="url" value="https://api-production-bc748.up.railway.app">
             </div>
             <div class="field">
               <label for="testsBearer">Bearer opcional</label>
@@ -2583,6 +2583,7 @@
                 <option value="web">Web</option>
                 <option value="mobile">Mobile</option>
                 <option value="mcp">MCP paralelo</option>
+                <option value="agentqa">Agent QA / A2A Pay</option>
                 <option value="api">API Developer</option>
                 <option value="full">Plataforma completa</option>
               </select>
@@ -2827,7 +2828,7 @@
           <div class="tests-control-grid">
             <div class="field">
               <label for="eipsBaseUrl">Cloud alvo</label>
-              <input id="eipsBaseUrl" type="url" value="https://stablecoin-payment-gateway-production-3ee2.up.railway.app">
+              <input id="eipsBaseUrl" type="url" value="https://api-production-bc748.up.railway.app">
             </div>
             <div class="field">
               <label for="eipsBearer">Bearer opcional</label>
@@ -2959,7 +2960,7 @@
         window.SWAPPED_API_BASE_URL ||
         import.meta.env.VITE_SWAPPED_API_BASE_URL ||
         localStorage.getItem('SWAPPED_API_BASE_URL') ||
-        'https://stablecoin-payment-gateway-production-3ee2.up.railway.app';
+        'https://api-production-bc748.up.railway.app';
       const state = {
         apiBase: DEFAULT_API.replace(/\/$/, ''),
         apiKey:
@@ -3779,6 +3780,8 @@
             'X-Request-Id': trace.requestId,
             'X-Correlation-Id': trace.correlationId
           };
+          const extraHeaders = typeof endpoint.headers === 'function' ? endpoint.headers(context) : endpoint.headers;
+          if (extraHeaders && typeof extraHeaders === 'object') Object.assign(headers, extraHeaders);
           const chainfxBearer = /^sk_(live|test|dev)_/.test(bearer) ? bearer : '';
           if (endpoint.chainfxAuth && chainfxBearer) headers.Authorization = `Bearer ${chainfxBearer}`;
           if (endpoint.adminAuth && state.apiKey) headers.Authorization = `Bearer ${state.apiKey}`;
@@ -4002,6 +4005,13 @@
         ];
         const capabilityHttp = [
           { area: 'Capability HTTP', method: 'GET', path: '/.well-known/ai-services.json', label: 'GET /.well-known/ai-services.json', accept: [404], timeoutMs: 7000 },
+          { area: 'A2A Discovery', method: 'GET', path: '/.well-known/agent-card.json', label: 'GET /.well-known/agent-card.json', timeoutMs: 7000 },
+          { area: 'A2A Discovery', method: 'GET', path: '/.well-known/agent.json', label: 'GET /.well-known/agent.json', timeoutMs: 7000 },
+          { area: 'Agent Trust', method: 'GET', path: '/.well-known/jwks.json', label: 'GET /.well-known/jwks.json', timeoutMs: 7000 },
+          { area: 'Agent Trust', method: 'GET', path: '/.well-known/agent-card.signature', label: 'GET /.well-known/agent-card.signature', timeoutMs: 7000 },
+          { area: 'Agent Trust', method: 'GET', path: '/.well-known/agent-reputation.json', label: 'GET /.well-known/agent-reputation.json', timeoutMs: 7000 },
+          { area: 'Agent Trust', method: 'GET', path: '/.well-known/agent-sla.json', label: 'GET /.well-known/agent-sla.json', timeoutMs: 7000 },
+          { area: 'Agent Pay', method: 'GET', path: '/agent-pay.json', label: 'GET /agent-pay.json', timeoutMs: 7000 },
           { area: 'Capability HTTP', method: 'GET', path: '/mcp/capabilities.json', label: 'GET /mcp/capabilities.json', timeoutMs: 9000, capture: capabilityCapture },
           { area: 'Capability HTTP', method: 'GET', path: '/marketplace/capabilities', label: 'GET /marketplace/capabilities', timeoutMs: 9000, capture: capabilityCapture },
           { area: 'Capability HTTP', method: 'GET', path: (ctx) => `/marketplace/capabilities/${encodeURIComponent(ctx.capability || 'document_ocr')}`, label: 'GET /marketplace/capabilities/:id', timeoutMs: 9000 },
@@ -4015,6 +4025,39 @@
           { area: 'Agent M2M', method: 'POST', path: '/agent/v1/trade/quote', label: 'POST /agent/v1/trade/quote', idempotency: true, body: () => ({ payAsset: 'USDT', receiveAsset: 'USDC', amount: 10, amountType: 'pay', agentWallet: testAgentWallet, destinationWallet: testAgentWallet }), timeoutMs: 15000, capture: (data, ctx) => { ctx.tradeIntentId = captureId('intent.id', 'tradeIntent.id', 'tradeIntentId', 'id')(data, ctx); } },
           { area: 'Agent M2M', method: 'POST', path: '/agent/v1/pay', label: 'POST /agent/v1/pay', chainfxAuth: true, accept: [401], idempotency: true, body: () => ({ type: 'pix', amount_brl: '10.00', pix_key: '+5511999999999', beneficiary_name: 'ChainFX Admin Test', idempotency_key: `admintest_${Date.now()}`, agent_wallet: testAgentWallet }), timeoutMs: 15000 }
         ];
+        const agentQA = [
+          { area: 'Agent QA Discovery', method: 'GET', path: '/.well-known/agent-card.json', label: 'Agent QA: discover A2A card', timeoutMs: 7000 },
+          { area: 'Agent QA Trust', method: 'GET', path: '/.well-known/jwks.json', label: 'Agent QA: fetch JWKS', timeoutMs: 7000 },
+          { area: 'Agent QA Trust', method: 'GET', path: '/.well-known/agent-card.signature', label: 'Agent QA: fetch card signature', timeoutMs: 7000 },
+          { area: 'Agent QA Trust', method: 'GET', path: '/.well-known/agent-reputation.json', label: 'Agent QA: fetch reputation', timeoutMs: 7000 },
+          { area: 'Agent QA Trust', method: 'GET', path: '/.well-known/agent-sla.json', label: 'Agent QA: fetch SLA', timeoutMs: 7000 },
+          { area: 'Agent QA Planning', method: 'GET', path: '/.well-known/agent-policy.json', label: 'Agent QA: fetch policy discovery', timeoutMs: 7000 },
+          { area: 'Agent QA Planning', method: 'GET', path: '/.well-known/capability-graph.json', label: 'Agent QA: fetch capability graph', timeoutMs: 7000 },
+          { area: 'Agent QA Planning', method: 'GET', path: '/agent/v1/policy-discovery', label: 'GET /agent/v1/policy-discovery', timeoutMs: 7000 },
+          { area: 'Agent QA Planning', method: 'GET', path: '/agent/v1/capability-graph', label: 'GET /agent/v1/capability-graph', timeoutMs: 7000 },
+          { area: 'Agent QA A2A', method: 'POST', path: '/a2a', label: 'A2A list_supported_payment_methods', body: () => ({ skill: 'list_supported_payment_methods' }), timeoutMs: 9000 },
+          { area: 'Agent QA A2A', method: 'POST', path: '/a2a', label: 'A2A capability_exchange', body: () => ({ skill: 'capability_exchange', arguments: { paymentAsset: 'USDT' } }), timeoutMs: 12000, capture: capabilityCapture },
+          { area: 'Agent QA A2A', method: 'POST', path: '/a2a', label: 'A2A document_ocr discovery', body: () => ({ skill: 'document_ocr' }), timeoutMs: 12000 },
+          { area: 'Agent QA A2A', method: 'POST', path: '/a2a', label: 'A2A semantic_memory discovery', body: () => ({ skill: 'semantic_memory' }), timeoutMs: 12000 },
+          { area: 'Agent QA A2A', method: 'POST', path: '/a2a', label: 'A2A llm_chat discovery', body: () => ({ skill: 'llm_chat' }), timeoutMs: 12000 },
+          { area: 'Agent QA A2A', method: 'POST', path: '/a2a', label: 'A2A stablecoin_exchange quote', body: () => ({ skill: 'stablecoin_exchange', arguments: { payAsset: 'USDT', receiveAsset: 'USDC', amount: 10, amountType: 'pay', agent_wallet: testAgentWallet } }), timeoutMs: 15000 },
+          { area: 'Agent QA A2A', method: 'POST', path: '/a2a', label: 'A2A quote_required_usdt', chainfxAuth: true, accept: [401], body: () => ({ skill: 'quote_required_usdt', arguments: { type: 'pix', amount_brl: '150.00', agent_wallet: testAgentWallet } }), timeoutMs: 12000 },
+          { area: 'Agent QA A2A', method: 'POST', path: '/a2a', label: 'A2A pay_pix_with_usdt', chainfxAuth: true, accept: [401], idempotency: true, body: () => ({ skill: 'pay_pix_with_usdt', arguments: { amount_brl: '10.00', pix_key: '+5511999999999', beneficiary_name: 'ChainFX Agent QA', idempotency_key: `agentqa_${Date.now()}`, agent_wallet: testAgentWallet } }), timeoutMs: 15000, capture: (data, ctx) => { ctx.agentPaymentIntentId = captureId('result.payment.intent_id', 'result.payment.id', 'payment.intent_id', 'payment.id', 'intent_id', 'id')(data, ctx); } },
+          { area: 'Agent QA A2A', method: 'POST', path: '/a2a', label: 'A2A get_payment_status', chainfxAuth: true, accept: [400, 401, 404], body: (ctx) => ({ skill: 'get_payment_status', arguments: { intent_id: ctx.agentPaymentIntentId || 'int_m2m_agentqa_probe' } }), timeoutMs: 12000 },
+          { area: 'Agent QA Tasks', method: 'POST', path: '/a2a/tasks', label: 'A2A task create list_supported_payment_methods', body: () => ({ skill: 'list_supported_payment_methods' }), timeoutMs: 9000, capture: (data, ctx) => { ctx.a2aTaskId = captureId('id', 'task.id')(data, ctx); } },
+          { area: 'Agent QA Tasks', method: 'GET', path: (ctx) => ctx.a2aTaskId ? `/a2a/tasks/${encodeURIComponent(ctx.a2aTaskId)}` : '/a2a/tasks/task_missing', label: 'A2A task status', accept: [404], timeoutMs: 9000 },
+          { area: 'Agent QA Tasks', method: 'GET', path: (ctx) => ctx.a2aTaskId ? `/a2a/tasks/${encodeURIComponent(ctx.a2aTaskId)}/events` : '/a2a/tasks/task_missing/events', label: 'A2A task SSE events', accept: [404], timeoutMs: 12000 },
+          { area: 'Agent QA x402', method: 'GET', path: '/.well-known/x402.json', label: 'x402 discovery', timeoutMs: 7000 },
+          { area: 'Agent QA x402', method: 'POST', path: '/x402/capabilities/document_ocr/execute', label: 'x402 document_ocr challenge', accept: [402], body: () => ({ agentWallet: testAgentWallet, payerWallet: testAgentWallet, paymentAsset: 'USDT', idempotencyKey: `x402_${Date.now()}`, nonce: `x402_${Date.now()}`, operation: 'extract_text', requestId: `x402_req_${Date.now()}`, units: 1, input: { documentUrl: 'https://example.com/test.pdf' } }), timeoutMs: 15000, capture: (data, ctx) => { ctx.x402PurchaseId = captureId('payment_requirements.purchase_id', 'payment_requirements.purchaseId', 'payment_requirements.purchaseId')(data, ctx); } },
+          { area: 'Agent QA x402', method: 'POST', path: '/x402/capabilities/document_ocr/execute', label: 'x402 document_ocr replay invalid payment', accept: [400, 402, 404, 409], headers: (ctx) => ({ PAYMENT: btoa(JSON.stringify({ purchaseId: ctx.x402PurchaseId || 'mp_missing', txHash: '0x0000000000000000000000000000000000000000000000000000000000000000', logIndex: 0 })).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') }), body: () => ({ agentWallet: testAgentWallet, payerWallet: testAgentWallet, paymentAsset: 'USDT', idempotencyKey: `x402_replay_${Date.now()}`, operation: 'extract_text', requestId: `x402_replay_${Date.now()}`, units: 1, input: { documentUrl: 'https://example.com/test.pdf' } }), timeoutMs: 15000 },
+          { area: 'Agent QA Registry', method: 'GET', path: '/agent/v1/registries', label: 'GET /agent/v1/registries', timeoutMs: 7000 },
+          { area: 'Agent QA Registry', method: 'GET', path: '/.well-known/agntcy.json', label: 'GET /.well-known/agntcy.json', timeoutMs: 7000 },
+          { area: 'Agent QA Registry', method: 'GET', path: '/.well-known/oasf.json', label: 'GET /.well-known/oasf.json', timeoutMs: 7000 },
+          { area: 'Agent QA Registry', method: 'GET', path: '/agent/v1/registry-records/agntcy-oasf', label: 'GET /agent/v1/registry-records/agntcy-oasf', timeoutMs: 7000 },
+          { area: 'Agent QA Episodes', method: 'GET', path: '/agent/v1/reputation', label: 'GET /agent/v1/reputation', timeoutMs: 7000 },
+          { area: 'Agent QA Episodes', method: 'GET', path: '/agent/v1/sla', label: 'GET /agent/v1/sla', timeoutMs: 7000 },
+          { area: 'Agent QA Episodes', method: 'GET', path: '/agent/v1/episodes?limit=20', label: 'GET /agent/v1/episodes', chainfxAuth: true, accept: [401], timeoutMs: 9000 }
+        ];
         const api = [
           { area: 'API Developer', method: 'GET', path: '/api/rates', timeoutMs: 6000 },
           { area: 'API Developer', method: 'GET', path: '/api/quote?amountBRL=100', accept: [404, 405], timeoutMs: 7000 },
@@ -4023,8 +4066,9 @@
         if (profile === 'web') return infra.concat(web);
         if (profile === 'mobile') return infra.concat(mobile);
         if (profile === 'mcp') return mcpBase.concat(mcp, capabilityHttp);
+        if (profile === 'agentqa') return infra.concat(agentQA);
         if (profile === 'api') return infra.concat(api);
-        if (profile === 'full') return infra.concat(web, mobile, mcpBase, mcp, capabilityHttp, api);
+        if (profile === 'full') return infra.concat(web, mobile, mcpBase, mcp, capabilityHttp, agentQA, api);
         return infra.concat(web.slice(0, 1), mobile.slice(0, 2), mcpBase, mcp.slice(0, 1), capabilityHttp.slice(0, 3));
       }
 
