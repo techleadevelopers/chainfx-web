@@ -7,7 +7,7 @@ const state = {
     import.meta.env.VITE_SWAPPED_API_BASE_URL ||
     localStorage.getItem("CHAINFX_API_BASE") ||
     localStorage.getItem("SWAPPED_API_BASE_URL") ||
-    "http://localhost:8080"
+    "https://api-production-bc748.up.railway.app"
   ).replace(/\/$/, ""),
   apiKey: sessionStorage.getItem("CHAINFX_CONSOLE_KEY") || localStorage.getItem("CHAINFX_CONSOLE_KEY") || "",
   summary: null,
@@ -657,7 +657,7 @@ function fallbackSummary(workspace) {
       projects: [],
       apiKeys: { items: [] },
       mcpConnections: [],
-      apiExplorer: [],
+      apiExplorer: fallbackDeveloperEndpoints(),
       capabilities: [],
       products: [],
       providerPublish: {},
@@ -683,6 +683,27 @@ function fallbackCapabilities() {
     { id: "document_ocr", displayName: "Document OCR", description: "Extract text and structured fields from documents.", category: "ai", status: "active", providers: ["chainfx-ocr-http", "google-vision", "aws-textract"] },
     { id: "aml_screening", displayName: "AML Screening", description: "Compliance screening for wallets and payments.", category: "compliance", status: "active", providers: ["provider-a"] },
     { id: "llm_chat", displayName: "LLM Chat", description: "Provider-routed chat and text generation.", category: "ai", status: "active", providers: ["openai"] },
+  ];
+}
+
+function fallbackDeveloperEndpoints() {
+  return [
+    { group: "Discovery", method: "GET", path: "/.well-known/agent-card.json", body: "{}" },
+    { group: "Trust", method: "GET", path: "/.well-known/jwks.json", body: "{}" },
+    { group: "Trust", method: "GET", path: "/.well-known/agent-card.signature", body: "{}" },
+    { group: "Planning", method: "GET", path: "/.well-known/agent-policy.json", body: "{}" },
+    { group: "Planning", method: "GET", path: "/.well-known/capability-graph.json", body: "{}" },
+    { group: "A2A", method: "POST", path: "/a2a", body: "{ \"skill\": \"list_supported_payment_methods\", \"arguments\": {} }" },
+    { group: "A2A Tasks", method: "POST", path: "/a2a/tasks", body: "{ \"skill\": \"list_supported_payment_methods\", \"arguments\": {} }" },
+    { group: "Agent Pay", method: "POST", path: "/agent/v1/pay", body: "{ \"type\": \"pix\", \"amount_brl\": \"10.00\", \"pix_key\": \"+5511999999999\", \"beneficiary_name\": \"ChainFX Developer Test\", \"idempotency_key\": \"devtest_001\", \"agent_wallet\": \"0x830000000000000000000000000000000000019a\" }" },
+    { group: "Capabilities", method: "GET", path: "/marketplace/capabilities", body: "{}" },
+    { group: "MCP", method: "POST", path: "/mcp/tools/call", body: "{ \"name\": \"listCapabilities\", \"arguments\": {} }" },
+    { group: "x402", method: "GET", path: "/.well-known/x402.json", body: "{}" },
+    { group: "x402", method: "POST", path: "/x402/capabilities/document_ocr/execute", body: "{ \"agentWallet\": \"0x830000000000000000000000000000000000019a\", \"payerWallet\": \"0x830000000000000000000000000000000000019a\", \"paymentAsset\": \"USDT\", \"operation\": \"extract_text\", \"requestId\": \"x402_dev_001\", \"idempotencyKey\": \"x402_dev_001\", \"units\": 1, \"input\": { \"documentUrl\": \"https://example.com/invoice.pdf\" } }" },
+    { group: "Registry", method: "GET", path: "/agent/v1/registries", body: "{}" },
+    { group: "Registry", method: "GET", path: "/agent/v1/registry-records/agntcy-oasf", body: "{}" },
+    { group: "Observability", method: "GET", path: "/agent/v1/reputation", body: "{}" },
+    { group: "Observability", method: "GET", path: "/agent/v1/sla", body: "{}" }
   ];
 }
 
