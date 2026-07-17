@@ -845,7 +845,7 @@ const resolveApiBase = () => {
     window.SWAPPED_API_BASE_URL ||
     import.meta.env.VITE_SWAPPED_API_BASE_URL ||
     localStorage.getItem('SWAPPED_API_BASE_URL') ||
-    'https://stablecoin-payment-gateway-production-3ee2.up.railway.app';
+    'https://api-production-bc748.up.railway.app';
   return String(configured).trim().replace(/\/+$/, '');
 };
 
