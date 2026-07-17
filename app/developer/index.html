@@ -12,7 +12,7 @@
         <img class="developer-login-logo" src="https://res.cloudinary.com/limpeja/image/upload/v1783623705/Green_Modern_Marketing_Logo-removebg-preview_1_yivrrc.png" alt="ChainFX">
         <div>
           <h1>Developer Console</h1>
-          <p>Acesse projetos, API keys, MCP, produtos e billing.</p>
+          <p>Acesse projetos, API keys, MCP, A2A, Agent Pay, capabilities, trust layer e billing.</p>
         </div>
         <label>Login<input id="developerLoginEmail" name="email" type="text" autocomplete="username" required placeholder="email@empresa.com"></label>
         <label>Senha<input id="developerLoginPassword" name="password" type="password" autocomplete="current-password" required placeholder="Senha"></label>
@@ -33,7 +33,7 @@
           <button class="nav-button" data-section-target="projects">Projects</button>
           <div class="nav-heading">Access</div>
           <button class="nav-button" data-section-target="apikeys">API Keys</button>
-          <button class="nav-button" data-section-target="mcp">MCP Connections</button>
+          <button class="nav-button" data-section-target="mcp">MCP / A2A / x402</button>
           <div class="nav-heading">Products</div>
           <button class="nav-button" data-section-target="capabilities">Capabilities</button>
           <button class="nav-button" data-section-target="products">Products</button>
@@ -47,7 +47,7 @@
           <button class="nav-button" data-section-target="settings">Settings</button>
         </nav>
         <div class="sidebar-footer">
-          Build, publish, meter and settle APIs for autonomous agents.
+          Build, publish, meter and settle APIs for humans and autonomous agents.
         </div>
       </aside>
 
@@ -55,7 +55,7 @@
         <header class="topbar">
           <div class="title-block">
             <h1>Developer Console</h1>
-            <p>Projects, API keys, MCP clients, capabilities, provider publishing, logs and billing.</p>
+            <p>Projects, API keys, MCP clients, A2A Agent Pay, x402 capabilities, trust metadata, logs and billing.</p>
           </div>
           <div class="auth-strip">
             <span id="connectionStatus" class="badge warn">Offline</span>
@@ -70,11 +70,12 @@
         <section class="section active" data-section="overview">
           <div class="service-strip">
             <article class="service-card"><strong><i class="service-dot"></i>API</strong><span>Requests, API keys, quota</span></article>
+            <article class="service-card"><strong><i class="service-dot"></i>A2A</strong><span>Agent Card, skills, tasks</span></article>
             <article class="service-card"><strong><i class="service-dot"></i>MCP</strong><span>Tools, resources, prompts</span></article>
-            <article class="service-card"><strong><i class="service-dot"></i>Capabilities</strong><span>Contracts, routes, providers</span></article>
+            <article class="service-card"><strong><i class="service-dot"></i>x402</strong><span>HTTP 402 capability payments</span></article>
             <article class="service-card"><strong><i class="service-dot"></i>Webhooks</strong><span>Events and deliveries</span></article>
-            <article class="service-card"><strong><i class="service-dot warn"></i>Billing</strong><span>Spend, fees, settlements</span></article>
-            <article class="service-card"><strong><i class="service-dot"></i>Logs</strong><span>Request IDs and audit trail</span></article>
+            <article class="service-card"><strong><i class="service-dot warn"></i>Trust</strong><span>JWKS, SLA, reputation</span></article>
+            <article class="service-card"><strong><i class="service-dot"></i>Episodes</strong><span>Agent QA and audit trail</span></article>
           </div>
           <div id="metricGrid" class="metric-grid"></div>
           <div class="grid-2">
@@ -117,7 +118,7 @@
               <label>IP restrictions<input name="ipRestrictions" placeholder="203.0.113.0/24, 198.51.100.10"></label>
               <label>Rate limit<input name="rateLimitPerMinute" type="number" min="1" value="600"></label>
               <label>Spending limit USDT<input name="spendingLimitUsdt" value="1000"></label>
-              <label class="span-2">Scopes<input name="scopes" value="rates:read,orders:read,orders:create,capabilities:read,capabilities:purchase,capabilities:execute,mcp:connect,webhooks:write,admin:read"></label>
+              <label class="span-2">Scopes<input name="scopes" value="rates:read,orders:read,orders:create,agent_pay:read,agent_pay:create,capabilities:read,capabilities:purchase,capabilities:execute,mcp:connect,a2a:invoke,x402:execute,episodes:read,webhooks:write,admin:read"></label>
               <div class="span-2"><button class="btn primary" type="submit">Create API Key</button></div>
             </form>
             <p class="muted">Secret keys appear once. Existing keys are always masked.</p>
@@ -128,10 +129,11 @@
 
         <section class="section" data-section="mcp">
           <article class="panel">
-            <div class="panel-head"><h2>MCP Connections</h2><button class="btn primary">+ Connect MCP Client</button></div>
+            <div class="panel-head"><h2>MCP / A2A / x402 Connections</h2><button class="btn primary">+ Connect Agent Client</button></div>
             <div class="filters">
-              <span class="filter-pill">Claude Desktop</span><span class="filter-pill">OpenAI Agent</span><span class="filter-pill">Cursor</span><span class="filter-pill">Codex</span><span class="filter-pill">LangGraph</span><span class="filter-pill">CrewAI</span><span class="filter-pill">Custom Client</span>
+              <span class="filter-pill">Claude Desktop</span><span class="filter-pill">OpenAI Agent</span><span class="filter-pill">Cursor</span><span class="filter-pill">Codex</span><span class="filter-pill">LangGraph</span><span class="filter-pill">CrewAI</span><span class="filter-pill">A2A Client</span><span class="filter-pill">x402 Client</span>
             </div>
+            <p class="muted">Clients should discover ChainFX through Agent Card, JWKS, card signature, policy discovery, capability graph, MCP resources, x402 discovery and registry records before creating financial intents.</p>
             <div id="mcpConnections" class="grid-2"></div>
           </article>
         </section>
@@ -156,8 +158,8 @@
             <div class="explorer">
               <div id="endpointList" class="endpoint-list"></div>
               <div>
-                <h3><span id="explorerMethod">POST</span> <span id="explorerPath">/agent/v1/trade/quote</span></h3>
-                <textarea id="explorerBody" style="width:100%;min-height:280px;border:1px solid var(--line);border-radius:8px;padding:12px">{ "payAsset": "USDT", "receiveAsset": "USDC", "amount": 100 }</textarea>
+                <h3><span id="explorerMethod">POST</span> <span id="explorerPath">/a2a</span></h3>
+                <textarea id="explorerBody" style="width:100%;min-height:280px;border:1px solid var(--line);border-radius:8px;padding:12px">{ "skill": "list_supported_payment_methods", "arguments": {} }</textarea>
               </div>
               <div>
                 <h3>Response</h3>
@@ -211,12 +213,12 @@
         <section class="section" data-section="logs">
           <article class="panel">
             <h2>Logs</h2>
-            <p class="muted">Filter by environment, project, agent, API key, endpoint, tool, status and date. Logs expose request ID, cost, units and copyable curl/JSON payloads through the API Explorer and dashboard endpoints.</p>
+            <p class="muted">Filter by environment, project, agent, API key, endpoint, tool, skill, task, x402 purchase, episode, status and date. Logs expose request ID, cost, units, policy outcome and copyable curl/JSON payloads through the API Explorer and dashboard endpoints.</p>
           </article>
         </section>
 
         <section class="section" data-section="settings">
-          <article class="panel"><h2>Settings</h2><p class="muted">Team permissions, documentation links, notifications and production controls.</p></article>
+          <article class="panel"><h2>Settings</h2><p class="muted">Team permissions, documentation links, notifications, production controls, Agent QA profile, registry publishing and trust metadata rotation.</p></article>
         </section>
       </main>
     </div>
