@@ -25,7 +25,6 @@
             "description": "ChainFX connects PIX payments to crypto settlement. Let customers pay with PIX, confirm orders by API and webhooks, and deliver USDT or BTC to their wallet."
         }
     </script>
-    <!-- Font Awesome para os ícones sociais -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/payment-token-efi/dist/payment-token-efi-umd.min.js"></script>
@@ -45,18 +44,15 @@
     <link rel="stylesheet" href="css/theme.css">
     <link rel="stylesheet" href="css/responsive.css">
     <style>
-        /* Estilos para ocultar elementos */
         .hidden {
             display: none !important;
         }
 
-        /* Estilo para indicar o método de pagamento selecionado */
         .payment-method.selected {
-            border: 2px solid #6c63ff; /* Cor roxa primária */
+            border: 2px solid #6c63ff;
             box-shadow: 0 0 8px rgba(108, 99, 255, 0.7);
         }
 
-        /* Estilos para a seção de informações de pagamento (Ultra Moderno e Robusto) */
         .payment-info {
             margin-top: 20px;
             padding: 0;
@@ -103,7 +99,7 @@
         }
 
         .confirm-payment-btn {
-            background-color: #6c63ff; /* Cor roxa primária */
+            background-color: #6c63ff;
             color: #fff;
             border: none;
             border-radius: 10px;
@@ -120,7 +116,6 @@
             box-shadow: 5px 5px 10px #b3b1b1, -5px -5px 10px #fff;
         }
 
-        /* Esconde a seção de entrada e métodos de pagamento quando a info de pagamento é visível */
         .input-section.hidden,
         .step-2.hidden,
         .continue-btn.hidden,
@@ -161,14 +156,9 @@
     </style>
 </head>
 <body class="index-page">
-    <!-- Canvas de fundo original -->
     <canvas id="bgShader"></canvas>
-    <!-- Novo canvas com shader azul/cyan translúcido -->
     <canvas id="canvas"></canvas>
     <script type="x-shader/x-fragment" id="blueShaderSource">#version 300 es
-/*********
-* made by Matthias Hurrle (@atzedent)
-*/
 precision highp float;
 out vec4 O;
 uniform float time;
@@ -223,7 +213,6 @@ void main() {
 	col=mix(vec3(.85),col,mix(.6,1.,fract(sin(dot(st, vec2(12.9898,78.233))*345678.))));
 	col=max(col,.1);
 	col=mix(col,vec3(1),S(1e-5,-1e-2,dot(st,st)));
-	// vignette
 	vec2 c=FC/R;
 	c*=1.-c.yx;
 	float vig=c.x*c.y*25.;
@@ -543,7 +532,6 @@ void main() {
             </div>
 
 
-            <!-- Substitua a div .payment-info existente por esta versão ajustada -->
 <div class="payment-info step-content step-5 hidden" id="paymentInfoSection">
 
     <div class="s2">
@@ -599,10 +587,8 @@ void main() {
     </div>
 
 
-    <!-- Botão Início -->
     <button class="confirm-payment-btn" id="confirmPaymentBtn">Ver Scan</button>
 
-    <!-- TERMS AQUI (logo abaixo do botão) -->
     <div class="terms payment-terms-below">
         By buying, you agree to our <a href="#">terms of service</a>
     </div>
@@ -622,7 +608,6 @@ void main() {
             </div>
             
             
-   <!-- ... (todo o conteúdo anterior do seu HTML permanece igual) ... -->
         </div>
     </div>
 
@@ -697,22 +682,23 @@ void main() {
     <section id="developersView" class="developers-view hidden" aria-labelledby="developersTitle">
         <div class="developers-shell">
             <div class="developers-hero">
-                <h2 id="developersTitle">Build payments and agent capability flows.</h2>
-                <p>Use ChainFX to create PIX, card and stablecoin-funded agent payment flows, expose MCP tools to agents, and let autonomous systems discover, purchase and execute digital capabilities.</p>
+                <h2 id="developersTitle">Build hybrid human and agent payment flows.</h2>
+                <p>Use ChainFX for PIX/card checkout, mobile wallet settlement, MCP tools, A2A Agent Pay, x402 capability execution, signed discovery, policy-aware agents and metered digital capabilities.</p>
                 <div class="developers-actions">
                     <a href="#api-buy" class="developer-primary-action">Start with PIX Buy</a>
-                    <a href="https://stablecoin-payment-gateway-production-3ee2.up.railway.app/openapi.json" target="_blank" rel="noopener">OpenAPI</a>
-                    <a href="#api-mcp">MCP Tools</a>
+                    <a href="https://api-production-bc748.up.railway.app/openapi.json" target="_blank" rel="noopener">OpenAPI</a>
+                    <a href="#api-discovery">Agent Discovery</a>
                 </div>
             </div>
 
             <div class="developers-status-grid">
                 <div><strong>REST API</strong><span>Rates, quotes, buy, sell, card and order status.</span></div>
-                <div><strong>MCP Server</strong><span>Tools for agents to list, buy, pay and execute capabilities.</span></div>
-                <div><strong>Agent Pay</strong><span>Agents fund PIX/card intents with BSC USDT.</span></div>
+                <div><strong>A2A Agent Pay</strong><span>Agent Card, skills, task lifecycle and payment intents.</span></div>
+                <div><strong>MCP Server</strong><span>Tools and resources for hosts, IDEs and agent frameworks.</span></div>
+                <div><strong>x402</strong><span>HTTP 402 pay-per-call execution for digital capabilities.</span></div>
                 <div><strong>Capabilities</strong><span>Capability catalog, contracts, router and metering.</span></div>
-                <div><strong>Webhooks</strong><span>payment.completed, crypto.sent and order.failed.</span></div>
-                <div><strong>Sandbox</strong><span>Fake PIX, fake QR, fake wallet and test keys.</span></div>
+                <div><strong>Trust Layer</strong><span>JWKS, signed Agent Card, reputation, SLA and episodes.</span></div>
+                <div><strong>Agent QA</strong><span>External test agent validates discovery, policy and execution.</span></div>
             </div>
 
             <div class="developers-layout">
@@ -721,9 +707,11 @@ void main() {
                     <a href="#api-overview" data-dev-link>Overview</a>
                     <a href="#api-buy" data-dev-link>PIX to USDT</a>
                     <a href="#api-sell" data-dev-link>USDT to PIX</a>
+                    <a href="#api-discovery" data-dev-link>Agent Discovery</a>
                     <a href="#api-agent-pay" data-dev-link>Agent Pay</a>
                     <a href="#api-capabilities" data-dev-link>Capabilities</a>
                     <a href="#api-mcp" data-dev-link>MCP</a>
+                    <a href="#api-x402" data-dev-link>x402</a>
                     <a href="#api-webhooks" data-dev-link>Webhooks</a>
                     <a href="#api-pricing" data-dev-link>Pricing</a>
                     <a href="#api-roadmap" data-dev-link>Roadmap</a>
@@ -732,16 +720,19 @@ void main() {
                 <div class="developers-content">
                     <article id="api-overview" class="developer-panel">
                         <h2>Build automated payment and agent flows</h2>
-                        <p>Developers can request quotes, create buy and sell orders, create agent-funded PIX/card payment intents, listen for webhooks, and expose ChainFX MCP tools to agents. The API is designed for server-to-server usage with Bearer secret keys.</p>
+                        <p>Developers can request quotes, create buy and sell orders, create agent-funded PIX/card payment intents, expose ChainFX through MCP, let agents delegate through A2A, sell capabilities through x402 and validate the full surface with Agent QA. The API is designed for server-to-server usage with Bearer secret keys.</p>
                         <div class="endpoint-list">
                             <code><span class="http-method get">GET</span>/rates</code>
                             <code><span class="http-method post">POST</span>/quote</code>
                             <code><span class="http-method post">POST</span>/buy</code>
                             <code><span class="http-method post">POST</span>/sell</code>
                             <code><span class="http-method get">GET</span>/order/{id}</code>
+                            <code><span class="http-method get">GET</span>/.well-known/agent-card.json</code>
+                            <code><span class="http-method post">POST</span>/a2a</code>
                             <code><span class="http-method get">GET</span>/marketplace/capabilities</code>
                             <code><span class="http-method post">POST</span>/agent/v1/pay</code>
                             <code><span class="http-method post">POST</span>/mcp/tools/call</code>
+                            <code><span class="http-method post">POST</span>/x402/capabilities/{capability}/execute</code>
                             <code><span class="http-method post">POST</span>/webhooks/test</code>
                         </div>
                     </article>
@@ -834,8 +825,12 @@ Authorization: Bearer sk_live_xxx
 
                     <article id="api-agent-pay" class="developer-panel">
                         <h2>Agent Pay: USDT-funded PIX and card</h2>
-                        <p>Agents can create a payment intent for a PIX payout or credit-card bill, deposit the quoted USDT to a unique BSC payment address, and let ChainFX settle the fiat recipient after confirmation.</p>
+                        <p>Agents can discover the public Agent Card, inspect required policy, quote a PIX or card bill, create a payment intent, deposit the quoted USDT to a unique BSC payment address, and let ChainFX settle the fiat recipient after confirmation.</p>
                         <div class="endpoint-list">
+                            <code><span class="http-method get">GET</span>/.well-known/agent-policy.json</code>
+                            <code><span class="http-method get">GET</span>/.well-known/capability-graph.json</code>
+                            <code><span class="http-method post">POST</span>/a2a</code>
+                            <code><span class="http-method post">POST</span>/a2a/tasks</code>
                             <code><span class="http-method post">POST</span>/agent/v1/pay</code>
                             <code><span class="http-method get">GET</span>/agent/v1/pay/{id}</code>
                             <code><span class="http-method post">POST</span>/mcp/tools/call createPaymentIntent</code>
@@ -893,7 +888,35 @@ Content-Type: application/json
   }
 }</code></pre>
                         </div>
-                        <p class="developer-note">Agent Pay never settles before the USDT deposit is confirmed. Each intent receives a unique payment address for address-based matching. Overpayment is recorded for operations review and is not auto-refunded.</p>
+                        <p class="developer-note">Agent Pay never settles before the USDT deposit is confirmed. Each intent receives a unique payment address for address-based matching. If the API returns AGENT_POLICY_REQUIRED, fetch policy discovery and activate a wallet policy before retrying. Overpayment is recorded for operations review and is not auto-refunded.</p>
+                    </article>
+
+                    <article id="api-discovery" class="developer-panel">
+                        <h2>Verified agent discovery</h2>
+                        <p>Autonomous clients should start with the public discovery documents, not private implementation routes. ChainFX exposes identity, trust, policy, SLA, reputation, task lifecycle, x402 and registry metadata before the agent creates a financial intent.</p>
+                        <div class="endpoint-list">
+                            <code><span class="http-method get">GET</span>/.well-known/agent-card.json</code>
+                            <code><span class="http-method get">GET</span>/.well-known/jwks.json</code>
+                            <code><span class="http-method get">GET</span>/.well-known/agent-card.signature</code>
+                            <code><span class="http-method get">GET</span>/.well-known/agent-reputation.json</code>
+                            <code><span class="http-method get">GET</span>/.well-known/agent-sla.json</code>
+                            <code><span class="http-method get">GET</span>/.well-known/agent-policy.json</code>
+                            <code><span class="http-method get">GET</span>/.well-known/capability-graph.json</code>
+                            <code><span class="http-method get">GET</span>/agent/v1/registries</code>
+                            <code><span class="http-method get">GET</span>/.well-known/agntcy.json</code>
+                            <code><span class="http-method get">GET</span>/.well-known/oasf.json</code>
+                        </div>
+                        <div class="code-window">
+                            <div class="code-window-bar">
+                                <span class="code-window-dots"><i></i><i></i><i></i></span>
+                                <span class="code-window-title">Agent QA</span>
+                                <button type="button" class="code-copy-btn" data-copy-target>Copy</button>
+                            </div>
+                            <pre><code>node tools/agent-qa/openai-agent-pay-test/index.mjs \
+  --card "https://api-production-bc748.up.railway.app/.well-known/agent-card.json" \
+  --out "./agent-qa-report.json"</code></pre>
+                        </div>
+                        <p class="developer-note">The Agent QA test intentionally starts from the Agent Card only. It verifies trust, policy, capability graph, A2A, task lifecycle, x402 challenge, registries and episodes before reporting whether the flow completed, needs auth, or needs policy activation.</p>
                     </article>
 
                     <article id="api-capabilities" class="developer-panel">
@@ -977,7 +1000,7 @@ Content-Type: application/json
                             <pre><code>{
   "mcpServers": {
     "chainfx-mcp": {
-      "url": "https://stablecoin-payment-gateway-production-3ee2.up.railway.app/mcp/initialize",
+      "url": "https://api-production-bc748.up.railway.app/mcp/initialize",
       "headers": {
         "Authorization": "Bearer sk_live_xxx"
       }
@@ -1029,6 +1052,48 @@ Content-Type: application/json
                         </div>
                     </article>
 
+                    <article id="api-x402" class="developer-panel">
+                        <h2>x402 capability execution</h2>
+                        <p>Digital capabilities can be purchased through an HTTP 402 challenge. The first request returns payment requirements; the replay includes the payment proof in the PAYMENT header and receives the capability result after receipt verification.</p>
+                        <div class="endpoint-list">
+                            <code><span class="http-method get">GET</span>/.well-known/x402.json</code>
+                            <code><span class="http-method post">POST</span>/x402/capabilities/document_ocr/execute</code>
+                        </div>
+                        <div class="code-window">
+                            <div class="code-window-bar">
+                                <span class="code-window-dots"><i></i><i></i><i></i></span>
+                                <span class="code-window-title">POST /x402/capabilities/document_ocr/execute</span>
+                                <button type="button" class="code-copy-btn" data-copy-target>Copy</button>
+                            </div>
+                            <pre><code>POST /x402/capabilities/document_ocr/execute
+Content-Type: application/json
+
+{
+  "agentWallet": "0x174208255ECc40481f7fD7c34EE6a9A5B66B4339",
+  "payerWallet": "0x174208255ECc40481f7fD7c34EE6a9A5B66B4339",
+  "paymentAsset": "USDT",
+  "operation": "extract_text",
+  "requestId": "x402_req_001",
+  "idempotencyKey": "x402_idem_001",
+  "units": 1,
+  "input": {
+    "documentUrl": "https://example.com/invoice.pdf"
+  }
+}
+
+Response 402
+{
+  "payment_requirements": {
+    "purchase_id": "mp_...",
+    "asset": "USDT",
+    "network": "BSC",
+    "amount": "0.080000",
+    "payment_address": "0x..."
+  }
+}</code></pre>
+                        </div>
+                    </article>
+
                     <article id="api-webhooks" class="developer-panel">
                         <h2>Webhooks</h2>
                         <p>Use webhooks to automate fulfillment when a payment is completed or crypto is sent.</p>
@@ -1069,7 +1134,7 @@ Content-Type: application/json
 
                     <article id="api-roadmap" class="developer-panel">
                         <h2>Roadmap</h2>
-                        <p>MCP, Agent Pay, capability catalog, capability contracts, route preview, hybrid execution, access grants and usage metering are available. Next steps are more real providers and enterprise routing policies. Bridge, pool, AMM, DEX and yield are intentionally out of scope.</p>
+                        <p>MCP, A2A, Agent Pay, signed Agent Card, reputation, SLA, episodes, policy discovery, capability graph, x402, capability catalog, contracts, route preview, hybrid execution, access grants, usage metering and AGNTCY/OASF-style registry records are available. Next steps are more real providers, durable A2A task storage and enterprise routing policies. Bridge, pool, AMM, DEX and yield are intentionally out of scope.</p>
                     </article>
                 </div>
             </div>
@@ -1152,9 +1217,6 @@ Content-Type: application/json
         </div>
     </section>
 
-    <!-- ============================================
-        EFEITO DA BOLINHA (ANIMAÇÃO PURA)
-        ============================================ -->
    <div class="efeito-bolinha-container">
      <div class="efeito-bolinha" id="bolinhaEfeito"></div>
    </div>
@@ -1168,15 +1230,10 @@ Content-Type: application/json
      <img class="mobile-footer-logo" src="https://res.cloudinary.com/limpeja/image/upload/v1784086628/image-removebg-preview_14_d0a9mj.png" alt="Gateway Payments" />
    </footer>
 
-   <!-- ============================================
-        SCRIPT PARA REMOVER A BOLINHA
-        ============================================ -->
    <script>
-     // Remove a bolinha depois que o efeito terminar
      document.addEventListener('DOMContentLoaded', function() {
        const bolinha = document.getElementById('bolinhaEfeito');
        
-       // Aguarda o fim da animação (3.5 segundos) e remove a bolinha
        setTimeout(function() {
          if (bolinha) {
            bolinha.classList.add('some');
@@ -1190,7 +1247,8 @@ Content-Type: application/json
 
    <script>
      (() => {
-      window.SWAPPED_API_BASE_URL = window.SWAPPED_API_BASE_URL || 'https://stablecoin-payment-gateway-production-3ee2.up.railway.app';
+      window.SWAPPED_API_BASE_URL = window.SWAPPED_API_BASE_URL || 'https://api-production-bc748.up.railway.app';
+      window.CHAINFX_API_BASE_URL = window.CHAINFX_API_BASE_URL || 'https://api-production-bc748.up.railway.app';
      })();
    </script>
    <script type="module" src="main.js"></script>
@@ -1203,7 +1261,6 @@ Content-Type: application/json
     const container = document.getElementById('three-background');
     if (container) {
       const scene = new THREE.Scene();
-      // transparent background
       scene.background = null;
 
       const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -1211,7 +1268,7 @@ Content-Type: application/json
       const updateCameraForAspect = () => {
         const aspect = window.innerWidth / window.innerHeight;
         camera.aspect = aspect;
-        camera.position.z = baseZ * Math.max(1, aspect); // push back on ultrawide to keep scale similar
+        camera.position.z = baseZ * Math.max(1, aspect);
         camera.updateProjectionMatrix();
       };
       updateCameraForAspect();
@@ -1219,21 +1276,19 @@ Content-Type: application/json
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.setClearColor(0x000000, 0); // fully transparent
+      renderer.setClearColor(0x000000, 0);
       renderer.toneMapping = THREE.ReinhardToneMapping;
       renderer.domElement.style.position = 'fixed';
       renderer.domElement.style.inset = '0';
       renderer.domElement.style.pointerEvents = 'none';
       container.appendChild(renderer.domElement);
 
-      // Post-processing
       const renderPass = new RenderPass(scene, camera);
       const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.4, 0.35, 0.85);
       const composer = new EffectComposer(renderer);
       composer.addPass(renderPass);
       composer.addPass(bloomPass);
 
-      // Material & geometry helpers
       const params = {
         lineColor: '#5c5c5c',
         dotColor: '#33ccff',
@@ -1291,9 +1346,9 @@ Content-Type: application/json
 
       const gridParams = () => {
         const baseStep = 2;
-        const densityFactor = Math.max(0.7, Math.min(1.4, 1920 / window.innerWidth)); // keep similar visual density
+        const densityFactor = Math.max(0.7, Math.min(1.4, 1920 / window.innerWidth));
         const step = baseStep * densityFactor;
-        const range = 26 * densityFactor * 2; // expand search range when step shrinks
+        const range = 26 * densityFactor * 2;
         const maxSegments = Math.round(4800 * densityFactor);
         return { step, range, maxSegments };
       };
