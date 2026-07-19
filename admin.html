@@ -1081,6 +1081,83 @@
       gap: 12px;
     }
 
+    .settlement-proof-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr 1fr;
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .truth-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+      margin-top: 12px;
+    }
+
+    .truth-item {
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-soft);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .settlement-pipeline {
+      display: grid;
+      grid-template-columns: repeat(8, minmax(120px, 1fr));
+      gap: 8px;
+      padding: 16px;
+      overflow-x: auto;
+    }
+
+    .pipeline-step {
+      min-height: 76px;
+      display: grid;
+      align-content: start;
+      gap: 6px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-soft);
+    }
+
+    .pipeline-step strong {
+      color: var(--lab-ink);
+      font-family: var(--lab-font-mono);
+      font-size: 12px;
+    }
+
+    .pipeline-step span {
+      color: var(--muted);
+      font-size: 11px;
+      overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 1100px) {
+      .settlement-proof-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .settlement-pipeline {
+        grid-template-columns: repeat(4, minmax(130px, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      .truth-list,
+      .settlement-pipeline {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .ops-tile {
       min-height: 124px;
     }
@@ -2022,9 +2099,17 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
           Operations
         </button>
+        <button data-section="settlement" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h9"/><path d="m15 17 2 2 4-5"/></svg>
+          Settlement
+        </button>
         <button data-section="transactions" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
           Payments
+        </button>
+        <button data-section="wallets" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M16 10h4v5h-4a2.5 2.5 0 0 1 0-5Z"/><path d="M7 6V4h10v2"/></svg>
+          Wallets
         </button>
         <div class="nav-heading">Platform</div>
         <button data-section="developers" type="button">
@@ -2034,6 +2119,10 @@
         <button data-section="mcp" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"/><path d="M5 8h14"/><path d="M5 16h14"/><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/></svg>
           MCP
+        </button>
+        <button data-section="agent-funnel" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16l-6 7v5l-4 2v-7L4 5Z"/><path d="M7 5V3h10v2"/><path d="M8 21h8"/></svg>
+          Agent Funnel
         </button>
         <button data-section="infrastructure" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/></svg>
@@ -2338,6 +2427,89 @@
         </div>
       </section>
 
+      <section class="section" id="settlement">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Settlement Reconciliation & Finality</h2>
+              <p>Controle operacional para garantir que ordem, signer, vault, token, receipt, finality e ledger concordam antes de entrega.</p>
+            </div>
+            <span class="badge info" id="settlementEngineStatus">Awaiting data</span>
+          </div>
+          <div class="grid kpis" style="margin-top:16px">
+            <div class="metric-box"><label>Broadcasted</label><strong id="settlementBroadcasted">0</strong><span>txHash salvo pelo signer</span></div>
+            <div class="metric-box"><label>Confirming</label><strong id="settlementConfirming">0</strong><span>receipt ok, finality pendente</span></div>
+            <div class="metric-box"><label>Reconciled</label><strong id="settlementReconciled">0</strong><span>vault event + Transfer</span></div>
+            <div class="metric-box"><label>Mismatches</label><strong id="settlementMismatches">0</strong><span id="settlementMismatchHint">sem divergencias carregadas</span></div>
+          </div>
+          <div class="settlement-proof-grid">
+            <div class="ops-tile">
+              <strong><i class="health-dot" id="settlementTruthDot"></i>Princípio de verdade</strong>
+              <span>Entrega só depois que todos os sinais concordam.</span>
+              <div class="truth-list" id="settlementTruthList"></div>
+            </div>
+            <div class="ops-tile">
+              <strong><i class="health-dot" id="settlementFinalityDot"></i>Finality policy</strong>
+              <span id="settlementFinalityVersion">policy aguardando</span>
+              <div class="kv-mini">
+                <div><label>BSC</label><b id="settlementBscFinality">--</b></div>
+                <div><label>Polygon</label><b id="settlementPolygonFinality">--</b></div>
+              </div>
+            </div>
+            <div class="ops-tile">
+              <strong><i class="health-dot" id="settlementWorkerDot"></i>Workers</strong>
+              <span>Receipt, reconciliation, finalization e recovery separados.</span>
+              <div class="kv-mini">
+                <div><label>Receipt</label><b id="settlementReceiptWorker">--</b></div>
+                <div><label>Finalizer</label><b id="settlementFinalizerWorker">--</b></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Settlement lifecycle</h2>
+              <p>Estados esperados da autorização até o ledger. O admin mostra dados reais quando o backend retornar <code>settlement</code> no overview.</p>
+            </div>
+            <span class="badge" id="settlementDataSource">fallback local</span>
+          </div>
+          <div class="settlement-pipeline" id="settlementPipeline"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Reconciliation operations</h2>
+              <p>Operações com txHash devem provar receipt, evento do vault, evento ERC20 Transfer e confirmações antes do ledger.</p>
+            </div>
+            <button class="btn" id="exportSettlementBtn" type="button">Exportar JSON</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Order</th>
+                  <th>Operation</th>
+                  <th>Network</th>
+                  <th>Status</th>
+                  <th>Receipt</th>
+                  <th>Vault Event</th>
+                  <th>Transfer</th>
+                  <th>Finality</th>
+                  <th>TX</th>
+                  <th>Failure</th>
+                </tr>
+              </thead>
+              <tbody id="settlementBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="settlementEmpty">Nenhuma operação de settlement carregada.</div>
+          <pre class="pre" id="settlementJson">{}</pre>
+        </div>
+      </section>
+
       <section class="section" id="transactions">
         <div class="panel">
           <div class="toolbar">
@@ -2383,13 +2555,50 @@
                   <th>Taxa</th>
                   <th>Rail</th>
                   <th>Wallet / Deposito</th>
+                  <th>PIX</th>
                   <th>TX</th>
+                  <th>Ação</th>
                 </tr>
               </thead>
               <tbody id="transactionsBody"></tbody>
             </table>
           </div>
           <div class="empty" id="transactionsEmpty">Nenhuma transacao carregada.</div>
+        </div>
+      </section>
+
+      <section class="section" id="wallets">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>System Wallets</h2>
+              <p>Carteiras e contratos operacionais carregados do backend autenticado.</p>
+            </div>
+            <button class="btn" id="refreshWalletsBtn" type="button">Atualizar</button>
+          </div>
+          <div class="grid kpis" style="margin-top:16px">
+            <div class="metric-box"><label>Signer</label><strong id="walletSignerStatus">--</strong><span id="walletSignerNetwork">--</span></div>
+            <div class="metric-box"><label>Wallets</label><strong id="walletCount">0</strong><span>enderecos configurados</span></div>
+            <div class="metric-box"><label>Networks</label><strong id="walletNetworkCount">0</strong><span>BSC primeiro, Polygon depois</span></div>
+          </div>
+          <div class="table-wrap" style="margin-top:16px">
+            <table>
+              <thead>
+                <tr>
+                  <th>Role</th>
+                  <th>Network</th>
+                  <th>Chain</th>
+                  <th>Asset</th>
+                  <th>Wallet / Contract</th>
+                  <th>Config</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="walletsBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="walletsEmpty">Nenhuma wallet carregada.</div>
+          <pre class="pre" id="walletsJson">{}</pre>
         </div>
       </section>
 
@@ -2429,6 +2638,60 @@
             <div class="ops-tile"><strong>Capabilities</strong><span>Marketplace capability network</span><div class="kv-mini"><div><label>Executed</label><b id="mcpOpsCapabilities">0</b></div><div><label>Top</label><b id="mcpOpsTop">--</b></div></div></div>
             <div class="ops-tile"><strong>Agent Pay</strong><span>M2M payment intent surface</span><div class="kv-mini"><div><label>Status</label><b id="mcpOpsPayStatus">Ready</b></div><div><label>Last</label><b id="mcpOpsPayLast">--</b></div></div></div>
             <div class="ops-tile"><strong>Routing</strong><span>chooseRoute + dryRunCapability</span><div class="kv-mini"><div><label>Mode</label><b>best_available</b></div><div><label>Fallback</label><b id="mcpOpsFallback">--</b></div></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="agent-funnel">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Agent Funnel</h2>
+              <p>Jornada agente-centrada: discovery, exploracao MCP/capabilities, intencao de pagamento e execucao final.</p>
+            </div>
+            <span class="badge info" id="agentFunnelWindow">24h</span>
+          </div>
+          <div class="ops-grid">
+            <div class="ops-tile"><strong>Discovery</strong><span>.well-known, Agent Card, graph e onboarding</span><div class="kv-mini"><div><label>Requests</label><b id="funnelDiscovery">0</b></div><div><label>Scouts</label><b id="funnelScouts">0</b></div></div></div>
+            <div class="ops-tile"><strong>Exploracao</strong><span>MCP tools/list e marketplace capabilities</span><div class="kv-mini"><div><label>MCP Calls</label><b id="funnelMcpCalls">0</b></div><div><label>Errors</label><b id="funnelMcpErrors">0</b></div></div></div>
+            <div class="ops-tile"><strong>Identidade</strong><span>X-Agent-ID, API key ou fingerprint anonimo</span><div class="kv-mini"><div><label>Auth</label><b id="funnelAuthenticated">0</b></div><div><label>Connected</label><b id="funnelConnected">0</b></div></div></div>
+            <div class="ops-tile"><strong>Intencao</strong><span>Agent Pay payment intents</span><div class="kv-mini"><div><label>Intents</label><b id="funnelIntents">0</b></div><div><label>Wallets</label><b id="funnelWallets">0</b></div></div></div>
+            <div class="ops-tile"><strong>Friccao</strong><span>Falhas e tentativas em Agent Pay</span><div class="kv-mini"><div><label>Failed</label><b id="funnelFailedIntents">0</b></div><div><label>Attempts</label><b id="funnelAttempts">0</b></div></div></div>
+            <div class="ops-tile"><strong>Conversao</strong><span>Discovery para acoes reais</span><div class="kv-mini"><div><label>Rate</label><b id="funnelConversion">0.00%</b></div><div><label>Execs</label><b id="funnelExecutions">0</b></div></div></div>
+          </div>
+        </div>
+        <div class="panel tests-table">
+          <div class="panel-head">
+            <div>
+              <h2>Conversao por capability</h2>
+              <p>Muita exploracao e pouca compra indica friccao de preco, contrato ou documentacao.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Capability</th><th>Exploracao</th><th>Compras</th><th>Execucoes</th><th>Falhas</th><th>Latencia media</th><th>Buy rate</th><th>Ultimo sinal</th></tr></thead>
+              <tbody id="agentFunnelCapabilityBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel tests-table">
+          <div class="panel-head">
+            <div>
+              <h2>Fingerprints e clientes</h2>
+              <p>Top User-Agents e endpoints de discovery. Clientes bem-comportados devem enviar <code>X-Agent-ID</code>.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>User-Agent</th><th>Requests</th><th>IPs</th><th>Ultimo sinal</th></tr></thead>
+              <tbody id="agentFunnelUserAgentBody"></tbody>
+            </table>
+          </div>
+          <div class="table-wrap" style="margin-top:16px">
+            <table>
+              <thead><tr><th>Endpoint</th><th>Requests</th><th>Unicos</th><th>Ultimo sinal</th></tr></thead>
+              <tbody id="agentFunnelEndpointBody"></tbody>
+            </table>
           </div>
         </div>
       </section>
@@ -2582,6 +2845,7 @@
                 <option value="smoke" selected>Smoke geral</option>
                 <option value="web">Web</option>
                 <option value="mobile">Mobile</option>
+                <option value="rails">Rails Buy/Sell</option>
                 <option value="mcp">MCP paralelo</option>
                 <option value="agentqa">Agent QA / A2A Pay</option>
                 <option value="api">API Developer</option>
@@ -2972,6 +3236,8 @@
         theme: localStorage.getItem('CHAINFX_ADMIN_THEME') || 'light',
         adminUser: null,
         transactions: [],
+        wallets: { wallets: [], networkPolicy: [], signer: {} },
+        settlement: null,
         events: [],
         telemetry: [],
         alerts: [],
@@ -3003,7 +3269,8 @@
           suite: null,
           wallets: [],
           charts: {}
-        }
+        },
+        agentFunnel: null
       };
 
       const $ = (id) => document.getElementById(id);
@@ -3104,6 +3371,8 @@
           if (data.readiness) $('readyJson').textContent = JSON.stringify(data.readiness, null, 2);
           if (Array.isArray(data.transactions)) mergeTransactions(data.transactions.map(normalizeRecord).filter(Boolean));
           if (Array.isArray(data.events)) mergeEvents(data.events);
+          if (data.wallets) state.wallets = data.wallets;
+          state.settlement = data.settlement || data.settlementReconciliation || null;
           if (Array.isArray(data.operationalGaps)) {
             state.alerts = data.operationalGaps.map((item) => ({ type: 'operational_gap', item, at: data.generatedAt || new Date().toISOString() }));
           }
@@ -3208,10 +3477,12 @@
           renderAll();
           toast('Registros locais limpos.');
         });
+        $('refreshWalletsBtn').addEventListener('click', () => fetchWallets(true));
 
         $('exportCsvBtn').addEventListener('click', () => download('swappy-transacoes.csv', toCsv(reportRows()), 'text/csv'));
         $('exportTaxCsvBtn').addEventListener('click', () => download('swappy-relatorio-fiscal.csv', toCsv(reportRows()), 'text/csv'));
         $('exportJsonBtn').addEventListener('click', () => download('swappy-transacoes.json', JSON.stringify(state.transactions, null, 2), 'application/json'));
+        $('exportSettlementBtn').addEventListener('click', () => download('chainfx-settlement-reconciliation.json', JSON.stringify(settlementSnapshot(), null, 2), 'application/json'));
         $('exportAuditBtn').addEventListener('click', () => download('swappy-auditoria.json', JSON.stringify(auditRows(), null, 2), 'application/json'));
         $('exportTelemetryBtn').addEventListener('click', () => download('swappy-telemetria.json', JSON.stringify({ telemetry: state.telemetry, alerts: state.alerts }, null, 2), 'application/json'));
         $('startTestsBtn').addEventListener('click', startPlatformTests);
@@ -3278,7 +3549,10 @@
           }
           if (Array.isArray(data.transactions)) mergeTransactions(data.transactions.map(normalizeRecord).filter(Boolean));
           if (Array.isArray(data.events)) mergeEvents(data.events);
-          if (data.metrics) $('rawJson').textContent = JSON.stringify({ metrics: data.metrics, rates: data.rates }, null, 2);
+          if (data.wallets) state.wallets = data.wallets;
+          state.settlement = data.settlement || data.settlementReconciliation || null;
+          state.agentFunnel = data.agentFunnel || null;
+          if (data.metrics) $('rawJson').textContent = JSON.stringify({ metrics: data.metrics, rates: data.rates, agentFunnel: data.agentFunnel }, null, 2);
           logTelemetry('/api/admin/overview', 'ok', performance.now() - started);
           persist();
           renderAll();
@@ -3287,10 +3561,27 @@
           logTelemetry('/api/admin/overview', 'unavailable', performance.now() - started, error.message);
           state.transactions = [];
           state.events = [];
+          state.agentFunnel = null;
           state.alerts = [{ type: 'admin_overview', item: error.message, at: new Date().toISOString() }];
           $('rawJson').textContent = JSON.stringify({ error: error.message }, null, 2);
           renderAll();
           return;
+        }
+      }
+
+      async function fetchWallets(showToast = false) {
+        const started = performance.now();
+        try {
+          const data = await request('/api/admin/wallets');
+          state.wallets = data || { wallets: [], networkPolicy: [], signer: {} };
+          $('walletsJson').textContent = JSON.stringify(state.wallets, null, 2);
+          logTelemetry('/api/admin/wallets', 'ok', performance.now() - started);
+          renderWallets();
+          if (showToast) toast('Wallets atualizadas.');
+        } catch (error) {
+          logTelemetry('/api/admin/wallets', 'error', performance.now() - started, error.message);
+          $('walletsJson').textContent = JSON.stringify({ error: error.message }, null, 2);
+          if (showToast) toast(error.message);
         }
       }
 
@@ -3935,6 +4226,18 @@
           { area: 'Mobile Webhooks', method: 'GET', path: '/api/mobile/webhooks/events', timeoutMs: 7000 },
           { area: 'Mobile Webhooks', method: 'GET', path: '/api/mobile/webhooks', mobileAuth: true, timeoutMs: 9000 }
         ];
+        const rails = [
+          { area: 'Rails Discovery', method: 'GET', path: '/api/rates', label: 'GET /api/rates', timeoutMs: 7000, capture: (data, ctx) => { ctx.asset = data.supportedAssets?.includes('USDT') ? 'USDT' : 'USDT'; } },
+          { area: 'Rails Quote', method: 'POST', path: '/api/quote', label: 'POST /api/quote buy PIX', body: (ctx) => ({ mode: 'buy', asset: ctx.asset || 'USDT', fiatCurrency: 'BRL', paymentMethod: 'pix', amountBRL: 100 }), timeoutMs: 9000, capture: (data, ctx) => { ctx.buyQuote = data; ctx.buyCryptoAmount = Number(data.cryptoAmount || 0); } },
+          { area: 'Rails Quote', method: 'POST', path: '/api/quote', label: 'POST /api/quote sell PIX', body: (ctx) => ({ mode: 'sell', asset: ctx.asset || 'USDT', fiatCurrency: 'BRL', paymentMethod: 'pix', amountFiat: 5 }), timeoutMs: 9000, capture: (data, ctx) => { ctx.sellQuote = data; } },
+          { area: 'Rails Buy', method: 'POST', path: '/api/mobile/order/buy', label: 'POST /api/mobile/order/buy', mobileAuth: true, idempotency: true, accept: [202], body: (ctx) => ({ amount_brl: 100, asset: ctx.asset || 'USDT', dest_address: ctx.mobile?.walletAddress || randomEvmAddress(), payment_method: 'pix', customer_name: 'ChainFX Rails Test', customer_email: ctx.mobile?.email || 'rails-test@chainfx.local', customer_cpf: '00000000000' }), timeoutMs: 18000, capture: (data, ctx) => { ctx.railsBuyOrderId = captureId('id', 'buyId', 'order.id', 'buy_order.id', 'order_id')(data, ctx); } },
+          { area: 'Rails Buy', method: 'GET', path: (ctx) => ctx.railsBuyOrderId ? `/api/mobile/order/${encodeURIComponent(ctx.railsBuyOrderId)}` : '/api/mobile/orders', label: 'GET /api/mobile/order/:buyId status', mobileAuth: true, accept: [404], timeoutMs: 12000 },
+          { area: 'Rails Sell', method: 'POST', path: '/api/mobile/order/sell', label: 'POST /api/mobile/order/sell', mobileAuth: true, idempotency: true, body: (ctx) => ({ amount_usdt: 1, asset: ctx.asset || 'USDT', pix_key: '+5511999999999', pix_phone: '+5511999999999', pix_cpf: '00000000000' }), timeoutMs: 18000, capture: (data, ctx) => { ctx.railsSellOrderId = captureId('id', 'order.id', 'order_id')(data, ctx); } },
+          { area: 'Rails Sell', method: 'GET', path: (ctx) => ctx.railsSellOrderId ? `/api/mobile/order/${encodeURIComponent(ctx.railsSellOrderId)}` : '/api/mobile/orders', label: 'GET /api/mobile/order/:sellId status', mobileAuth: true, accept: [404], timeoutMs: 12000 },
+          { area: 'Rails Orders', method: 'GET', path: '/api/mobile/orders', label: 'GET /api/mobile/orders', mobileAuth: true, timeoutMs: 12000 },
+          { area: 'Rails Webhooks', method: 'GET', path: '/api/webhooks/events', label: 'GET /api/webhooks/events', timeoutMs: 7000 },
+          { area: 'Rails Observability', method: 'GET', path: '/api/admin/overview?limit=1', label: 'GET /api/admin/overview rails', adminAuth: true, accept: [401], timeoutMs: 9000 }
+        ];
         const mcpTool = (name, args = {}, options = {}) => ({
           area: options.area || 'MCP Tool',
           method: 'POST',
@@ -4070,10 +4373,11 @@
         ];
         if (profile === 'web') return infra.concat(web);
         if (profile === 'mobile') return infra.concat(mobile);
+        if (profile === 'rails') return infra.concat(rails);
         if (profile === 'mcp') return mcpBase.concat(mcp, capabilityHttp);
         if (profile === 'agentqa') return infra.concat(agentQA);
         if (profile === 'api') return infra.concat(api);
-        if (profile === 'full') return infra.concat(web, mobile, mcpBase, mcp, capabilityHttp, agentQA, api);
+        if (profile === 'full') return infra.concat(web, mobile, rails, mcpBase, mcp, capabilityHttp, agentQA, api);
         return infra.concat(web.slice(0, 1), mobile.slice(0, 2), mcpBase, mcp.slice(0, 1), capabilityHttp.slice(0, 3));
       }
 
@@ -4505,7 +4809,7 @@
       }
 
       function testReport() {
-        const samples = visibleTestSamples();
+        const samples = state.tests.samples.slice();
         return {
           generatedAt: new Date().toISOString(),
           target: $('testsBaseUrl').value.trim().replace(/\/$/, ''),
@@ -4582,6 +4886,11 @@
           asset: input.asset || 'USDT',
           address: input.dest_address || input.destAddress || input.address || input.BSC_address || '',
           txHash: valueOrString(input.tx_hash_out || input.txHashOut || input.tx_hash || input.txHash || input.deposit_tx || input.depositTx),
+          depositTx: valueOrString(input.deposit_tx || input.depositTx),
+          depositAmount: Number(input.deposit_amount ?? input.depositAmount ?? 0),
+          pixKey: valueOrString(input.pix_key || input.pixKey || input.pix_phone || input.pixPhone),
+          pixCpf: valueOrString(input.pix_cpf || input.pixCpf),
+          pixPhone: valueOrString(input.pix_phone || input.pixPhone),
           providerPaymentId: valueOrString(input.provider_payment_id || input.providerPaymentId),
           rate: Number(input.rate_locked || input.rate || 0),
           requestId: valueOrString(input.request_id || input.requestId),
@@ -4604,11 +4913,14 @@
       function renderAll() {
         renderKpis();
         renderTransactions();
+        renderWallets();
+        renderSettlement();
         renderAudit();
         renderReports();
         renderTelemetry();
         renderTests();
         renderSigner();
+        renderAgentFunnel();
         renderOperationalUX();
       }
 
@@ -4699,23 +5011,79 @@
         setText('aiRevenuePerAgent', money.format(activeAgents ? netRevenue / activeAgents : 0));
       }
 
+      function renderWallets() {
+        const snapshot = state.wallets || {};
+        const rows = Array.isArray(snapshot.wallets) ? snapshot.wallets : [];
+        const configured = rows.filter((row) => row.configured && row.validAddress);
+        const networks = new Set(rows.map((row) => row.network).filter(Boolean));
+        setText('walletSignerStatus', snapshot.signer?.configured ? 'Configured' : 'Missing');
+        setText('walletSignerNetwork', snapshot.signer?.network || '--');
+        setText('walletCount', String(configured.length));
+        setText('walletNetworkCount', String(networks.size));
+        $('walletsBody').innerHTML = rows.map((row) => {
+          const ok = row.configured && row.validAddress;
+          const status = ok ? (row.canPayout ? 'payout ready' : 'configured') : (row.configured ? 'invalid' : 'missing');
+          return `
+            <tr>
+              <td>${escapeHtml(row.role || '--')}</td>
+              <td><span class="badge info">${escapeHtml(row.network || '--')}</span></td>
+              <td>${escapeHtml(String(row.chainId || '--'))}</td>
+              <td>${escapeHtml(row.asset || '--')}</td>
+              <td><code>${escapeHtml(row.address || '--')}</code></td>
+              <td><code>${escapeHtml(row.configKey || '--')}</code></td>
+              <td><span class="badge ${ok ? 'ok' : 'bad'}">${escapeHtml(status)}</span></td>
+            </tr>
+          `;
+        }).join('');
+        $('walletsEmpty').style.display = rows.length ? 'none' : 'block';
+        $('walletsJson').textContent = JSON.stringify(snapshot, null, 2);
+      }
+
+      async function confirmManualPix(orderId) {
+        const record = state.transactions.find((item) => item.id === orderId && item.type !== 'buy');
+        const reference = window.prompt('Comprovante ou referência do PIX manual:', record?.providerPaymentId || '');
+        if (reference === null) return;
+        const response = await fetch(`${state.apiBase}/api/admin/sell/${encodeURIComponent(orderId)}/manual-pix-paid`, {
+          method: 'POST',
+          headers: adminHeaders({ contentType: true }),
+          body: JSON.stringify({ providerId: reference.trim(), note: 'confirmed from admin.html' })
+        });
+        const text = await response.text();
+        let data = {};
+        if (text) {
+          try { data = JSON.parse(text); } catch { data = { raw: text }; }
+        }
+        if (!response.ok) {
+          toast(data.error || `${response.status} ${response.statusText}`);
+          return;
+        }
+        toast('PIX manual marcado como pago.');
+        await tryFetchAdminCollections();
+      }
+
       function renderTransactions() {
         const filter = $('statusFilter').value;
         const rows = state.transactions.filter((row) => !filter || row.status.includes(filter));
-        $('transactionsBody').innerHTML = rows.map((row) => `
-          <tr data-key="${escapeHtml(row.type + ':' + row.id)}">
-            <td>${formatDate(row.createdAt)}</td>
-            <td><span class="badge info">${row.type === 'buy' ? 'BUY' : 'SELL'}</span></td>
-            <td><code>${escapeHtml(row.id)}</code></td>
-            <td><span class="badge ${badgeClass(row.status)}">${escapeHtml(row.status || '--')}</span></td>
-            <td>${escapeHtml(row.fiatCurrency)} ${formatAmount(row.amountFiat || row.amountBRL)}</td>
-            <td>${formatAmount(row.cryptoAmount)} ${escapeHtml(row.asset)}</td>
-            <td>${money.format(row.feeBRL || 0)}</td>
-            <td>${escapeHtml(row.paymentMethod || '--')}</td>
-            <td><code>${escapeHtml(shorten(row.address))}</code></td>
-            <td><code>${escapeHtml(shorten(row.txHash || row.providerPaymentId || ''))}</code></td>
-          </tr>
-        `).join('');
+        $('transactionsBody').innerHTML = rows.map((row) => {
+          const manualReady = row.type !== 'buy' && row.status === 'aguardando_pix_manual';
+          const pixLabel = row.pixKey ? `${row.pixKey}${row.pixCpf ? ` / CPF ${row.pixCpf}` : ''}` : '--';
+          return `
+            <tr data-key="${escapeHtml(row.type + ':' + row.id)}">
+              <td>${formatDate(row.createdAt)}</td>
+              <td><span class="badge info">${row.type === 'buy' ? 'BUY' : 'SELL'}</span></td>
+              <td><code>${escapeHtml(row.id)}</code></td>
+              <td><span class="badge ${badgeClass(row.status)}">${escapeHtml(row.status || '--')}</span></td>
+              <td>${escapeHtml(row.fiatCurrency)} ${formatAmount(row.amountFiat || row.amountBRL)}</td>
+              <td>${formatAmount(row.depositAmount || row.cryptoAmount)} ${escapeHtml(row.asset)}</td>
+              <td>${money.format(row.feeBRL || 0)}</td>
+              <td>${escapeHtml(row.paymentMethod || '--')}</td>
+              <td><code>${escapeHtml(shorten(row.address))}</code></td>
+              <td><code>${escapeHtml(shorten(pixLabel))}</code></td>
+              <td><code>${escapeHtml(shorten(row.txHash || row.providerPaymentId || ''))}</code></td>
+              <td>${manualReady ? `<button class="btn primary" type="button" data-manual-pix="${escapeHtml(row.id)}">Marcar PIX pago</button>` : ''}</td>
+            </tr>
+          `;
+        }).join('');
         $('transactionsEmpty').style.display = rows.length ? 'none' : 'block';
         document.querySelectorAll('#transactionsBody tr').forEach((rowEl) => {
           rowEl.addEventListener('click', () => {
@@ -4723,6 +5091,88 @@
             if (record) $('rawJson').textContent = JSON.stringify(record.raw || record, null, 2);
           });
         });
+        document.querySelectorAll('[data-manual-pix]').forEach((button) => {
+          button.addEventListener('click', async (event) => {
+            event.stopPropagation();
+            await confirmManualPix(button.dataset.manualPix);
+          });
+        });
+      }
+
+      function renderSettlement() {
+        const snapshot = settlementSnapshot();
+        const rows = snapshot.operations;
+        const summary = snapshot.summary;
+        const mismatches = Number(summary.mismatches || 0);
+        const fullyReconciled = Number(summary.fullyReconciled || 0);
+        const confirming = Number(summary.confirming || 0);
+        const broadcasted = Number(summary.broadcasted || 0);
+        const hasRealData = snapshot.source === 'backend';
+
+        setText('settlementEngineStatus', mismatches ? 'Mismatch' : (fullyReconciled ? 'Reconciling' : 'Monitoring'));
+        $('settlementEngineStatus').className = `badge ${mismatches ? 'bad' : (hasRealData ? 'ok' : 'warn')}`;
+        setText('settlementBroadcasted', compactNumber(broadcasted));
+        setText('settlementConfirming', compactNumber(confirming));
+        setText('settlementReconciled', compactNumber(fullyReconciled));
+        setText('settlementMismatches', compactNumber(mismatches));
+        setText('settlementMismatchHint', mismatches ? 'bloquear entrega e revisar' : 'sem divergencias carregadas');
+        setText('settlementDataSource', hasRealData ? 'backend settlement' : 'fallback local');
+        $('settlementDataSource').className = `badge ${hasRealData ? 'ok' : 'warn'}`;
+        setText('settlementFinalityVersion', snapshot.finality?.version || 'bsc-finality-v1 / polygon-finality-v1');
+        setText('settlementBscFinality', finalityLabel(snapshot.finality?.BSC || snapshot.finality?.bsc));
+        setText('settlementPolygonFinality', finalityLabel(snapshot.finality?.POLYGON || snapshot.finality?.polygon));
+        setText('settlementReceiptWorker', snapshot.workers?.receipt || snapshot.workers?.SettlementReceiptWorker || 'planned');
+        setText('settlementFinalizerWorker', snapshot.workers?.finalizer || snapshot.workers?.SettlementFinalizationWorker || 'planned');
+        setHealthDot('settlementTruthDot', mismatches ? 'bad' : (hasRealData ? 'ok' : 'warn'));
+        setHealthDot('settlementFinalityDot', confirming ? 'warn' : (hasRealData ? 'ok' : 'warn'));
+        setHealthDot('settlementWorkerDot', hasRealData ? 'ok' : 'warn');
+
+        const truth = [
+          ['Instruction', summary.instructions || rows.length],
+          ['Signer TX', summary.signerTransactions || broadcasted],
+          ['Receipt', summary.receiptsVerified || 0],
+          ['Vault event', summary.vaultEventsVerified || 0],
+          ['ERC20 Transfer', summary.transferEventsVerified || 0],
+          ['Ledger', summary.ledgerPosted || 0]
+        ];
+        $('settlementTruthList').innerHTML = truth.map(([label, value]) => `
+          <div class="truth-item"><span>${escapeHtml(label)}</span><b>${escapeHtml(compactNumber(value))}</b></div>
+        `).join('');
+
+        const pipeline = [
+          ['AUTHORIZED', summary.authorized || 0, 'instruction persistida'],
+          ['CONSUMED', summary.consumed || 0, 'signer consumiu'],
+          ['BROADCASTED', broadcasted, 'txHash salvo'],
+          ['RECEIPT', summary.receiptsVerified || 0, 'status + vault to'],
+          ['VAULT_EVENT', summary.vaultEventsVerified || 0, 'Payout/PayoutExecuted'],
+          ['TRANSFER', summary.transferEventsVerified || 0, 'ERC20 Transfer'],
+          ['FINALITY', summary.finalityVerified || 0, 'confirmações/reorg'],
+          ['LEDGER', summary.ledgerPosted || 0, 'POSTED antes de DELIVERED']
+        ];
+        $('settlementPipeline').innerHTML = pipeline.map(([label, value, hint]) => `
+          <div class="pipeline-step">
+            <strong>${escapeHtml(label)}</strong>
+            <span>${escapeHtml(compactNumber(value))}</span>
+            <span>${escapeHtml(hint)}</span>
+          </div>
+        `).join('');
+
+        $('settlementBody').innerHTML = rows.map((row) => `
+          <tr>
+            <td><code>${escapeHtml(shorten(row.orderId || row.order_id || '--'))}</code></td>
+            <td><code>${escapeHtml(shorten(row.operationId || row.operation_id || '--'))}</code></td>
+            <td><span class="badge info">${escapeHtml(row.network || '--')}</span></td>
+            <td><span class="badge ${badgeClass(String(row.reconciliationStatus || row.reconciliation_status || row.executionStatus || row.execution_status || row.status || 'pending').toLowerCase())}">${escapeHtml(row.reconciliationStatus || row.reconciliation_status || row.executionStatus || row.execution_status || row.status || 'pending')}</span></td>
+            <td>${proofBadge(row.receiptVerified ?? row.receipt_verified)}</td>
+            <td>${proofBadge(row.vaultEventVerified ?? row.vault_event_verified)}</td>
+            <td>${proofBadge(row.transferEventVerified ?? row.transfer_event_verified)}</td>
+            <td>${proofBadge(row.confirmationsVerified ?? row.confirmations_verified)}</td>
+            <td><code>${escapeHtml(shorten(row.txHash || row.tx_hash || ''))}</code></td>
+            <td>${escapeHtml(row.failureCode || row.failure_code || row.failureField || row.failure_field || '--')}</td>
+          </tr>
+        `).join('');
+        $('settlementEmpty').style.display = rows.length ? 'none' : 'block';
+        $('settlementJson').textContent = JSON.stringify(snapshot, null, 2);
       }
 
       function renderAudit() {
@@ -4766,6 +5216,70 @@
         renderOperationalUX();
       }
 
+      function renderAgentFunnel() {
+        const funnel = state.agentFunnel || {};
+        const steps = funnel.funnel || {};
+        const conversions = Array.isArray(funnel.capabilityConversions) ? funnel.capabilityConversions : [];
+        const userAgents = Array.isArray(funnel.topAgentUserAgents) ? funnel.topAgentUserAgents : [];
+        const endpoints = Array.isArray(funnel.topDiscoveryEndpoints) ? funnel.topDiscoveryEndpoints : [];
+        const failedIntents = Number(funnel.failedPaymentIntents || 0);
+        const retryAttempts = Number(funnel.paymentRetryAttempts || 0);
+
+        setText('agentFunnelWindow', funnel.window || '24h');
+        setText('funnelDiscovery', compactNumber(funnel.discoveryRequests || steps.discovery || 0));
+        setText('funnelScouts', compactNumber(funnel.estimatedUniqueScouts || 0));
+        setText('funnelMcpCalls', compactNumber(funnel.mcpToolCalls || steps.exploration || 0));
+        setText('funnelMcpErrors', compactNumber(funnel.mcpToolErrors || 0));
+        setText('funnelAuthenticated', compactNumber(funnel.authenticatedCallers || 0));
+        setText('funnelConnected', compactNumber(funnel.connectedAgents || 0));
+        setText('funnelIntents', compactNumber(funnel.paymentIntents || steps.intention || 0));
+        setText('funnelWallets', compactNumber(funnel.payingAgentWallets || 0));
+        setText('funnelFailedIntents', compactNumber(failedIntents));
+        setText('funnelAttempts', compactNumber(retryAttempts));
+        setText('funnelConversion', funnel.discoveryToActionRate || '0.00%');
+        setText('funnelExecutions', compactNumber(funnel.capabilityExecutions || steps.execution || 0));
+
+        const capabilityBody = $('agentFunnelCapabilityBody');
+        if (capabilityBody) {
+          capabilityBody.innerHTML = conversions.length ? conversions.map((row) => `
+            <tr>
+              <td><code>${escapeHtml(row.capabilityId || '--')}</code></td>
+              <td>${compactNumber(row.explorations)}</td>
+              <td>${compactNumber(row.purchases)}</td>
+              <td>${compactNumber(row.executions)}</td>
+              <td>${compactNumber(row.executionFailures)}</td>
+              <td>${row.avgExecutionMs ? `${compactNumber(row.avgExecutionMs)} ms` : '--'}</td>
+              <td>${escapeHtml(row.explorationToBuyRate || '0.00%')}</td>
+              <td>${formatDate(row.lastSeen)}</td>
+            </tr>
+          `).join('') : '<tr><td colspan="8">Sem conversao por capability na janela.</td></tr>';
+        }
+
+        const userAgentBody = $('agentFunnelUserAgentBody');
+        if (userAgentBody) {
+          userAgentBody.innerHTML = userAgents.length ? userAgents.map((row) => `
+            <tr>
+              <td>${escapeHtml(shorten(row.userAgent || '--'))}</td>
+              <td>${compactNumber(row.count)}</td>
+              <td>${compactNumber(row.uniqueIps)}</td>
+              <td>${formatDate(row.lastSeen)}</td>
+            </tr>
+          `).join('') : '<tr><td colspan="4">Sem User-Agent de agente na janela.</td></tr>';
+        }
+
+        const endpointBody = $('agentFunnelEndpointBody');
+        if (endpointBody) {
+          endpointBody.innerHTML = endpoints.length ? endpoints.map((row) => `
+            <tr>
+              <td><code>${escapeHtml(row.path || '--')}</code></td>
+              <td>${compactNumber(row.count)}</td>
+              <td>${compactNumber(row.unique)}</td>
+              <td>${formatDate(row.lastSeen)}</td>
+            </tr>
+          `).join('') : '<tr><td colspan="4">Sem discovery MCP/A2A na janela.</td></tr>';
+        }
+      }
+
       function renderOperationalUX() {
         const obs = state.tests.observability || {};
         const samples = visibleTestSamples();
@@ -4799,6 +5313,8 @@
         const psp = obs.pixLatency || '--';
         const mcpStatus = mcpSummary.count ? `${mcpSummary.p95} ms P95` : 'Ready';
         const mobileStatus = mobileSummary.count ? `${mobileSummary.p95} ms P95` : 'Ready';
+        const settlement = settlementSnapshot();
+        const settlementSummary = settlement.summary || {};
 
         setText('healthApi', apiState);
         setText('healthPg', pg);
@@ -4857,7 +5373,8 @@
         setText('workerWebhookRetries', String(state.alerts.length));
         setText('opsMobileP95', mobileSummary.count ? `${mobileSummary.p95} ms` : '--');
         setText('opsMobileErrors', String(mobileSummary.errors));
-        setText('opsSettlementPending', obs.pendingSettlements || '--');
+        setText('opsSettlementStatus', settlementSummary.mismatches ? 'Review' : (settlement.source === 'backend' ? 'Reconciling' : 'Prepared'));
+        setText('opsSettlementPending', obs.pendingSettlements || settlementSummary.broadcasted || '--');
         setText('opsSettlementP95', paymentSummary.count ? `${paymentSummary.p95} ms` : '--');
 
         setText('devOpsApiKeys', state.apiKey ? '1' : '0');
@@ -4952,6 +5469,103 @@
           if (row.txHash) base.push({ event: 'blockchain.tx.linked', at: row.updatedAt || row.createdAt, type: row.type, status: row.status, id: row.id, tx: row.txHash });
           return base;
         }).sort((a, b) => new Date(b.at) - new Date(a.at));
+      }
+
+      function settlementSnapshot() {
+        const raw = state.settlement || {};
+        const backendRows = raw.operations || raw.settlements || raw.receipts || raw.instructions || [];
+        const operations = Array.isArray(backendRows) && backendRows.length
+          ? backendRows.map(normalizeSettlementOperation)
+          : fallbackSettlementOperations();
+        const summary = Object.assign({}, summarizeSettlementOperations(operations), raw.summary || raw.metrics || {});
+        return {
+          source: Array.isArray(backendRows) && backendRows.length ? 'backend' : 'local_fallback',
+          summary,
+          finality: raw.finality || raw.finalityPolicy || {
+            version: 'bsc-finality-v1 / polygon-finality-v1',
+            BSC: { requiredConfirmations: '--', reorgSafetyDepth: '--' },
+            POLYGON: { requiredConfirmations: '--', reorgSafetyDepth: '--' }
+          },
+          workers: raw.workers || {
+            receipt: 'planned',
+            reconciler: 'domain-ready',
+            finalizer: 'planned',
+            recovery: 'planned'
+          },
+          operations
+        };
+      }
+
+      function fallbackSettlementOperations() {
+        return state.transactions
+          .filter((row) => row.type === 'buy' && (row.txHash || /enviado|pendente_confirmacao|settlement|delivered|confirmado|concluida/i.test(row.status || '')))
+          .map((row) => ({
+            orderId: row.id,
+            operationId: row.raw?.operationId || row.raw?.operation_id || `derived:${row.id}`,
+            network: row.raw?.network || row.raw?.destinationNetwork || 'BSC',
+            executionStatus: row.txHash ? 'BROADCASTED' : 'NOT_STARTED',
+            reconciliationStatus: row.txHash ? 'PENDING' : 'PENDING',
+            receiptVerified: false,
+            vaultEventVerified: false,
+            transferEventVerified: false,
+            confirmationsVerified: false,
+            txHash: row.txHash,
+            failureCode: row.txHash ? '' : 'WAITING_SIGNER_TX',
+            amountRaw: row.raw?.amountRaw || row.raw?.cryptoAmountUnits || row.cryptoAmount,
+            tokenAddress: row.raw?.tokenAddress || row.raw?.destinationAsset || row.asset,
+            recipientAddress: row.address
+          }));
+      }
+
+      function normalizeSettlementOperation(row) {
+        return {
+          orderId: row.orderId || row.order_id || row.OrderID || '',
+          operationId: row.operationId || row.operation_id || row.OperationID || '',
+          network: row.network || row.Network || '',
+          executionStatus: row.executionStatus || row.execution_status || row.ExecutionStatus || '',
+          reconciliationStatus: row.reconciliationStatus || row.reconciliation_status || row.ReconciliationStatus || row.status || '',
+          receiptVerified: row.receiptVerified ?? row.receipt_verified ?? row.ReceiptVerified ?? false,
+          vaultEventVerified: row.vaultEventVerified ?? row.vault_event_verified ?? row.VaultEventVerified ?? false,
+          transferEventVerified: row.transferEventVerified ?? row.transfer_event_verified ?? row.TransferEventVerified ?? false,
+          confirmationsVerified: row.confirmationsVerified ?? row.confirmations_verified ?? row.ConfirmationsVerified ?? false,
+          txHash: row.txHash || row.tx_hash || row.TxHash || '',
+          failureCode: row.failureCode || row.failure_code || row.FailureCode || '',
+          failureField: row.failureField || row.failure_field || row.FailureField || '',
+          ledgerStatus: row.ledgerStatus || row.ledger_status || row.LedgerStatus || '',
+          amountRaw: row.amountRaw || row.amount_raw || row.AmountRaw || '',
+          tokenAddress: row.tokenAddress || row.token_address || row.TokenAddress || '',
+          recipientAddress: row.recipientAddress || row.recipient_address || row.RecipientAddress || ''
+        };
+      }
+
+      function summarizeSettlementOperations(rows) {
+        const lower = (value) => String(value || '').toLowerCase();
+        return {
+          instructions: rows.length,
+          authorized: rows.filter((row) => /authorized|consumed|broadcasted|confirming|confirmed/i.test(row.executionStatus || row.status || '')).length,
+          consumed: rows.filter((row) => /consumed|signing|broadcasted|confirming|confirmed/i.test(row.executionStatus || row.status || '')).length,
+          broadcasted: rows.filter((row) => row.txHash || /broadcasted|confirming|confirmed/i.test(row.executionStatus || row.status || '')).length,
+          confirming: rows.filter((row) => /confirming/i.test(row.reconciliationStatus || row.executionStatus || row.status || '')).length,
+          fullyReconciled: rows.filter((row) => /fully_reconciled|confirmed/i.test(row.reconciliationStatus || '')).length,
+          mismatches: rows.filter((row) => /mismatch|failed|reverted/i.test(lower(row.reconciliationStatus || row.executionStatus || row.status || row.failureCode))).length,
+          receiptsVerified: rows.filter((row) => row.receiptVerified).length,
+          vaultEventsVerified: rows.filter((row) => row.vaultEventVerified).length,
+          transferEventsVerified: rows.filter((row) => row.transferEventVerified).length,
+          finalityVerified: rows.filter((row) => row.confirmationsVerified).length,
+          ledgerPosted: rows.filter((row) => /posted/i.test(row.ledgerStatus || row.ledger_status || '')).length
+        };
+      }
+
+      function proofBadge(value) {
+        const ok = value === true || value === 'true' || value === 1 || value === '1';
+        return `<span class="badge ${ok ? 'ok' : 'warn'}">${ok ? 'verified' : 'pending'}</span>`;
+      }
+
+      function finalityLabel(policy) {
+        if (!policy) return '--';
+        const confirmations = policy.requiredConfirmations ?? policy.required_confirmations ?? '--';
+        const depth = policy.reorgSafetyDepth ?? policy.reorg_safety_depth ?? '--';
+        return `${confirmations} conf / ${depth} depth`;
       }
 
       function setText(id, value) {
@@ -5066,8 +5680,9 @@
 
       function badgeClass(status) {
         if (/erro|failed|rejeit/.test(status)) return icons.bad;
-        if (/aguardando|validacao|pending/.test(status)) return icons.warn;
-        if (/pago|enviado|delivered|concluida|confirmado/.test(status)) return icons.ok;
+        if (/mismatch|reverted|dropped|failed/.test(status)) return icons.bad;
+        if (/aguardando|validacao|pending|confirming|broadcasted|signing/.test(status)) return icons.warn;
+        if (/pago|enviado|delivered|concluida|confirmado|confirmed|fully_reconciled|posted/.test(status)) return icons.ok;
         return icons.info;
       }
 
