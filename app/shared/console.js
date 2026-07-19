@@ -112,7 +112,7 @@ function showDeveloperLogin(visible, message = "") {
 async function authenticateDeveloper(login, password) {
   const directKey = [login, password].find((value) => /^(sk_|ak_|cfx_)/i.test(value || ""));
   if (directKey) return directKey;
-  const response = await fetch(`${state.apiBase}/api/admin/login`, {
+  const response = await fetch(`${state.apiBase}/api/developer/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email: login, password }),
