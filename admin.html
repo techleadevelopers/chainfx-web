@@ -182,6 +182,16 @@
     .nav {
       display: grid;
       gap: 4px;
+      overflow-y: auto;
+      max-height: calc(100vh - 176px);
+      padding: 0 2px 74px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(17, 80, 168, 0.26) transparent;
+    }
+
+    .nav-group {
+      display: grid;
+      gap: 2px;
     }
 
     .nav button {
@@ -199,6 +209,10 @@
       text-align: left;
     }
 
+    .nav-main.parent-active {
+      color: var(--primary-color, #1150a8);
+    }
+
     .nav button:hover,
     .nav button.active {
       color: var(--primary-color, #1150a8);
@@ -209,6 +223,37 @@
       width: 18px;
       height: 18px;
       flex: 0 0 auto;
+    }
+
+    .nav-chevron {
+      width: 14px !important;
+      height: 14px !important;
+      margin-left: auto;
+      opacity: .62;
+      transition: transform .16s ease;
+    }
+
+    .nav-group.expanded .nav-chevron {
+      transform: rotate(90deg);
+    }
+
+    .nav-children {
+      display: none;
+      gap: 2px;
+      margin: 1px 0 5px 28px;
+      padding-left: 12px;
+      border-left: 1px solid rgba(17, 80, 168, 0.14);
+    }
+
+    .nav-group.expanded .nav-children {
+      display: grid;
+    }
+
+    .nav .nav-child {
+      min-height: 30px;
+      padding: 0 8px;
+      font-size: 12px;
+      color: #637083;
     }
 
     .sidebar-foot {
@@ -765,6 +810,18 @@
       background: rgba(10, 24, 44, 0.54);
     }
 
+    body.admin-dark .nav-main.parent-active {
+      color: #ecfeff;
+    }
+
+    body.admin-dark .nav-children {
+      border-left-color: rgba(96, 165, 250, 0.18);
+    }
+
+    body.admin-dark .nav .nav-child {
+      color: #8faac3;
+    }
+
     body.admin-dark .nav button:hover,
     body.admin-dark .nav button.active {
       color: #ecfeff;
@@ -829,6 +886,11 @@
     body.admin-dark main .tests-card:hover {
       border-color: rgba(34, 211, 238, 0.36);
       box-shadow: var(--lab-shadow-lg), var(--lab-glow);
+    }
+
+    body.admin-dark .health-strip {
+      background:
+        linear-gradient(180deg, rgba(5, 12, 24, 0.96), rgba(5, 12, 24, 0.84) 78%, rgba(5, 12, 24, 0));
     }
 
     body.admin-dark .btn {
@@ -976,10 +1038,22 @@
     }
 
     .health-strip {
+      position: sticky;
+      top: 0;
+      z-index: 12;
       display: grid;
       grid-template-columns: repeat(9, minmax(112px, 1fr));
       gap: 8px;
-      margin-bottom: 14px;
+      margin: -2px 0 14px;
+      padding: 8px 0;
+      background:
+        linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(248, 250, 252, 0.86) 78%, rgba(248, 250, 252, 0));
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    body[data-admin-section="overview"] .health-strip {
+      display: none;
     }
 
     .health-tile,
@@ -1793,6 +1867,7 @@
         gap: 6px;
         overflow-x: auto;
         overflow-y: hidden;
+        max-height: none;
         padding: 2px 2px 8px;
         scroll-snap-type: x proximity;
         -webkit-overflow-scrolling: touch;
@@ -1801,6 +1876,18 @@
       .nav-heading,
       .sidebar-foot {
         display: none;
+      }
+
+      .nav-group {
+        display: flex;
+        flex: 0 0 auto;
+        padding: 0;
+        border: 0;
+        background: transparent;
+      }
+
+      .nav-group.expanded {
+        gap: 6px;
       }
 
       .nav button {
@@ -1812,6 +1899,22 @@
         background: rgba(255, 255, 255, 0.72);
         scroll-snap-align: start;
         white-space: nowrap;
+      }
+
+      .nav-children {
+        margin: 0;
+        padding-left: 8px;
+        border-left-color: rgba(17, 80, 168, 0.14);
+      }
+
+      .nav-group.expanded .nav-children {
+        display: flex;
+        gap: 6px;
+      }
+
+      .nav .nav-child {
+        min-height: 34px;
+        font-size: 12px;
       }
 
       .nav svg {
@@ -2090,73 +2193,117 @@
         <img src="https://res.cloudinary.com/limpeja/image/upload/v1783960292/menorrr-removebg-preview_eyp98p.png" alt="ChainFX">
       </div>
       <nav class="nav" aria-label="Admin">
-        <div class="nav-heading">Command</div>
-        <button class="active" data-section="overview" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z"/></svg>
-          Overview
-        </button>
-        <button data-section="operations" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
-          Operations
-        </button>
-        <button data-section="settlement" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h9"/><path d="m15 17 2 2 4-5"/></svg>
-          Settlement
-        </button>
-        <button data-section="transactions" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
-          Payments
-        </button>
-        <button data-section="wallets" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M16 10h4v5h-4a2.5 2.5 0 0 1 0-5Z"/><path d="M7 6V4h10v2"/></svg>
-          Wallets
-        </button>
-        <div class="nav-heading">Platform</div>
-        <button data-section="developers" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg>
-          Developers
-        </button>
-        <button data-section="mcp" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"/><path d="M5 8h14"/><path d="M5 16h14"/><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/></svg>
-          MCP
-        </button>
-        <button data-section="agent-funnel" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16l-6 7v5l-4 2v-7L4 5Z"/><path d="M7 5V3h10v2"/><path d="M8 21h8"/></svg>
-          Agent Funnel
-        </button>
-        <button data-section="infrastructure" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/></svg>
-          Infrastructure
-        </button>
-        <button data-section="security" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
-          Security
-        </button>
-        <div class="nav-heading">Analysis</div>
-        <button data-section="telemetry" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-          Observability
-        </button>
-        <button data-section="tests" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16l3-5 4 3 5-8"/><path d="M15 6h5v5"/></svg>
-          Tests
-        </button>
-        <button data-section="signer" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3Z"/><path d="M9 12h6"/><path d="M12 9v6"/></svg>
-          Signer
-        </button>
-        <button data-section="eips" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12l3 5-9 13L3 8l3-5Z"/><path d="M3 8h18"/><path d="m8 8 4 13 4-13"/><path d="m6 3 2 5 4-5 4 5 2-5"/></svg>
-          EIPs
-        </button>
-        <button data-section="reports" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
-          Reports
-        </button>
-        <button data-section="audit" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          Audit
-        </button>
+        <section class="nav-group" aria-labelledby="nav-dashboard">
+          <div class="nav-group-title" id="nav-dashboard">Dashboard</div>
+          <div class="nav-group-body">
+            <button class="active" data-section="overview" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z"/></svg>
+              Overview
+            </button>
+            <button data-section="operations" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
+              Operations
+            </button>
+          </div>
+        </section>
+
+        <section class="nav-group" aria-labelledby="nav-payments">
+          <div class="nav-group-title" id="nav-payments">Payments</div>
+          <div class="nav-group-body">
+            <button data-section="transactions" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+              Buy / Sell
+            </button>
+            <button data-section="settlement" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h9"/><path d="m15 17 2 2 4-5"/></svg>
+              Settlement
+            </button>
+          </div>
+        </section>
+
+        <section class="nav-group" aria-labelledby="nav-treasury">
+          <div class="nav-group-title" id="nav-treasury">Treasury</div>
+          <div class="nav-group-body">
+            <button data-section="wallets" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M16 10h4v5h-4a2.5 2.5 0 0 1 0-5Z"/><path d="M7 6V4h10v2"/></svg>
+              Wallets
+            </button>
+          </div>
+        </section>
+
+        <section class="nav-group" aria-labelledby="nav-ai">
+          <div class="nav-group-title" id="nav-ai">AI Platform</div>
+          <div class="nav-group-body">
+            <button data-section="mcp" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"/><path d="M5 8h14"/><path d="M5 16h14"/><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/></svg>
+              MCP
+            </button>
+            <button data-section="agent-funnel" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16l-6 7v5l-4 2v-7L4 5Z"/><path d="M7 5V3h10v2"/><path d="M8 21h8"/></svg>
+              Agent Funnel
+            </button>
+          </div>
+        </section>
+
+        <section class="nav-group" aria-labelledby="nav-developers">
+          <div class="nav-group-title" id="nav-developers">Developers</div>
+          <div class="nav-group-body">
+            <button data-section="developers" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg>
+              Developers
+            </button>
+          </div>
+        </section>
+
+        <section class="nav-group" aria-labelledby="nav-infra">
+          <div class="nav-group-title" id="nav-infra">Infrastructure</div>
+          <div class="nav-group-body">
+            <button data-section="infrastructure" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/></svg>
+              Backend
+            </button>
+          </div>
+        </section>
+
+        <section class="nav-group" aria-labelledby="nav-security">
+          <div class="nav-group-title" id="nav-security">Security</div>
+          <div class="nav-group-body">
+            <button data-section="security" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
+              Policies
+            </button>
+            <button data-section="signer" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3Z"/><path d="M9 12h6"/><path d="M12 9v6"/></svg>
+              Signer
+            </button>
+            <button data-section="eips" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12l3 5-9 13L3 8l3-5Z"/><path d="M3 8h18"/><path d="m8 8 4 13 4-13"/><path d="m6 3 2 5 4-5 4 5 2-5"/></svg>
+              EIPs
+            </button>
+            <button data-section="audit" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Audit
+            </button>
+          </div>
+        </section>
+
+        <section class="nav-group" aria-labelledby="nav-observability">
+          <div class="nav-group-title" id="nav-observability">Observability</div>
+          <div class="nav-group-body">
+            <button data-section="telemetry" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+              Metrics
+            </button>
+            <button data-section="tests" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16l3-5 4 3 5-8"/><path d="M15 6h5v5"/></svg>
+              Tests
+            </button>
+            <button data-section="reports" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
+              Reports
+            </button>
+          </div>
+        </section>
       </nav>
       <div class="sidebar-foot">
         <img src="https://res.cloudinary.com/limpeja/image/upload/v1783827392/ChatGPT_Image_11_de_jul._de_2026__14_58_51-removebg-preview_gkr7aj.png" alt="ChainFX">
@@ -2291,38 +2438,6 @@
       </section>
 
       <section class="section active" id="overview">
-        <div class="panel executive-hero">
-          <div class="executive-title">
-            <div>
-              <h2>Dashboard Executivo (CEO)</h2>
-              <p>Visao consolidada de receita, spread, liquidez, produto, integrações de developers e operacao AI/MCP. Os numeros refletem a sessao carregada do backend e ficam prontos para receber novos endpoints executivos.</p>
-            </div>
-            <span class="executive-pill" id="lastSync">sem sync</span>
-          </div>
-          <div class="executive-summary">
-            <div class="executive-card">
-              <label>Receita bruta</label>
-              <strong id="ceoGrossRevenue">R$ 0,00</strong>
-              <span id="ceoGrossRevenueHint">Volume financeiro carregado</span>
-            </div>
-            <div class="executive-card">
-              <label>Receita liquida</label>
-              <strong id="ceoNetRevenue">R$ 0,00</strong>
-              <span id="ceoNetRevenueHint">Payouts abatidos quando disponiveis</span>
-            </div>
-            <div class="executive-card">
-              <label>Liquidez disponivel</label>
-              <strong id="ceoLiquidity">R$ 0,00</strong>
-              <span id="ceoLiquidityHint">Treasury local + saldos informados</span>
-            </div>
-            <div class="executive-card">
-              <label>Agentes ativos</label>
-              <strong id="ceoActiveAgents">0</strong>
-              <span id="ceoActiveAgentsHint">Eventos AI/MCP detectados</span>
-            </div>
-          </div>
-        </div>
-
         <div class="ceo-grid">
           <div class="panel ceo-block">
             <h3>Financeiro</h3>
@@ -3286,6 +3401,7 @@
 
       document.addEventListener('DOMContentLoaded', () => {
         applyAdminTheme(state.theme);
+        setAdminSection('overview');
         updateApiBaseLabel();
         $('loginConsoleKey').value = state.consoleKey;
         $('loginEmail').value = state.adminEmail;
@@ -3424,11 +3540,16 @@
             document.querySelectorAll('.section').forEach((section) => section.classList.remove('active'));
             button.classList.add('active');
             $(button.dataset.section).classList.add('active');
+            setAdminSection(button.dataset.section);
             if (button.dataset.section === 'tests') resizeTestCharts();
             if (button.dataset.section === 'signer') resizeSignerCharts();
             if (button.dataset.section === 'eips') resizeEipCharts();
           });
         });
+      }
+
+      function setAdminSection(section) {
+        document.body.dataset.adminSection = section || 'overview';
       }
 
       function bindActions() {
@@ -5207,7 +5328,7 @@
         $('reportGross').textContent = money.format(totalBRL);
         $('reportFees').textContent = money.format(totalFees);
         $('reportNet').textContent = money.format(totalNet);
-        $('lastSync').textContent = new Date().toLocaleTimeString('pt-BR');
+        setText('lastSync', new Date().toLocaleTimeString('pt-BR'));
       }
 
       function renderTelemetry() {
