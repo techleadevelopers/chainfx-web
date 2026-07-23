@@ -25,7 +25,7 @@
 .hero-title,
 .hero-title .title-text,
 #premiumTitle {
-  background: linear-gradient(90deg, #0d4779 0%, #284f78 34%, #6f8299 68%, #a9b3c0 100%);
+  background: linear-gradient(90deg, #11c7df 0%, #0746f496 50%, #14bfe6 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
