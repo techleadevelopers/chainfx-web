@@ -4,7 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ChainFX Admin</title>
-  <link rel="icon" href="https://res.cloudinary.com/limpeja/image/upload/v1783193228/iconn-removebg-preview_ywjkgu.png" type="image/png">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="/favicon-16x16.png" type="image/png" sizes="16x16">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
+  <link rel="manifest" href="/site.webmanifest">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/components.css">
@@ -2161,7 +2165,7 @@
 <body class="admin-page">
   <section class="admin-login" id="adminLogin" aria-labelledby="adminLoginTitle">
     <form class="login-card" id="adminLoginForm">
-      <img src="https://res.cloudinary.com/limpeja/image/upload/v1783960292/menorrr-removebg-preview_eyp98p.png" alt="ChainFX">
+      <img src="https://res.cloudinary.com/limpeja/image/upload/v1784721444/ChatGPT_Image_22_de_jul._de_2026_08_56_59-Photoroom_iog8vf.png" alt="ChainFX">
       <h1 id="adminLoginTitle">Admin operacional</h1>
       <p>Entre com seu email e senha de administrador. O painel libera dados depois que o backend confirmar a sessão.</p>
       <div class="login-form">
@@ -2190,118 +2194,146 @@
   <div class="shell admin-locked" id="adminShell" aria-hidden="true">
     <aside class="sidebar">
       <div class="brand">
-        <img src="https://res.cloudinary.com/limpeja/image/upload/v1783960292/menorrr-removebg-preview_eyp98p.png" alt="ChainFX">
+        <img src="https://res.cloudinary.com/limpeja/image/upload/v1784721444/ChatGPT_Image_22_de_jul._de_2026_08_56_59-Photoroom_iog8vf.png" alt="ChainFX">
       </div>
       <nav class="nav" aria-label="Admin">
-        <section class="nav-group" aria-labelledby="nav-dashboard">
-          <div class="nav-group-title" id="nav-dashboard">Dashboard</div>
-          <div class="nav-group-body">
-            <button class="active" data-section="overview" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z"/></svg>
-              Overview
-            </button>
-            <button data-section="operations" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
-              Operations
-            </button>
+        <div class="nav-heading">Command</div>
+        <section class="nav-group expanded" data-nav-group="overview">
+          <button class="nav-main active" data-section="overview" type="button" aria-expanded="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z"/></svg>
+            Overview
+            <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <div class="nav-children">
+            <button class="nav-child" data-section="overview" type="button">Executive</button>
+            <button class="nav-child" data-section="overview" type="button">Activity</button>
           </div>
         </section>
-
-        <section class="nav-group" aria-labelledby="nav-payments">
-          <div class="nav-group-title" id="nav-payments">Payments</div>
-          <div class="nav-group-body">
-            <button data-section="transactions" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
-              Buy / Sell
-            </button>
-            <button data-section="settlement" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h9"/><path d="m15 17 2 2 4-5"/></svg>
-              Settlement
-            </button>
+        <section class="nav-group" data-nav-group="operations">
+          <button class="nav-main" data-section="operations" type="button" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
+            Operations
+            <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <div class="nav-children">
+            <button class="nav-child" data-section="operations" type="button">Workers</button>
+            <button class="nav-child" data-section="mobile-users" type="button">Mobile Users / KYC</button>
+            <button class="nav-child" data-section="tests" type="button">Mobile Tests</button>
+            <button class="nav-child" data-section="signer" type="button">Signer</button>
+            <button class="nav-child" data-section="telemetry" type="button">Observability</button>
+            <button class="nav-child" data-section="infrastructure" type="button">Infrastructure</button>
+            <button class="nav-child" data-section="security" type="button">Security</button>
           </div>
         </section>
-
-        <section class="nav-group" aria-labelledby="nav-treasury">
-          <div class="nav-group-title" id="nav-treasury">Treasury</div>
-          <div class="nav-group-body">
-            <button data-section="wallets" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M16 10h4v5h-4a2.5 2.5 0 0 1 0-5Z"/><path d="M7 6V4h10v2"/></svg>
-              Wallets
-            </button>
+        <div class="nav-heading">Risk & Money</div>
+        <section class="nav-group" data-nav-group="settlement">
+          <button class="nav-main" data-section="settlement" type="button" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h9"/><path d="m15 17 2 2 4-5"/></svg>
+            Settlement
+            <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <div class="nav-children">
+            <button class="nav-child" data-section="settlement" type="button">Pending</button>
+            <button class="nav-child" data-section="settlement" type="button">Confirmed</button>
+            <button class="nav-child" data-section="settlement" type="button">Failed</button>
           </div>
         </section>
-
-        <section class="nav-group" aria-labelledby="nav-ai">
-          <div class="nav-group-title" id="nav-ai">AI Platform</div>
-          <div class="nav-group-body">
-            <button data-section="mcp" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"/><path d="M5 8h14"/><path d="M5 16h14"/><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/></svg>
-              MCP
-            </button>
-            <button data-section="agent-funnel" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16l-6 7v5l-4 2v-7L4 5Z"/><path d="M7 5V3h10v2"/><path d="M8 21h8"/></svg>
-              Agent Funnel
-            </button>
+        <section class="nav-group" data-nav-group="transactions">
+          <button class="nav-main" data-section="transactions" type="button" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+            Payments
+            <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <div class="nav-children">
+            <button class="nav-child" data-section="transactions" type="button">Buy Orders</button>
+            <button class="nav-child" data-section="transactions" type="button">Sell Orders</button>
+            <button class="nav-child" data-section="transactions" type="button">Quotes</button>
           </div>
         </section>
-
-        <section class="nav-group" aria-labelledby="nav-developers">
-          <div class="nav-group-title" id="nav-developers">Developers</div>
-          <div class="nav-group-body">
-            <button data-section="developers" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg>
-              Developers
-            </button>
+        <section class="nav-group" data-nav-group="wallets">
+          <button class="nav-main" data-section="wallets" type="button" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M16 10h4v5h-4a2.5 2.5 0 0 1 0-5Z"/><path d="M7 6V4h10v2"/></svg>
+            Wallets
+            <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <div class="nav-children">
+            <button class="nav-child" data-section="wallets" type="button">Hot Wallet</button>
+            <button class="nav-child" data-section="wallets" type="button">Cold Wallet</button>
+            <button class="nav-child" data-section="wallets" type="button">Treasury</button>
           </div>
         </section>
-
-        <section class="nav-group" aria-labelledby="nav-infra">
-          <div class="nav-group-title" id="nav-infra">Infrastructure</div>
-          <div class="nav-group-body">
-            <button data-section="infrastructure" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/></svg>
-              Backend
-            </button>
+        <div class="nav-heading">Platform</div>
+        <section class="nav-group" data-nav-group="developers">
+          <button class="nav-main" data-section="developers" type="button" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg>
+            Developers
+            <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <div class="nav-children">
+            <button class="nav-child" data-section="developers" type="button">API Keys</button>
+            <button class="nav-child" data-section="developers" type="button">Projects</button>
+            <button class="nav-child" data-section="developers" type="button">Webhooks</button>
           </div>
         </section>
-
-        <section class="nav-group" aria-labelledby="nav-security">
-          <div class="nav-group-title" id="nav-security">Security</div>
-          <div class="nav-group-body">
-            <button data-section="security" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
-              Policies
-            </button>
-            <button data-section="signer" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3Z"/><path d="M9 12h6"/><path d="M12 9v6"/></svg>
-              Signer
-            </button>
-            <button data-section="eips" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12l3 5-9 13L3 8l3-5Z"/><path d="M3 8h18"/><path d="m8 8 4 13 4-13"/><path d="m6 3 2 5 4-5 4 5 2-5"/></svg>
-              EIPs
-            </button>
-            <button data-section="audit" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-              Audit
-            </button>
+        <section class="nav-group" data-nav-group="mcp">
+          <button class="nav-main" data-section="mcp" type="button" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"/><path d="M5 8h14"/><path d="M5 16h14"/><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/></svg>
+            MCP
+            <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <div class="nav-children">
+            <button class="nav-child" data-section="mcp" type="button">Servers</button>
+            <button class="nav-child" data-section="mcp" type="button">Tools</button>
+            <button class="nav-child" data-section="mcp" type="button">Resources</button>
           </div>
         </section>
-
-        <section class="nav-group" aria-labelledby="nav-observability">
-          <div class="nav-group-title" id="nav-observability">Observability</div>
-          <div class="nav-group-body">
-            <button data-section="telemetry" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-              Metrics
-            </button>
-            <button data-section="tests" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16l3-5 4 3 5-8"/><path d="M15 6h5v5"/></svg>
-              Tests
-            </button>
-            <button data-section="reports" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
-              Reports
-            </button>
+        <section class="nav-group" data-nav-group="agent-funnel">
+          <button class="nav-main" data-section="agent-funnel" type="button" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16l-6 7v5l-4 2v-7L4 5Z"/><path d="M7 5V3h10v2"/><path d="M8 21h8"/></svg>
+            Agent Funnel
+            <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <div class="nav-children">
+            <button class="nav-child" data-section="agent-funnel" type="button">Funnel</button>
+            <button class="nav-child" data-section="agent-funnel" type="button">Agent Payments</button>
+            <button class="nav-child" data-section="agent-funnel" type="button">Capabilities</button>
+          </div>
+        </section>
+        <section class="nav-group" data-nav-group="eips">
+          <button class="nav-main" data-section="eips" type="button" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12l3 5-9 13L3 8l3-5Z"/><path d="M3 8h18"/><path d="m8 8 4 13 4-13"/><path d="m6 3 2 5 4-5 4 5 2-5"/></svg>
+            EIPs
+            <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <div class="nav-children">
+            <button class="nav-child" data-section="eips" type="button">EIP-712</button>
+            <button class="nav-child" data-section="eips" type="button">EIP-2612</button>
+            <button class="nav-child" data-section="eips" type="button">EIP-3009</button>
+          </div>
+        </section>
+        <div class="nav-heading">Compliance</div>
+        <section class="nav-group" data-nav-group="reports">
+          <button class="nav-main" data-section="reports" type="button" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
+            Reports
+            <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <div class="nav-children">
+            <button class="nav-child" data-section="reports" type="button">Exports</button>
+            <button class="nav-child" data-section="reports" type="button">Fiscal</button>
+            <button class="nav-child" data-section="reports" type="button">Reconciliation</button>
+          </div>
+        </section>
+        <section class="nav-group" data-nav-group="audit">
+          <button class="nav-main" data-section="audit" type="button" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            Audit
+            <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <div class="nav-children">
+            <button class="nav-child" data-section="audit" type="button">Events</button>
+            <button class="nav-child" data-section="audit" type="button">Admin</button>
+            <button class="nav-child" data-section="audit" type="button">API</button>
           </div>
         </section>
       </nav>
@@ -2714,6 +2746,57 @@
           </div>
           <div class="empty" id="walletsEmpty">Nenhuma wallet carregada.</div>
           <pre class="pre" id="walletsJson">{}</pre>
+        </div>
+      </section>
+
+      <section class="section" id="mobile-users">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Mobile Users / KYC Manual</h2>
+              <p>Aprovacao manual de cadastro e documentacao enviada pelo app mobile.</p>
+            </div>
+            <span class="badge info" id="kycReviewStatus">Aguardando dados</span>
+          </div>
+          <div class="toolbar">
+            <div class="field">
+              <label for="kycStatusFilter">Status KYC</label>
+              <select id="kycStatusFilter">
+                <option value="">Todos</option>
+                <option value="pending">Pending</option>
+                <option value="pending_processing">Pending processing</option>
+                <option value="in_review">In review</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+            <button class="btn primary" id="refreshKycBtn" type="button">Atualizar KYC</button>
+          </div>
+          <div class="grid kpis" style="margin-top:16px">
+            <div class="metric-box"><label>Pendentes</label><strong id="kycPendingCount">0</strong><span>aguardando acao manual</span></div>
+            <div class="metric-box"><label>Aprovados</label><strong id="kycApprovedCount">0</strong><span>liberados no app</span></div>
+            <div class="metric-box"><label>Reprovados</label><strong id="kycRejectedCount">0</strong><span>bloqueados para revisao</span></div>
+          </div>
+          <div class="table-wrap" style="margin-top:16px">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Usuario</th>
+                  <th>Email</th>
+                  <th>Nivel</th>
+                  <th>Status</th>
+                  <th>Documento</th>
+                  <th>Arquivos</th>
+                  <th>Notas</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody id="kycBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="kycEmpty">Nenhum KYC carregado.</div>
+          <pre class="pre" id="kycJson">{}</pre>
         </div>
       </section>
 
@@ -3352,10 +3435,12 @@
         adminUser: null,
         transactions: [],
         wallets: { wallets: [], networkPolicy: [], signer: {} },
+        kycRequests: [],
         settlement: null,
         events: [],
         telemetry: [],
         alerts: [],
+        navExpanded: null,
         tests: {
           running: false,
           stop: false,
@@ -3488,6 +3573,7 @@
           if (Array.isArray(data.transactions)) mergeTransactions(data.transactions.map(normalizeRecord).filter(Boolean));
           if (Array.isArray(data.events)) mergeEvents(data.events);
           if (data.wallets) state.wallets = data.wallets;
+          fetchKycRequests(false);
           state.settlement = data.settlement || data.settlementReconciliation || null;
           if (Array.isArray(data.operationalGaps)) {
             state.alerts = data.operationalGaps.map((item) => ({ type: 'operational_gap', item, at: data.generatedAt || new Date().toISOString() }));
@@ -3534,17 +3620,37 @@
       }
 
       function bindNavigation() {
-        document.querySelectorAll('.nav button').forEach((button) => {
+        setExpandedNavGroup(state.navExpanded);
+        document.querySelectorAll('.nav button[data-section]').forEach((button) => {
           button.addEventListener('click', () => {
-            document.querySelectorAll('.nav button').forEach((item) => item.classList.remove('active'));
+            const section = button.dataset.section;
+            const group = button.closest('.nav-group');
+            const groupKey = group?.dataset.navGroup || section;
+            const isMain = button.classList.contains('nav-main');
+            setExpandedNavGroup(isMain && state.navExpanded === groupKey ? null : groupKey);
+            document.querySelectorAll('.nav button').forEach((item) => item.classList.remove('active', 'parent-active'));
             document.querySelectorAll('.section').forEach((section) => section.classList.remove('active'));
             button.classList.add('active');
-            $(button.dataset.section).classList.add('active');
-            setAdminSection(button.dataset.section);
-            if (button.dataset.section === 'tests') resizeTestCharts();
-            if (button.dataset.section === 'signer') resizeSignerCharts();
-            if (button.dataset.section === 'eips') resizeEipCharts();
+            if (button.classList.contains('nav-child')) {
+              group?.querySelector('.nav-main')?.classList.add('parent-active');
+            }
+            const target = $(section);
+            if (target) target.classList.add('active');
+            setAdminSection(section);
+            if (section === 'tests') resizeTestCharts();
+            if (section === 'signer') resizeSignerCharts();
+            if (section === 'eips') resizeEipCharts();
           });
+        });
+      }
+
+      function setExpandedNavGroup(groupKey) {
+        state.navExpanded = groupKey || null;
+        document.querySelectorAll('.nav-group').forEach((group) => {
+          const expanded = Boolean(state.navExpanded) && group.dataset.navGroup === state.navExpanded;
+          group.classList.toggle('expanded', expanded);
+          const trigger = group.querySelector('.nav-main');
+          if (trigger) trigger.setAttribute('aria-expanded', String(expanded));
         });
       }
 
@@ -3599,6 +3705,8 @@
           toast('Registros locais limpos.');
         });
         $('refreshWalletsBtn').addEventListener('click', () => fetchWallets(true));
+        $('refreshKycBtn').addEventListener('click', () => fetchKycRequests(true));
+        $('kycStatusFilter').addEventListener('change', () => fetchKycRequests(false));
 
         $('exportCsvBtn').addEventListener('click', () => download('swappy-transacoes.csv', toCsv(reportRows()), 'text/csv'));
         $('exportTaxCsvBtn').addEventListener('click', () => download('swappy-relatorio-fiscal.csv', toCsv(reportRows()), 'text/csv'));
@@ -3704,6 +3812,48 @@
           $('walletsJson').textContent = JSON.stringify({ error: error.message }, null, 2);
           if (showToast) toast(error.message);
         }
+      }
+
+      async function fetchKycRequests(showToast = false) {
+        const started = performance.now();
+        const status = $('kycStatusFilter')?.value || '';
+        const query = status ? `?status=${encodeURIComponent(status)}&limit=200` : '?limit=200';
+        try {
+          const data = await request(`/api/admin/kyc${query}`);
+          state.kycRequests = Array.isArray(data.requests) ? data.requests : [];
+          $('kycJson').textContent = JSON.stringify(data, null, 2);
+          logTelemetry('/api/admin/kyc', 'ok', performance.now() - started);
+          renderKyc();
+          if (showToast) toast('KYC atualizado.');
+        } catch (error) {
+          logTelemetry('/api/admin/kyc', 'error', performance.now() - started, error.message);
+          state.kycRequests = [];
+          $('kycJson').textContent = JSON.stringify({ error: error.message }, null, 2);
+          renderKyc();
+          if (showToast) toast(error.message);
+        }
+      }
+
+      async function reviewKycRequest(id, decision) {
+        const label = decision === 'approved' ? 'aprovar' : decision === 'rejected' ? 'reprovar' : 'marcar em revisao';
+        const notes = window.prompt(`Nota para ${label} este KYC:`, decision === 'approved' ? 'Aprovado manualmente.' : '');
+        if (notes === null) return;
+        const response = await fetch(`${state.apiBase}/api/admin/kyc/${encodeURIComponent(id)}/review`, {
+          method: 'POST',
+          headers: adminHeaders({ contentType: true }),
+          body: JSON.stringify({ decision, notes })
+        });
+        const text = await response.text();
+        let data = {};
+        if (text) {
+          try { data = JSON.parse(text); } catch { data = { raw: text }; }
+        }
+        if (!response.ok) {
+          toast(data.error || data.message || `${response.status} ${response.statusText}`);
+          return;
+        }
+        toast(decision === 'approved' ? 'KYC aprovado.' : decision === 'rejected' ? 'KYC reprovado.' : 'KYC em revisao.');
+        await fetchKycRequests(false);
       }
 
       async function loadOrderById() {
@@ -5035,6 +5185,7 @@
         renderKpis();
         renderTransactions();
         renderWallets();
+        renderKyc();
         renderSettlement();
         renderAudit();
         renderReports();
@@ -5158,6 +5309,70 @@
         }).join('');
         $('walletsEmpty').style.display = rows.length ? 'none' : 'block';
         $('walletsJson').textContent = JSON.stringify(snapshot, null, 2);
+      }
+
+      function renderKyc() {
+        const rows = Array.isArray(state.kycRequests) ? state.kycRequests : [];
+        const pending = rows.filter((row) => ['pending', 'pending_processing', 'in_review'].includes(String(row.status || '').toLowerCase())).length;
+        const approved = rows.filter((row) => String(row.status || '').toLowerCase() === 'approved').length;
+        const rejected = rows.filter((row) => String(row.status || '').toLowerCase() === 'rejected').length;
+        setText('kycPendingCount', String(pending));
+        setText('kycApprovedCount', String(approved));
+        setText('kycRejectedCount', String(rejected));
+        setText('kycReviewStatus', rows.length ? `${rows.length} solicitacoes` : 'Sem KYC carregado');
+        if ($('kycReviewStatus')) $('kycReviewStatus').className = `badge ${pending ? 'warn' : rows.length ? 'ok' : 'info'}`;
+        $('kycBody').innerHTML = rows.map((row) => {
+          const status = String(row.status || '').toLowerCase();
+          const canReview = !['approved', 'rejected'].includes(status);
+          const files = [
+            fileLink('Frente', row.document_url),
+            fileLink('Verso', row.document_back_url),
+            fileLink('Selfie', row.selfie_url || row.facial_video_url),
+            fileLink('Endereco', row.proof_of_address_url),
+            fileLink('Renda', row.proof_of_income_url)
+          ].filter(Boolean).join(' ');
+          return `
+            <tr data-kyc="${escapeHtml(row.id)}">
+              <td>${formatDate(row.submitted_at || row.created_at)}</td>
+              <td>${escapeHtml(row.full_name || '--')}</td>
+              <td><code>${escapeHtml(row.email || '--')}</code></td>
+              <td>${escapeHtml(String(row.level || '--'))}</td>
+              <td><span class="badge ${badgeClass(status)}">${escapeHtml(status || '--')}</span></td>
+              <td>${escapeHtml((row.document_type || '--').toUpperCase())}</td>
+              <td>${files || '--'}</td>
+              <td>${escapeHtml(shorten(row.reviewer_notes || ''))}</td>
+              <td>
+                ${canReview ? `<button class="btn primary" type="button" data-kyc-approve="${escapeHtml(row.id)}">Aprovar</button>` : ''}
+                ${canReview ? `<button class="btn warn" type="button" data-kyc-reject="${escapeHtml(row.id)}">Reprovar</button>` : ''}
+              </td>
+            </tr>
+          `;
+        }).join('');
+        $('kycEmpty').style.display = rows.length ? 'none' : 'block';
+        $('kycJson').textContent = JSON.stringify({ requests: rows, count: rows.length }, null, 2);
+        document.querySelectorAll('#kycBody tr').forEach((rowEl) => {
+          rowEl.addEventListener('click', () => {
+            const record = rows.find((item) => item.id === rowEl.dataset.kyc);
+            if (record) $('kycJson').textContent = JSON.stringify(record, null, 2);
+          });
+        });
+        document.querySelectorAll('[data-kyc-approve]').forEach((button) => {
+          button.addEventListener('click', async (event) => {
+            event.stopPropagation();
+            await reviewKycRequest(button.dataset.kycApprove, 'approved');
+          });
+        });
+        document.querySelectorAll('[data-kyc-reject]').forEach((button) => {
+          button.addEventListener('click', async (event) => {
+            event.stopPropagation();
+            await reviewKycRequest(button.dataset.kycReject, 'rejected');
+          });
+        });
+      }
+
+      function fileLink(label, url) {
+        if (!url) return '';
+        return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`;
       }
 
       async function confirmManualPix(orderId) {
