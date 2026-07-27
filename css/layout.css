@@ -527,29 +527,28 @@
 .fab-whatsapp {
   position: fixed;
   bottom: 28px;
-  left: 28px;
+  right: 28px;
   z-index: 999;
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: rgba(10, 14, 30, 0.72);
+  background: #ffffff;
   box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.38),
-    0 1px 4px rgba(0, 0, 0, 0.22);
+    0 4px 16px rgba(0, 0, 0, 0.14),
+    0 1px 4px rgba(0, 0, 0, 0.10);
   display: flex;
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   transition: transform 0.22s ease, box-shadow 0.22s ease;
   animation: fabFloat 3s ease-in-out infinite;
 }
 
 .fab-whatsapp img {
-  width: 32px;
-  height: 32px;
+  width: 35px;
+  height: 35px;
   object-fit: contain;
+  filter: grayscale(18%) brightness(0.88);
 }
 
 .fab-whatsapp:hover {
