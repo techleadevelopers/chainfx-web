@@ -3569,7 +3569,7 @@
         renderTests();
         renderSigner();
         renderEips();
-        const DEV_MODE = ['localhost', '127.0.0.1'].includes(location.hostname) || location.search.includes('dev=1');
+        const DEV_MODE = ['localhost', '127.0.0.1'].includes(location.hostname) || location.hostname.endsWith('.replit.dev') || location.hostname.endsWith('.repl.co') || location.search.includes('dev=1');
         if (DEV_MODE && !state.apiKey) {
           state.apiKey = 'dev-preview';
           state.adminUser = { email: 'dev@localhost', name: 'Dev Preview' };
