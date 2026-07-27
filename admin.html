@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -2207,6 +2207,7 @@
           <div class="nav-children">
             <button class="nav-child" data-section="overview" type="button">Executive</button>
             <button class="nav-child" data-section="overview" type="button">Activity</button>
+            <button class="nav-child" data-section="recent-sales" type="button">Últimas Vendas</button>
           </div>
         </section>
         <section class="nav-group" data-nav-group="operations">
@@ -2466,6 +2467,69 @@
           <label>Alertas</label>
           <strong id="kpiAlerts">0</strong>
           <span id="kpiAlertText">Sem alertas locais</span>
+        </div>
+      </section>
+
+      <section class="section" id="recent-sales">
+        <!-- ── Marco: Primeira Venda em Produção ── -->
+        <div class="panel" style="border-left:4px solid #2dd4bf;background:linear-gradient(135deg,rgba(45,212,191,.06) 0%,transparent 60%)">
+          <div class="panel-head">
+            <div>
+              <h2 style="display:flex;align-items:center;gap:8px">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2" width="20" height="20"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                Marco — Primeira Venda em Produção
+              </h2>
+              <p style="color:var(--text-muted,#6b7280);font-size:.85rem">Esse registro é um milestone interno. A primeira venda real do produto.</p>
+            </div>
+            <span class="badge ok">Entregue</span>
+          </div>
+          <div class="grid kpis" style="margin-top:16px;grid-template-columns:repeat(auto-fill,minmax(160px,1fr))">
+            <div class="metric-box"><label>Data</label><strong>27/07/2026</strong><span>Primeira venda</span></div>
+            <div class="metric-box"><label>Cliente</label><strong>WEB</strong><span>Sem cadastro</span></div>
+            <div class="metric-box"><label>Valor</label><strong>R$ 24,99</strong><span>BRL pago via PIX</span></div>
+            <div class="metric-box"><label>Ativo</label><strong>BTC</strong><span>Bitcoin</span></div>
+            <div class="metric-box"><label>Rede</label><strong>Bitcoin</strong><span>Mainnet</span></div>
+            <div class="metric-box"><label>Quantidade</label><strong>0.00005974 BTC</strong><span>Entregue on-chain</span></div>
+          </div>
+          <div style="margin-top:16px;padding:12px 16px;background:var(--surface,#f9fafb);border-radius:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <span style="font-size:.8rem;color:var(--text-muted,#6b7280);text-transform:uppercase;letter-spacing:.05em">Wallet</span>
+            <code style="font-size:.85rem;word-break:break-all">bc1q...98fl</code>
+            <span class="badge ok" style="margin-left:auto">Entregue ✓</span>
+          </div>
+        </div>
+
+        <!-- ── Últimas compras ao vivo ── -->
+        <div class="panel" style="margin-top:24px">
+          <div class="panel-head">
+            <div>
+              <h2>Últimas Vendas</h2>
+              <p>As <strong id="recentSalesCount">0</strong> transações mais recentes carregadas do backend. Atualiza a cada 30 s quando conectado.</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span class="badge info" id="recentSalesLive" style="display:none">● Ao vivo</span>
+              <button class="btn" id="refreshRecentSalesBtn" type="button">Atualizar</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Horário</th>
+                  <th>Email / Cliente</th>
+                  <th>Valor (BRL)</th>
+                  <th>Ativo</th>
+                  <th>Rede</th>
+                  <th>Qtd Cripto</th>
+                  <th>Wallet</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="recentSalesBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="recentSalesEmpty">
+            Nenhuma venda carregada ainda. Conecte ao backend para ver as transações em tempo real.
+          </div>
         </div>
       </section>
 
@@ -3510,6 +3574,12 @@
         } else {
           setLocked(true);
         }
+        // Auto-refresh "Últimas Vendas" a cada 30s quando conectado
+        setInterval(() => {
+          if (document.body.dataset.adminSection === 'recent-sales' && state.apiKey) {
+            tryFetchAdminCollections().then(() => renderRecentSales());
+          }
+        }, 30000);
       });
 
       function bindLogin() {
@@ -3641,6 +3711,10 @@
             if (section === 'tests') resizeTestCharts();
             if (section === 'signer') resizeSignerCharts();
             if (section === 'eips') resizeEipCharts();
+            if (section === 'recent-sales') {
+              renderRecentSales();
+              if (state.apiKey) { refreshBackend(); tryFetchAdminCollections(); }
+            }
           });
         });
       }
@@ -3704,6 +3778,12 @@
           persist();
           renderAll();
           toast('Registros locais limpos.');
+        });
+        $('refreshRecentSalesBtn').addEventListener('click', () => {
+          refreshBackend();
+          tryFetchAdminCollections();
+          renderRecentSales();
+          toast('Últimas vendas atualizadas.');
         });
         $('refreshWalletsBtn').addEventListener('click', () => fetchWallets(true));
         $('refreshKycBtn').addEventListener('click', () => fetchKycRequests(true));
@@ -5186,6 +5266,7 @@
       function renderAll() {
         renderKpis();
         renderTransactions();
+        renderRecentSales();
         renderWallets();
         renderKyc();
         renderSettlement();
@@ -5196,6 +5277,41 @@
         renderSigner();
         renderAgentFunnel();
         renderOperationalUX();
+      }
+
+      function renderRecentSales() {
+        const rows = state.transactions.slice(0, 20);
+        const body = $('recentSalesBody');
+        const empty = $('recentSalesEmpty');
+        const countEl = $('recentSalesCount');
+        const liveEl = $('recentSalesLive');
+        if (!body) return;
+        if (countEl) countEl.textContent = String(rows.length);
+        if (liveEl) liveEl.style.display = state.apiKey ? 'inline-flex' : 'none';
+        if (!rows.length) {
+          body.innerHTML = '';
+          if (empty) empty.style.display = 'block';
+          return;
+        }
+        if (empty) empty.style.display = 'none';
+        body.innerHTML = rows.map((row) => {
+          const email = row.raw?.email || row.raw?.customer_email || row.raw?.customerEmail || row.pixKey || '--';
+          const cliente = email !== '--' ? escapeHtml(email) : '<span style="color:var(--text-muted,#9ca3af)">WEB (sem cadastro)</span>';
+          const wallet = row.address ? `<code title="${escapeHtml(row.address)}">${escapeHtml(shorten(row.address))}</code>` : '--';
+          const cripto = row.cryptoAmount ? `${formatAmount(row.cryptoAmount)} ${escapeHtml(row.asset || '')}` : '--';
+          return `
+            <tr style="cursor:default">
+              <td style="white-space:nowrap">${formatDate(row.createdAt)}</td>
+              <td>${cliente}</td>
+              <td>${money.format(row.amountBRL || row.amountFiat || 0)}</td>
+              <td><strong>${escapeHtml(row.asset || '--')}</strong></td>
+              <td><span class="badge info">${escapeHtml(row.network || '--')}</span></td>
+              <td style="font-variant-numeric:tabular-nums">${cripto}</td>
+              <td>${wallet}</td>
+              <td><span class="badge ${badgeClass(row.status)}">${escapeHtml(row.status || '--')}</span></td>
+            </tr>
+          `;
+        }).join('');
       }
 
       function renderKpis() {
