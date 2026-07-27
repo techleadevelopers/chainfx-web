@@ -43,13 +43,15 @@ body.index-page .nav-links a::after {
 body.index-page .markets-view,
 body.index-page .developers-view,
 body.index-page .pricing-view,
+body.index-page .contact-view,
 body.index-page .swap-card {
   transition: opacity 0.22s ease, transform 0.22s ease, filter 0.22s ease;
 }
 
 body.index-page .markets-view:not(.hidden),
 body.index-page .developers-view:not(.hidden),
-body.index-page .pricing-view:not(.hidden) {
+body.index-page .pricing-view:not(.hidden),
+body.index-page .contact-view:not(.hidden) {
   animation: viewEnter 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
