@@ -545,10 +545,10 @@
 }
 
 .fab-whatsapp img {
-  width: 35px;
-  height: 35px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
-  filter: grayscale(18%) brightness(0.88);
+  filter: brightness(0) saturate(0);
 }
 
 .fab-whatsapp:hover {
