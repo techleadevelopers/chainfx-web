@@ -3,8 +3,8 @@ const state = {
   action: 'buy',
   payAmount: 0, // Will be updated from input
   payCurrency: 'BRL',
-  receiveCurrency: 'USDT',
-  receiveNetwork: 'BSC',
+  receiveCurrency: 'BTC',
+  receiveNetwork: 'BITCOIN',
   selectedPaymentMethod: null, // Will store the DOM element
   exchangeRate: 0, // Will be fetched
   currentStep: 1,
@@ -51,14 +51,16 @@ const BUY_ASSET_META = {
   USDT: { code: 'USDT', label: 'USDT', icon: 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/usdt.png' },
   BTC: { code: 'BTC', label: 'BTC', icon: 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/btc.png' },
   BNB: { code: 'BNB', label: 'BNB', icon: 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/bnb.png' },
-  SOL: { code: 'SOL', label: 'SOL', icon: 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/sol.png' },
+  SOL: { code: 'SOL', label: 'SOL', icon: 'https://cryptologos.cc/logos/solana-sol-logo.png?v=033' },
   ETH: { code: 'ETH', label: 'ETH', icon: 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/eth.png' },
   LINK: { code: 'LINK', label: 'LINK', icon: 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/link.png' },
   AVAX: { code: 'AVAX', label: 'AVAX', icon: 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/avax.png' }
 };
 
 const DEFAULT_BUY_PAIRS = [
-  { asset: 'USDT', network: 'BSC', contractAddress: '0x55d398326f99059fF775485246999027B3197955', decimals: 18 }
+  { asset: 'USDT', network: 'BSC', contractAddress: '0x55d398326f99059fF775485246999027B3197955', decimals: 18 },
+  { asset: 'BTC', network: 'BITCOIN', contractAddress: '', decimals: 8 },
+  { asset: 'BTC', network: 'BSC', contractAddress: '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c', decimals: 18 }
 ];
 
 const buyPairState = {
@@ -69,6 +71,10 @@ const buyPairState = {
 
 const SELL_RECEIVE_OPTIONS = [
   { code: 'BRL', label: 'BRL', icon: 'https://res.cloudinary.com/limpeja/image/upload/v1783198241/brl_csztl5.png' }
+];
+
+const SELL_PAY_OPTIONS = [
+  { code: 'USDT', label: 'USDT', icon: BUY_ASSET_META.USDT.icon }
 ];
 
 const SELL_NETWORKS = {
@@ -686,6 +692,21 @@ const normalizeBuyNetwork = (network) => {
 
 const isBuyEvmNetwork = (network) => ['BSC', 'POLYGON', 'BASE', 'ARBITRUM', 'ETHEREUM'].includes(normalizeBuyNetwork(network));
 
+const BUY_ASSET_PRIORITY = ['BTC', 'USDT', 'BNB', 'ETH', 'SOL', 'LINK', 'AVAX'];
+
+const buyAssetPriority = (asset) => {
+  const index = BUY_ASSET_PRIORITY.indexOf(String(asset || '').toUpperCase());
+  return index === -1 ? BUY_ASSET_PRIORITY.length : index;
+};
+
+const buyNetworkPriority = (network) => {
+  const normalized = normalizeBuyNetwork(network);
+  if (normalized === 'BITCOIN') return 0;
+  if (normalized === 'BSC') return 1;
+  if (normalized === 'POLYGON') return 2;
+  return 3;
+};
+
 const normalizeBuyPair = (pair) => {
   const asset = String(pair?.asset || pair?.Asset || pair?.code || '').trim().toUpperCase();
   const network = normalizeBuyNetwork(pair?.network || pair?.Network || '');
@@ -740,19 +761,27 @@ const receivePrecisionForAsset = (asset) => {
 };
 
 const buyOptionsFromPairs = () => {
-  const counts = buyPairState.pairs.reduce((acc, pair) => {
-    acc[pair.asset] = (acc[pair.asset] || 0) + 1;
-    return acc;
-  }, {});
+  const seen = new Set();
   return buyPairState.pairs
+    .slice()
+    .sort((a, b) => (
+      buyAssetPriority(a.asset) - buyAssetPriority(b.asset)
+      || String(a.asset).localeCompare(String(b.asset))
+      || buyNetworkPriority(a.network) - buyNetworkPriority(b.network)
+    ))
+    .filter(pair => {
+      if (seen.has(pair.asset)) return false;
+      seen.add(pair.asset);
+      return true;
+    })
     .map(pair => {
       const meta = BUY_ASSET_META[pair.asset] || { code: pair.asset, label: pair.asset, icon: BUY_ASSET_META.USDT.icon };
       return {
         ...meta,
-        code: `${pair.asset}:${pair.network}`,
+        code: pair.asset,
         asset: pair.asset,
         network: pair.network,
-        label: counts[pair.asset] > 1 ? `${pair.asset} ${pair.network}` : pair.asset
+        label: pair.asset
       };
     });
 };
@@ -771,6 +800,16 @@ const loadBuyPairs = async (apiBase) => {
 
 const getSellNetworkMeta = (network = state.sellNetwork) => {
   return SELL_NETWORKS[normalizeSellNetwork(network)] || SELL_NETWORKS.BSC;
+};
+
+const getBuyNetworkMeta = (network = state.receiveNetwork) => {
+  const normalized = normalizeBuyNetwork(network);
+  return BUY_NETWORKS[normalized] || {
+    code: normalized,
+    shortLabel: normalized,
+    displayLabel: `Rede ${normalized}`,
+    icon: BUY_ASSET_META[state.receiveCurrency]?.icon || BUY_ASSET_META.USDT.icon
+  };
 };
 
 const getSellAssetBrlPrice = (asset) => {
@@ -979,6 +1018,41 @@ const updateStep3PaymentPreview = (showCardWarning = false) => {
   if (cardMessage) {
       cardMessage.classList.toggle('hidden', isPix || isCardCheckout || !showCardWarning);
       if (!isPix && !isCardCheckout && showCardWarning) cardMessage.textContent = 'Metodo indisponivel.';
+  }
+};
+
+const BUY_NETWORKS = {
+  BSC: SELL_NETWORKS.BSC,
+  BITCOIN: {
+    code: 'BITCOIN',
+    shortLabel: 'BTC',
+    displayLabel: 'Rede Bitcoin / BTC',
+    icon: 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/btc.png'
+  },
+  POLYGON: SELL_NETWORKS.POLYGON,
+  BASE: {
+    code: 'BASE',
+    shortLabel: 'BASE',
+    displayLabel: 'Rede Base',
+    icon: 'https://assets.coingecko.com/asset_platforms/images/131/small/base.jpeg'
+  },
+  ARBITRUM: {
+    code: 'ARBITRUM',
+    shortLabel: 'ARB',
+    displayLabel: 'Rede Arbitrum',
+    icon: 'https://assets.coingecko.com/asset_platforms/images/33/small/arbitrum-one.png'
+  },
+  ETHEREUM: {
+    code: 'ETHEREUM',
+    shortLabel: 'ETH',
+    displayLabel: 'Rede Ethereum / ERC20',
+    icon: 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/eth.png'
+  },
+  SOLANA: {
+    code: 'SOLANA',
+    shortLabel: 'SOL',
+    displayLabel: 'Rede Solana',
+    icon: 'https://cryptologos.cc/logos/solana-sol-logo.png?v=033'
   }
 };
 
@@ -1231,6 +1305,63 @@ const normalizePriceSnapshot = (data, source = 'backend') => {
   };
 };
 
+const buyWalletHint = (pair = getSelectedBuyPair()) => {
+  const network = normalizeBuyNetwork(pair?.network || state.receiveNetwork || 'BSC');
+  if (isBuyEvmNetwork(network)) {
+    return {
+      label: `Wallet Address (${network} / 0x)`,
+      placeholder: `Cole um endereco ${network} 0x...`
+    };
+  }
+  if (network === 'BITCOIN') {
+    return {
+      label: 'Wallet Address (Rede: BTC nativa)',
+      placeholder: 'Cole um endereco BTC bc1... ou 1/3...'
+    };
+  }
+  if (network === 'SOLANA') {
+    return {
+      label: 'Wallet Address (Rede: Solana)',
+      placeholder: 'Cole um endereco Solana base58...'
+    };
+  }
+  return {
+    label: `Wallet Address (${network})`,
+    placeholder: 'Cole o endereco de destino...'
+  };
+};
+
+const syncBuyWalletInputHint = () => {
+  if (state.action !== 'buy') return;
+  const hint = buyWalletHint();
+  const walletAddressLabel = document.querySelector('label[for="walletAddress"]');
+  const walletAddressInput = document.getElementById('walletAddress');
+  if (walletAddressLabel) walletAddressLabel.textContent = hint.label;
+  if (walletAddressInput) walletAddressInput.placeholder = hint.placeholder;
+};
+
+const formatWalletSummary = (address) => {
+  const value = String(address || '').trim();
+  if (!value) return '-';
+  if (value.length <= 18) return value;
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
+};
+
+const syncBuyPixDetailsStep = () => {
+  const walletGroup = document.getElementById('walletGroup');
+  const buyPayerInfo = document.getElementById('buyPayerInfo');
+  const walletSummary = document.getElementById('buyPixWalletSummaryValue');
+  const isBuyWalletStep = state.action === 'buy' && state.currentStep === 2;
+  if (walletGroup) walletGroup.classList.toggle('hidden', !isBuyWalletStep);
+  if (walletSummary) walletSummary.textContent = formatWalletSummary(state.walletAddress || document.getElementById('walletAddress')?.value?.trim() || '');
+  const isPixDetails = state.action === 'buy' && state.currentStep === 3 && selectedPaymentRail().method === 'pix';
+  if (buyPayerInfo) buyPayerInfo.classList.toggle('hidden', !isPixDetails);
+};
+
+const syncBuyPayerInfo = () => {
+  syncBuyPixDetailsStep();
+};
+
 const updateStep = (step) => {
   // Function to manage which step is visible and update indicators/buttons
   state.currentStep = step;
@@ -1306,6 +1437,7 @@ const updateStep = (step) => {
        updateSellDepositWallet();
        syncBuyPayerInfo();
        syncBuyWalletInputHint();
+       syncBuyPixDetailsStep();
        // Maybe focus the wallet input or show a connect button
        const walletInput = document.getElementById('walletAddress');
        if (walletInput && !state.connected) {
@@ -1316,6 +1448,7 @@ const updateStep = (step) => {
   } else if (step === 3) {
       updateOrderSummaries();
       syncBuyWalletInputHint();
+      syncBuyPixDetailsStep();
       updateStep3PaymentPreview(false);
   } else if (step === 4) {
       updateOrderSummaries();
@@ -1371,6 +1504,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const payAmountLabel = document.querySelector('label[for="payAmount"]');
   const receiveAmountLabel = document.querySelector('label[for="receiveAmount"]');
   const walletAddressLabel = document.querySelector('label[for="walletAddress"]');
+  const buyNetworkInput = document.getElementById('buyNetworkInput');
+  const buyNetworkOptions = document.getElementById('buyNetworkOptions');
   const rateText = document.querySelector('.rate-text');
   const rateSpinner = document.querySelector('.loading-spinner');
   const paymentMethodButtons = document.querySelectorAll('.payment-method');
@@ -1389,6 +1524,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const orderErrorEl = document.getElementById('orderError');
   const buyPayerInfo = document.getElementById('buyPayerInfo');
   const buyCustomerNameInput = document.getElementById('buyCustomerName');
+  const buyCustomerEmailInput = document.getElementById('buyCustomerEmail');
   const buyCustomerCpfInput = document.getElementById('buyCustomerCpf');
   const pixCpfInput = document.getElementById('pixCpf');
   const pixPhoneInput = document.getElementById('pixPhone');
@@ -1415,6 +1551,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const developersView = document.getElementById('developersView');
   const marketsView = document.getElementById('marketsView');
   const pricingView = document.getElementById('pricingView');
+  const contactView = document.getElementById('contactView');
   const marketFilterButtons = document.querySelectorAll('[data-market-filter]');
   const marketRows = document.querySelectorAll('.markets-row[data-market-category]');
   const marketActionButtons = document.querySelectorAll('[data-market-action]');
@@ -1459,15 +1596,67 @@ document.addEventListener('DOMContentLoaded', async () => {
         step3.prepend(detailsStep);
       }
     }
-    if (walletGroup && walletGroup.parentElement !== detailsStep) detailsStep.appendChild(walletGroup);
+    if (!document.getElementById('buyPixWalletSummary')) {
+      const oldWalletSummary = document.querySelector('.buy-pix-wallet-summary');
+      if (oldWalletSummary) oldWalletSummary.remove();
+      const summary = step3.querySelector('.order-summary-step3');
+      const walletSummary = document.createElement('p');
+      walletSummary.id = 'buyPixWalletSummary';
+      walletSummary.innerHTML = `Wallet: <strong id="buyPixWalletSummaryValue"></strong>`;
+      summary?.appendChild(walletSummary);
+    }
+    const step2 = document.getElementById('step2');
+    if (walletGroup && step2 && walletGroup.parentElement !== step2) {
+      const anchor = sellInfo || paymentMethodsSection || step2.firstChild;
+      step2.insertBefore(walletGroup, anchor);
+    }
     if (buyPayerInfo && buyPayerInfo.parentElement !== detailsStep) detailsStep.appendChild(buyPayerInfo);
   }
 
   function syncBuyPixDetailsStep() {
-    const isBuyStep = state.action === 'buy' && state.currentStep === 3;
-    if (walletGroup) walletGroup.classList.toggle('hidden', !isBuyStep);
-    const isPixDetails = isBuyStep && selectedPaymentRail().method === 'pix';
+    const isBuyWalletStep = state.action === 'buy' && state.currentStep === 2;
+    if (walletGroup) walletGroup.classList.toggle('hidden', !isBuyWalletStep);
+    renderBuyNetworkOptions();
+    const walletSummary = document.getElementById('buyPixWalletSummaryValue');
+    if (walletSummary) walletSummary.textContent = formatWalletSummary(state.walletAddress || walletAddressInput?.value?.trim() || '');
+    const isPixDetails = state.action === 'buy' && state.currentStep === 3 && selectedPaymentRail().method === 'pix';
     if (buyPayerInfo) buyPayerInfo.classList.toggle('hidden', !isPixDetails);
+  }
+
+  function renderBuyNetworkOptions() {
+    if (!buyNetworkInput || !buyNetworkOptions) return;
+    const pairs = state.action === 'buy' ? buyPairsForAsset(state.receiveCurrency) : [];
+    const networks = pairs.map(pair => normalizeBuyNetwork(pair.network))
+      .filter((network, index, list) => network && list.indexOf(network) === index);
+    const shouldShow = state.action === 'buy' && networks.length > 1;
+    buyNetworkInput.classList.toggle('hidden', !shouldShow);
+    if (!shouldShow) return;
+    if (!networks.includes(normalizeBuyNetwork(state.receiveNetwork))) {
+      state.receiveNetwork = networks[0];
+    }
+    buyNetworkOptions.innerHTML = networks.map(network => {
+      const meta = getBuyNetworkMeta(network);
+      const active = normalizeBuyNetwork(state.receiveNetwork) === network;
+      return `
+        <button class="sell-network-option ${active ? 'active' : ''}" type="button" data-network="${meta.code}" role="radio" aria-checked="${active ? 'true' : 'false'}">
+          <img src="${meta.icon}" alt="${meta.shortLabel}" />
+          <span>
+            <strong>${meta.shortLabel}</strong>
+            <small>${meta.displayLabel.replace(/^Rede\s*/i, '')}</small>
+          </span>
+        </button>
+      `;
+    }).join('');
+    buyNetworkOptions.querySelectorAll('.sell-network-option[data-network]').forEach(button => {
+      button.addEventListener('click', () => {
+        state.receiveNetwork = normalizeBuyNetwork(button.dataset.network);
+        clearLastBuyQuote();
+        renderBuyNetworkOptions();
+        syncBuyWalletInputHint();
+        updateReceiveAmount();
+        updateOrderSummaries();
+      });
+    });
   }
 
   function buyWalletHint(pair = getSelectedBuyPair()) {
@@ -1510,6 +1699,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function collectBuyPixCustomer() {
     return {
       name: (buyCustomerNameInput?.value || '').trim(),
+      email: (buyCustomerEmailInput?.value || '').trim().toLowerCase(),
       cpf: digitsOnly(buyCustomerCpfInput?.value || '')
     };
   }
@@ -1519,6 +1709,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!customer.name || customer.name.length < 3) {
       showUxMessage('payer_name_required', 'warning');
       buyCustomerNameInput?.focus();
+      return null;
+    }
+    if (!customer.email || !/^\S+@\S+\.\S+$/.test(customer.email)) {
+      showUxMessage('card_email_invalid', 'warning');
+      buyCustomerEmailInput?.focus();
       return null;
     }
     if (!customer.cpf) {
@@ -1548,17 +1743,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     const isDevelopers = view === 'developers';
     const isMarkets = view === 'markets';
     const isPricing = view === 'pricing';
+    const isContact = view === 'contact';
     document.body.classList.toggle('developers-mode', isDevelopers);
     document.body.classList.toggle('markets-mode', isMarkets);
     document.body.classList.toggle('pricing-mode', isPricing);
+    document.body.classList.toggle('contact-mode', isContact);
     if (developersView) developersView.classList.toggle('hidden', !isDevelopers);
     if (marketsView) marketsView.classList.toggle('hidden', !isMarkets);
     if (pricingView) pricingView.classList.toggle('hidden', !isPricing);
+    if (contactView) contactView.classList.toggle('hidden', !isContact);
     navViewLinks.forEach(link => {
       const linkView = link.dataset.view || 'trade';
-      link.classList.toggle('active', isDevelopers || isMarkets || isPricing ? linkView === view : linkView === 'trade');
+      link.classList.toggle('active', isDevelopers || isMarkets || isPricing || isContact ? linkView === view : linkView === 'trade');
     });
-    if (isDevelopers || isMarkets || isPricing) {
+    if (isDevelopers || isMarkets || isPricing || isContact) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }
@@ -1610,6 +1808,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         setPageView('pricing');
         return;
       }
+      if (view === 'contact') {
+        event.preventDefault();
+        history.replaceState(null, '', '#contact');
+        setPageView('contact');
+        return;
+      }
       event.preventDefault();
       history.replaceState(null, '', '#trade');
       setPageView('trade');
@@ -1622,6 +1826,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     setPageView('markets');
   } else if (window.location.hash === '#pricing') {
     setPageView('pricing');
+  } else if (window.location.hash === '#contact') {
+    setPageView('contact');
   } else {
     setPageView('trade');
   }
@@ -1839,6 +2045,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     state.receiveNetwork = option.network || getSelectedBuyPair()?.network || state.receiveNetwork || 'BSC';
     if (state.action === 'buy') clearLastBuyQuote();
     setSelectorButton(receiveCurrencyBtn, option);
+    renderBuyNetworkOptions();
     syncBuyWalletInputHint();
     updateRateLabel();
     updateReceiveAmount();
@@ -1884,7 +2091,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (sellInfo) sellInfo.classList.toggle('hidden', !isSell);
     if (paymentMethodsSection) paymentMethodsSection.classList.toggle('hidden', isSell);
     syncTradeModeLabels();
-    renderCurrencyDropdown(payDropdown, isSell ? CURRENCY_OPTIONS.crypto : CURRENCY_OPTIONS.fiat, setPayCurrency);
+    renderCurrencyDropdown(payDropdown, isSell ? SELL_PAY_OPTIONS : CURRENCY_OPTIONS.fiat, setPayCurrency);
     renderCurrencyDropdown(receiveDropdown, isSell ? SELL_RECEIVE_OPTIONS : BUY_RECEIVE_OPTIONS, setReceiveCurrency);
 
     if (isSell) {
@@ -1940,6 +2147,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (receiveAmountInput) receiveAmountInput.value = '';
     if (walletAddressInput) walletAddressInput.value = '';
     if (buyCustomerNameInput) buyCustomerNameInput.value = '';
+    if (buyCustomerEmailInput) buyCustomerEmailInput.value = '';
     if (buyCustomerCpfInput) buyCustomerCpfInput.value = '';
     if (step3PixQr) step3PixQr.src = '/images/qrcode.png';
     if (step3PixCopy) step3PixCopy.value = '';
@@ -2234,6 +2442,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (paymentMethod === 'pix') {
           payload.customer = buyPixCustomer;
           payload.cpf = buyPixCustomer.cpf;
+          payload.email = buyPixCustomer.email;
+          payload.customerEmail = buyPixCustomer.email;
           payload.customerName = buyPixCustomer.name;
         }
         if (paymentMethod === 'credit_card') {
@@ -2588,6 +2798,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                state.selectedPaymentMethod = btn;
                state.cardCheckoutStep = 1;
                syncBuyPayerInfo();
+               if (state.action === 'buy' && state.currentStep === 2 && walletGroup) {
+                  walletGroup.classList.remove('hidden');
+               }
                updateStep3PaymentPreview(false);
                console.log("Selected payment method:", btn.dataset.method);
            });
@@ -2756,6 +2969,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                       showUxMessage('payment_method_required', 'warning');
                       return;
                   }
+                  const selectedBuyPairStep2 = getSelectedBuyPair();
+                  const walletStep2 = walletAddressInput.value.trim();
+                  if (!selectedBuyPairStep2) {
+                       showUxMessage('asset_unsupported', 'warning');
+                       return;
+                  }
+                  if (!walletStep2 || !validateWalletAddressForNetwork(walletStep2, selectedBuyPairStep2.network)) {
+                       showUxMessage('invalid_wallet', 'warning');
+                       return;
+                  }
+                  state.walletAddress = walletStep2;
                   updateStep(3);
                   break;
 
@@ -2764,18 +2988,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                       showUxMessage('payment_method_required', 'warning');
                       return; // Stay on step 3 if no method is selected
                   }
-                  // Validate the wallet address entered by the user.
-                  const wallet = walletAddressInput.value.trim();
                   const selectedBuyPair = getSelectedBuyPair();
                   if (!selectedBuyPair) {
                        showUxMessage('asset_unsupported', 'warning');
                        return;
                   }
-                  if (!wallet || !validateWalletAddressForNetwork(wallet, selectedBuyPair.network)) {
+                  if (!state.walletAddress || !validateWalletAddressForNetwork(state.walletAddress, selectedBuyPair.network)) {
                        showUxMessage('invalid_wallet', 'warning');
+                       updateStep(2);
                        return;
                   }
-                  state.walletAddress = wallet;
                   if (selectedPaymentRail().paymentMethod === 'credit_card') {
                       if (advanceCreditCardCheckout()) await createCreditCardBuyOrder();
                       return;
