@@ -242,8 +242,8 @@
 #sellInfo .input-group:has(#pixCpf),
 #sellInfo .input-group:has(#pixPhone),
 #buyPayerInfo .input-group {
-  min-height: 39px;
-  padding: 4px 10px;
+  min-height: 33px;
+  padding: 3px 10px;
   align-items: center;
   border-radius: 10px;
 }
@@ -252,11 +252,11 @@
 #pixPhone,
 #buyCustomerName,
 #buyCustomerCpf {
-  min-height: 30px;
-  height: 30px;
+  min-height: 26px;
+  height: 26px;
   padding: 0 8px !important;
   font-size: 0.94rem;
-  line-height: 30px;
+  line-height: 26px;
 }
 
 .buy-payer-info {
