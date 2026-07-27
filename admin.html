@@ -2160,6 +2160,254 @@
         min-height: 40px;
       }
     }
+
+    /* ══ MOBILE ADMIN DASHBOARD ══════════════════════════════════════ */
+    .mob-admin {
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      /* Hide everything desktop, show only mob-admin */
+      .shell {
+        display: block !important;
+      }
+
+      .sidebar {
+        display: none !important;
+      }
+
+      main > *:not(.mob-admin) {
+        display: none !important;
+      }
+
+      .mob-admin {
+        display: flex;
+        flex-direction: column;
+        min-height: 100svh;
+        padding: 0 0 env(safe-area-inset-bottom, 0);
+        background: var(--bg);
+      }
+
+      /* Header */
+      .mob-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px 12px;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      .mob-logo {
+        height: 28px;
+        width: auto;
+      }
+
+      .mob-header-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .mob-icon-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: transparent;
+        color: var(--ink);
+        cursor: pointer;
+        transition: background 150ms;
+      }
+
+      .mob-icon-btn:active {
+        background: rgba(23, 103, 183, 0.08);
+      }
+
+      .mob-icon-btn svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      /* Status bar */
+      .mob-status-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        font-size: 12px;
+        color: var(--muted);
+        border-bottom: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      .mob-status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #94a3b8;
+        flex-shrink: 0;
+        transition: background 300ms;
+      }
+
+      .mob-status-dot.ok   { background: #22c55e; box-shadow: 0 0 6px rgba(34, 197, 94, 0.5); }
+      .mob-status-dot.warn { background: #f59e0b; }
+      .mob-status-dot.err  { background: #ef4444; }
+
+      .mob-ts {
+        margin-left: auto;
+        font-size: 11px;
+        opacity: 0.6;
+      }
+
+      /* Metric grid */
+      .mob-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        padding: 20px 16px;
+        flex: 1;
+      }
+
+      .mob-card {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 18px 16px 16px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+        transition: transform 120ms, box-shadow 120ms;
+      }
+
+      .mob-card:active {
+        transform: scale(0.98);
+      }
+
+      .mob-card label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+      }
+
+      .mob-card strong {
+        font-size: 22px;
+        font-weight: 900;
+        color: var(--ink);
+        line-height: 1.1;
+        margin: 2px 0;
+        word-break: break-all;
+      }
+
+      .mob-card span {
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      /* Lucro card — full-width, highlighted */
+      .mob-card--lucro {
+        grid-column: 1 / -1;
+        background: linear-gradient(135deg, #1767b7 0%, #10aec8 100%);
+        border: none;
+        box-shadow: 0 8px 28px rgba(23, 103, 183, 0.32);
+      }
+
+      .mob-card--lucro label,
+      .mob-card--lucro span {
+        color: rgba(255, 255, 255, 0.72);
+      }
+
+      .mob-card--lucro strong {
+        font-size: 34px;
+        color: #fff;
+      }
+
+      /* Web card accent */
+      .mob-card--web {
+        border-top: 3px solid #1767b7;
+      }
+
+      /* Mobile card accent */
+      .mob-card--mobile {
+        border-top: 3px solid #10aec8;
+      }
+
+      /* MCP card accent */
+      .mob-card--mcp {
+        grid-column: 1 / -1;
+        flex-direction: row;
+        align-items: center;
+        gap: 16px;
+        padding: 14px 18px;
+      }
+
+      .mob-card--mcp label {
+        font-size: 13px;
+        letter-spacing: 0.04em;
+        min-width: 40px;
+      }
+
+      .mob-card--mcp strong {
+        font-size: 28px;
+      }
+
+      .mob-card--mcp span {
+        margin-left: auto;
+        font-size: 12px;
+        text-align: right;
+      }
+
+      /* Bottom actions */
+      .mob-actions {
+        padding: 12px 16px 20px;
+        border-top: 1px solid var(--line);
+      }
+
+      .mob-action-btn {
+        width: 100%;
+        min-height: 44px;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: 10px;
+        background: transparent;
+        color: #ef4444;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 150ms;
+      }
+
+      .mob-action-btn:active {
+        background: rgba(239, 68, 68, 0.06);
+      }
+
+      /* Dark mode */
+      body.admin-dark .mob-header,
+      body.admin-dark .mob-status-bar {
+        background: rgba(8, 18, 34, 0.95);
+      }
+
+      body.admin-dark .mob-card {
+        background: rgba(8, 18, 34, 0.8);
+        border-color: rgba(255, 255, 255, 0.08);
+      }
+
+      body.admin-dark .mob-card--lucro {
+        background: linear-gradient(135deg, #1150a8 0%, #0e8fa8 100%);
+      }
+    }
+    /* ══ / MOBILE ADMIN DASHBOARD ════════════════════════════════════ */
   </style>
 </head>
 <body class="admin-page">
@@ -2344,6 +2592,60 @@
     </aside>
 
     <main>
+
+      <!-- ══ MOBILE DASHBOARD — only visible on screens ≤ 768 px ══ -->
+      <div class="mob-admin" id="mobAdmin" aria-label="Dashboard mobile operacional">
+        <header class="mob-header">
+          <img src="https://res.cloudinary.com/limpeja/image/upload/v1784722216/headerr-Photoroom_k3dc9x.png" alt="ChainFX" class="mob-logo" />
+          <div class="mob-header-actions">
+            <button class="mob-icon-btn" id="mobThemeBtn" type="button" aria-label="Alternar tema">
+              <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5 7 7 0 1 0 20.5 14.5Z"/></svg>
+              <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+            </button>
+            <button class="mob-icon-btn" id="mobRefreshBtn" type="button" aria-label="Atualizar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+            </button>
+          </div>
+        </header>
+
+        <div class="mob-status-bar">
+          <span class="mob-status-dot" id="mobStatusDot"></span>
+          <span id="mobStatusLabel">Conectando…</span>
+          <span class="mob-ts" id="mobLastUpdate"></span>
+        </div>
+
+        <div class="mob-grid">
+          <div class="mob-card mob-card--lucro">
+            <label>Lucro</label>
+            <strong id="mobLucro">R$ 0,00</strong>
+            <span id="mobLucroSub">Receita líquida</span>
+          </div>
+
+          <div class="mob-card mob-card--web">
+            <label>Venda Web</label>
+            <strong id="mobVendaWeb">R$ 0,00</strong>
+            <span id="mobVendaWebCount">0 ordens</span>
+          </div>
+
+          <div class="mob-card mob-card--mobile">
+            <label>Venda Mobile</label>
+            <strong id="mobVendaMobile">R$ 0,00</strong>
+            <span id="mobVendaMobileCount">0 ordens</span>
+          </div>
+
+          <div class="mob-card mob-card--mcp">
+            <label>MCP</label>
+            <strong id="mobMcpCalls">0</strong>
+            <span id="mobMcpCap">0 capabilities</span>
+          </div>
+        </div>
+
+        <div class="mob-actions">
+          <button class="mob-action-btn" id="mobLogoutBtn" type="button">Sair</button>
+        </div>
+      </div>
+      <!-- ══ / MOBILE DASHBOARD ══ -->
+
       <header class="topbar">
         <div>
           <h1>Dashboard Executivo ChainFX</h1>
@@ -3650,6 +3952,32 @@
       function bindActions() {
         $('themeToggleBtn').addEventListener('click', () => {
           applyAdminTheme(state.theme === 'dark' ? 'light' : 'dark');
+        });
+
+        // Mobile dashboard buttons — delegate to desktop equivalents
+        const mobRefreshBtn = $('mobRefreshBtn');
+        if (mobRefreshBtn) mobRefreshBtn.addEventListener('click', () => {
+          refreshBackend();
+          tryFetchAdminCollections();
+        });
+
+        const mobThemeBtn = $('mobThemeBtn');
+        if (mobThemeBtn) mobThemeBtn.addEventListener('click', () => {
+          const next = state.theme === 'dark' ? 'light' : 'dark';
+          applyAdminTheme(next);
+          const moon = mobThemeBtn.querySelector('.moon-icon');
+          const sun  = mobThemeBtn.querySelector('.sun-icon');
+          if (moon) moon.style.display = next === 'dark' ? 'none' : '';
+          if (sun)  sun.style.display  = next === 'dark' ? '' : 'none';
+        });
+
+        const mobLogoutBtn = $('mobLogoutBtn');
+        if (mobLogoutBtn) mobLogoutBtn.addEventListener('click', () => {
+          clearAdminKey();
+          $('loginConsoleKey').value = '';
+          $('loginPassword').value = '';
+          setLocked(true);
+          toast('Sessao encerrada.');
         });
 
         $('configureApiBtn').addEventListener('click', () => {
@@ -5345,6 +5673,23 @@
         setText('aiToolCalls', String(toolCalls));
         setText('aiCapabilities', String(capabilityEvents));
         setText('aiRevenuePerAgent', money.format(activeAgents ? netRevenue / activeAgents : 0));
+
+        // ── Mobile dashboard sync ──
+        setText('mobLucro', money.format(netRevenue));
+        setText('mobLucroSub', `${rows.length} transações · ${sent} liquidadas`);
+        setText('mobVendaWeb', money.format(buyVolume));
+        setText('mobVendaWebCount', `${buyRows.length} ordens`);
+        setText('mobVendaMobile', money.format(sellVolume));
+        setText('mobVendaMobileCount', `${sellRows.length} ordens`);
+        setText('mobMcpCalls', String(toolCalls));
+        setText('mobMcpCap', `${capabilityEvents} capabilities`);
+        const mobDot = $('mobStatusDot');
+        const mobLbl = $('mobStatusLabel');
+        const isOk = netRevenue >= 0 && !errors;
+        if (mobDot) { mobDot.className = `mob-status-dot ${errors ? 'err' : 'ok'}`; }
+        if (mobLbl) { mobLbl.textContent = errors ? `${errors} erros detectados` : 'Dados carregados'; }
+        const mobTs = $('mobLastUpdate');
+        if (mobTs) { mobTs.textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
       }
 
       function renderWallets() {
