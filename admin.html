@@ -3569,7 +3569,18 @@
         renderTests();
         renderSigner();
         renderEips();
-        if (state.apiKey) {
+        const DEV_MODE = ['localhost', '127.0.0.1'].includes(location.hostname) || location.search.includes('dev=1');
+        if (DEV_MODE && !state.apiKey) {
+          state.apiKey = 'dev-preview';
+          state.adminUser = { email: 'dev@localhost', name: 'Dev Preview' };
+          setLocked(false);
+          // injecta banner de aviso
+          const banner = document.createElement('div');
+          banner.id = 'devModeBanner';
+          banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#f59e0b;color:#1c1917;font-size:.75rem;font-weight:600;text-align:center;padding:4px 12px;letter-spacing:.05em';
+          banner.textContent = '⚠ DEV MODE — login bypassed, sem dados reais do backend';
+          document.body.prepend(banner);
+        } else if (state.apiKey) {
           validateAdminSession({ silent: true });
         } else {
           setLocked(true);
