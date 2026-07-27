@@ -9,6 +9,20 @@
     padding-top: 94px;
   }
 
+  body.index-page .contact-view {
+  width: min(1080px, calc(100vw - 48px));
+  margin: 0 auto;
+  padding: 122px 0 72px;
+  color: #0f172a;
+  transition: opacity 0.22s ease,
+    transform 0.22s ease,
+    filter 0.22s ease;
+}
+
+  body.index-page .contact-view:not(.hidden) {
+  animation: viewEnter 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
   body.index-page .pricing-cards {
     grid-template-columns: 1fr;
   }
@@ -101,6 +115,51 @@
   body.index-page .pricing-view {
     width: min(100%, calc(100vw - 28px));
     padding: 34px 0 38px;
+  }
+
+  body.index-page .contact-view {
+    width: min(100%, calc(100vw - 28px));
+    padding: 34px 0 38px;
+  }
+
+  body.index-page .contact-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+  align-items: center;
+  gap: clamp(42px, 7vw, 92px);
+}
+
+  body.index-page .contact-hero {
+  max-width: 560px;
+}
+
+body.index-page .contact-hero::before {
+  content: "CHAINFX SUPPORT";
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  margin-bottom: 20px;
+  padding: 6px 11px;
+  border: 1px solid rgba(17, 80, 168, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.68);
+  color: #1150a8;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+}
+
+  body.index-page .contact-hero h2 {
+    font-size: clamp(1.6rem, 9vw, 2.35rem);
+  }
+
+  body.index-page .contact-card {
+    min-height: 0;
+    padding: 18px;
+    align-items: center;
+    text-align: center;
   }
 
   body.index-page .pricing-hero {
@@ -427,12 +486,12 @@
   body.index-page .nav-content {
     flex-direction: row;
     justify-content: space-between;
-    padding: 0 18px;
+    padding: 0 10px;
     position: relative;
   }
 
   body.index-page .logo {
-    margin: 0;
+    margin-left: -6px;
     width: 168px;
     height: 42px;
     order: 1;
@@ -440,7 +499,7 @@
   }
 
   body.index-page .logo img {
-    left: 0;
+    left: -8px;
     right: auto;
     top: -13px;
     height: 70px;
@@ -700,19 +759,19 @@
   body.index-page #sellInfo .input-group:has(#pixCpf),
   body.index-page #sellInfo .input-group:has(#pixPhone),
   body.index-page #buyPayerInfo .input-group {
-    min-height: 39px;
-    padding: 4px 10px;
+    min-height: 33px;
+    padding: 3px 10px;
   }
 
   body.index-page #pixCpf,
   body.index-page #pixPhone,
   body.index-page #buyCustomerName,
   body.index-page #buyCustomerCpf {
-    min-height: 30px;
-    height: 30px;
+    min-height: 26px;
+    height: 26px;
     padding: 0 8px !important;
     font-size: 0.84rem;
-    line-height: 30px;
+    line-height: 26px;
   }
 
   body.index-page .currency-selector {
@@ -795,7 +854,7 @@
     justify-content: center;
     gap: 6px;
     min-height: 34px;
-    margin: 8px auto 0;
+    margin: 8px auto 10px;
     padding-top: 8px;
     width: min(88%, 338px);
     border-top: 1px solid transparent;
