@@ -473,13 +473,12 @@
   overflow: hidden;
   align-items: center;
   justify-content: center;
-  gap: 10px;
   margin-top: 8px;
-  padding: 0 28px;
+  width: 56px;
   height: 56px;
   text-decoration: none;
   background: #ffffff;
-  border-radius: 56px;
+  border-radius: 50%;
   border: none;
   box-shadow:
     0 4px 16px rgba(0, 0, 0, 0.14),
@@ -519,8 +518,8 @@
 .contact-icon-mask {
   display: block;
   flex-shrink: 0;
-  width: 26px;
-  height: 26px;
+  width: 39px;
+  height: 39px;
   background: linear-gradient(135deg, #1767b7 0%, #10aec8 100%);
   -webkit-mask-image: url('https://res.cloudinary.com/limpeja/image/upload/v1785005578/ChatGPT_Image_24_de_jul._de_2026_21_42_28-Photoroom_1_ktzuef.png');
   mask-image: url('https://res.cloudinary.com/limpeja/image/upload/v1785005578/ChatGPT_Image_24_de_jul._de_2026_21_42_28-Photoroom_1_ktzuef.png');
