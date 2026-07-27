@@ -7,7 +7,7 @@ const state = {
   receiveNetwork: 'BITCOIN',
   selectedPaymentMethod: null, // Will store the DOM element
   exchangeRate: 0, // Will be fetched
-  currentStep: 1,
+  currentStep: 5,
   cardCheckoutStep: 1,
   walletAddress: '', // Will be updated from input
   connected: false, // Simulated wallet connection state
@@ -992,7 +992,6 @@ const updateStep3PaymentPreview = (showCardWarning = false) => {
   const cardMessage = document.getElementById('step3CardMessage');
   const cardPanel = document.getElementById('step3CardPanel');
   const cardBrandIcon = document.getElementById('step3CardBrandIcon');
-  const bypassBtn = document.getElementById('step3BypassBtn');
   const step3ConfirmPaymentBtn = document.getElementById('step3ConfirmPaymentBtn');
   const continueBtn = document.getElementById('continueBtn');
   const rail = selectedPaymentRail();
@@ -1003,7 +1002,6 @@ const updateStep3PaymentPreview = (showCardWarning = false) => {
 
   if (pixPanel) pixPanel.classList.toggle('hidden', !isPixWaiting);
   if (cardPanel) cardPanel.classList.toggle('hidden', !isCardCheckout);
-  if (bypassBtn) bypassBtn.classList.toggle('hidden', !isPixWaiting);
   if (step3ConfirmPaymentBtn) step3ConfirmPaymentBtn.classList.toggle('hidden', !isPixWaiting);
   syncBuyPixDetailsStep();
   if (continueBtn && (state.currentStep === 3 || state.currentStep === 4)) {
@@ -1092,10 +1090,6 @@ const resolveEfiEnvironment = () => {
   ).trim().toLowerCase();
   if (configured === 'production' || configured === 'sandbox') return configured;
   return location.hostname === 'localhost' || location.hostname === '127.0.0.1' ? 'sandbox' : 'production';
-};
-
-const isLocalDevBypassEnabled = () => {
-  return ['localhost', '127.0.0.1'].includes(location.hostname);
 };
 
 const normalizeCardBrand = (method) => {
@@ -1496,8 +1490,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const continueBtn = document.getElementById('continueBtn');
   const confirmPaymentBtn = document.getElementById('confirmPaymentBtn');
   const step3ConfirmPaymentBtn = document.getElementById('step3ConfirmPaymentBtn');
-  const step3BypassBtn = document.getElementById('step3BypassBtn');
-  
   const orderInfoBox = document.getElementById('orderInfoBox');
   const payAmountInput = document.getElementById('payAmount');
   const receiveAmountInput = document.getElementById('receiveAmount');
@@ -1563,7 +1555,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   function ensureBuyPixStepLayout() {
     const step3 = document.getElementById('step3');
     const pixPanel = document.getElementById('step3PixPanel');
-    const bypassBtn = document.getElementById('step3BypassBtn');
     const pixConfirmBtn = document.getElementById('step3ConfirmPaymentBtn');
     if (!step3 || !continueBtn || !pixPanel) return;
 
@@ -1581,7 +1572,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       continueBtn.parentElement?.insertBefore(pixStep, continueBtn);
     }
     if (pixPanel.parentElement !== pixStep) pixStep.appendChild(pixPanel);
-    if (bypassBtn && bypassBtn.parentElement !== pixStep) pixStep.appendChild(bypassBtn);
     if (pixConfirmBtn && pixConfirmBtn.parentElement !== pixStep) pixStep.appendChild(pixConfirmBtn);
 
     let detailsStep = document.getElementById('buyPixDetailsStep');
@@ -2831,28 +2821,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           input.value = formatter(input.value);
       });
   });
-
-  if (step3BypassBtn) {
-      step3BypassBtn.addEventListener('click', async (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          if (isLocalDevBypassEnabled()) {
-              if (state.currentStep !== 4) return;
-              if (!state.selectedPaymentMethod) {
-                  state.selectedPaymentMethod = document.querySelector('.payment-method[data-method="pix"]');
-              }
-              if (orderStatusEl) orderStatusEl.textContent = 'dev_bypass_confirmed';
-              if (statusMessage) statusMessage.textContent = 'Bypass local: confirmação liberada para revisar a UX.';
-              updateStep(5);
-              updatePaymentStatusLabel('confirmed');
-              if (statusMessage) statusMessage.textContent = '';
-              return;
-          }
-          if (state.currentStep !== 4 || state.selectedPaymentMethod?.dataset?.method !== 'pix') return;
-          const data = await refreshBuyStatus();
-          if (isPaymentIdentifiedStatus(data?.status)) updateStep(5);
-      });
-  }
 
   if (step3ConfirmPaymentBtn) {
       step3ConfirmPaymentBtn.addEventListener('click', async () => {

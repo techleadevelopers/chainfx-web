@@ -540,22 +540,53 @@
   align-items: center;
   justify-content: center;
   text-decoration: none;
+  overflow: hidden;
   transition: transform 0.22s ease, box-shadow 0.22s ease;
   animation: fabFloat 3s ease-in-out infinite;
 }
 
-.fab-whatsapp img {
+/* Shimmer sweep — same as Buy Now */
+.fab-whatsapp::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(23, 103, 183, 0.22),
+    rgba(16, 174, 200, 0.22),
+    transparent
+  );
+  transform: rotate(45deg);
+  animation: buttonGlow 2s infinite;
+  pointer-events: none;
+}
+
+/* Icon — gradient only on the icon shape via mask-image */
+.fab-icon-mask {
+  display: block;
   width: 40px;
   height: 40px;
-  object-fit: contain;
-  filter: brightness(0) saturate(0);
+  background: linear-gradient(135deg, #1767b7 0%, #10aec8 100%);
+  -webkit-mask-image: url('https://res.cloudinary.com/limpeja/image/upload/v1785005578/ChatGPT_Image_24_de_jul._de_2026_21_42_28-Photoroom_1_ktzuef.png');
+  mask-image: url('https://res.cloudinary.com/limpeja/image/upload/v1785005578/ChatGPT_Image_24_de_jul._de_2026_21_42_28-Photoroom_1_ktzuef.png');
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  flex-shrink: 0;
 }
 
 .fab-whatsapp:hover {
   transform: translateY(-4px) scale(1.08);
   box-shadow:
-    0 8px 28px rgba(0, 0, 0, 0.45),
-    0 2px 8px rgba(0, 0, 0, 0.28);
+    0 8px 28px rgba(23, 103, 183, 0.28),
+    0 2px 8px rgba(0, 0, 0, 0.18);
 }
 
 @keyframes fabFloat {
