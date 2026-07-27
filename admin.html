@@ -2222,7 +2222,7 @@
             <button class="nav-child" data-section="tests" type="button">Mobile Tests</button>
             <button class="nav-child" data-section="signer" type="button">Signer</button>
             <button class="nav-child" data-section="telemetry" type="button">Observability</button>
-            <button class="nav-child" data-section="infrastructure" type="button">Infrastructure</button>
+            <button class="nav-child" data-section="infrastructure" type="button">Saúde</button>
             <button class="nav-child" data-section="security" type="button">Security</button>
           </div>
         </section>
@@ -2363,89 +2363,6 @@
         </div>
       </header>
 
-      <section class="health-strip" aria-label="Infrastructure status">
-        <div class="health-tile">
-          <strong><i class="health-dot" id="healthApiDot"></i>API<svg class="health-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h10"/><path d="M17 17h3"/></svg></strong>
-          <div class="health-main" id="healthApi">Checking</div>
-          <div class="health-mini">
-            <div class="health-mini-row"><span>Latency</span><b id="healthApiLatency">--</b></div>
-            <div class="health-mini-row"><span>Requests</span><b id="healthApiRequests">--</b></div>
-            <div class="health-mini-row"><span>Error</span><b id="healthApiError">--</b></div>
-          </div>
-        </div>
-        <div class="health-tile">
-          <strong><i class="health-dot" id="healthPgDot"></i>PostgreSQL<svg class="health-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><ellipse cx="12" cy="5" rx="7" ry="3"/><path d="M5 5v10c0 1.66 3.13 3 7 3s7-1.34 7-3V5"/><path d="M5 10c0 1.66 3.13 3 7 3s7-1.34 7-3"/></svg></strong>
-          <div class="health-main" id="healthPg">--</div>
-          <div class="health-mini">
-            <div class="health-mini-row"><span>Connections</span><b id="healthPgConnections">--</b></div>
-            <div class="health-mini-row"><span>Slow</span><b id="healthPgSlow">--</b></div>
-            <div class="health-mini-row"><span>Pool Wait</span><b id="healthPgWait">--</b></div>
-          </div>
-        </div>
-        <div class="health-tile">
-          <strong><i class="health-dot" id="healthRedisDot"></i>Redis<svg class="health-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="m12 3 8 4-8 4-8-4 8-4Z"/><path d="m4 12 8 4 8-4"/><path d="m4 17 8 4 8-4"/></svg></strong>
-          <div class="health-main" id="healthRedis">--</div>
-          <div class="health-mini">
-            <div class="health-mini-row"><span>Mode</span><b id="healthRedisMode">--</b></div>
-            <div class="health-mini-row"><span>State</span><b id="healthRedisState">--</b></div>
-            <div class="health-mini-row"><span>Use</span><b id="healthRedisUse">optional</b></div>
-          </div>
-        </div>
-        <div class="health-tile">
-          <strong><i class="health-dot" id="healthRpcDot"></i>RPC<svg class="health-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M6 8a3 3 0 1 0 0 6h3"/><path d="M18 10a3 3 0 1 0 0 6h-3"/><path d="M8 12h8"/></svg></strong>
-          <div class="health-main" id="healthRpc">--</div>
-          <div class="health-mini">
-            <div class="health-mini-row"><span>Latency</span><b id="healthRpcLatency">--</b></div>
-            <div class="health-mini-row"><span>Health</span><b id="healthRpcHealth">--</b></div>
-            <div class="health-mini-row"><span>Fallback</span><b id="healthRpcFallback">--</b></div>
-          </div>
-        </div>
-        <div class="health-tile">
-          <strong><i class="health-dot" id="healthPspDot"></i>PSP<svg class="health-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M7 15h3"/></svg></strong>
-          <div class="health-main" id="healthPsp">--</div>
-          <div class="health-mini">
-            <div class="health-mini-row"><span>PIX</span><b id="healthPspPix">--</b></div>
-            <div class="health-mini-row"><span>Errors</span><b id="healthPspErrors">--</b></div>
-            <div class="health-mini-row"><span>Status</span><b id="healthPspState">--</b></div>
-          </div>
-        </div>
-        <div class="health-tile">
-          <strong><i class="health-dot" id="healthWorkersDot"></i>Workers<svg class="health-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93 7.76 7.76"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><circle cx="12" cy="12" r="4"/></svg></strong>
-          <div class="health-main" id="healthWorkers">--</div>
-          <div class="health-mini">
-            <div class="health-mini-row"><span>Queue</span><b id="healthWorkersQueue">--</b></div>
-            <div class="health-mini-row"><span>Retries</span><b id="healthWorkersRetries">--</b></div>
-            <div class="health-mini-row"><span>Last Run</span><b id="healthWorkersLast">--</b></div>
-          </div>
-        </div>
-        <div class="health-tile">
-          <strong><i class="health-dot" id="healthMcpDot"></i>MCP<svg class="health-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 3v18"/><path d="M5 8h14"/><path d="M5 16h14"/><rect x="5" y="3" width="14" height="18" rx="2"/></svg></strong>
-          <div class="health-main" id="healthMcp">--</div>
-          <div class="health-mini">
-            <div class="health-mini-row"><span>P95</span><b id="healthMcpP95">--</b></div>
-            <div class="health-mini-row"><span>Calls</span><b id="healthMcpCalls">--</b></div>
-            <div class="health-mini-row"><span>Errors</span><b id="healthMcpErrors">--</b></div>
-          </div>
-        </div>
-        <div class="health-tile">
-          <strong><i class="health-dot" id="healthMobileDot"></i>Mobile<svg class="health-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg></strong>
-          <div class="health-main" id="healthMobile">--</div>
-          <div class="health-mini">
-            <div class="health-mini-row"><span>P95</span><b id="healthMobileP95">--</b></div>
-            <div class="health-mini-row"><span>Requests</span><b id="healthMobileRequests">--</b></div>
-            <div class="health-mini-row"><span>Errors</span><b id="healthMobileErrors">--</b></div>
-          </div>
-        </div>
-        <div class="health-tile">
-          <strong><i class="health-dot" id="healthSecurityDot"></i>Security<svg class="health-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></strong>
-          <div class="health-main" id="healthSecurity">--</div>
-          <div class="health-mini">
-            <div class="health-mini-row"><span>Penalty</span><b id="healthSecurityPenalty">--</b></div>
-            <div class="health-mini-row"><span>429</span><b id="healthSecurity429">--</b></div>
-            <div class="health-mini-row"><span>Invalid</span><b id="healthSecurityInvalid">--</b></div>
-          </div>
-        </div>
-      </section>
 
       <section class="grid kpis">
         <div class="panel kpi">
@@ -2955,18 +2872,24 @@
         <div class="panel">
           <div class="panel-head">
             <div>
-              <h2>Infrastructure</h2>
-              <p>API, PostgreSQL, Redis, RPC, PSP, workers, MCP e mobile no mesmo plano operacional.</p>
+              <h2>Saúde dos Serviços</h2>
+              <p>API, PostgreSQL, Redis, RPC, PSP, Workers, MCP, Mobile e Security — visão consolidada.</p>
             </div>
             <span class="badge" id="infraSnapshotAt">snapshot local</span>
           </div>
           <div class="ops-grid">
-            <div class="ops-tile"><strong>BSC RPC</strong><span>Health, requests, errors e circuit breaker</span><div class="kv-mini"><div><label>Latency</label><b id="infraRpcLatency">--</b></div><div><label>Fallback Node</label><b id="infraRpcFallback">--</b></div></div></div>
-            <div class="ops-tile"><strong>PostgreSQL</strong><span>Pool e disponibilidade</span><div class="kv-mini"><div><label>Pool</label><b id="infraPgPool">--</b></div><div><label>Wait</label><b id="infraPgWait">--</b></div></div></div>
-            <div class="ops-tile"><strong>Redis</strong><span>Cache, rate limit e penalty state futuro</span><div class="kv-mini"><div><label>Status</label><b id="infraRedisStatus">--</b></div><div><label>Mode</label><b>optional</b></div></div></div>
-            <div class="ops-tile"><strong>PSP</strong><span>PIX e liquidação fiat</span><div class="kv-mini"><div><label>Latency</label><b id="infraPspLatency">--</b></div><div><label>Errors</label><b id="infraPspErrors">0</b></div></div></div>
-            <div class="ops-tile"><strong>Workers</strong><span>Fila e idade do job mais antigo</span><div class="kv-mini"><div><label>Queue</label><b id="infraWorkerQueue">--</b></div><div><label>Oldest</label><b id="infraWorkerOldest">--</b></div></div></div>
-            <div class="ops-tile"><strong>Mobile</strong><span>Health e cauda de latência</span><div class="kv-mini"><div><label>P95</label><b id="infraMobileP95">--</b></div><div><label>Errors</label><b id="infraMobileErrors">0</b></div></div></div>
+            <div class="ops-tile"><strong><i class="health-dot" id="healthApiDot"></i>API</strong><span id="healthApi">Checking</span><div class="kv-mini"><div><label>Latency</label><b id="healthApiLatency">--</b></div><div><label>Requests</label><b id="healthApiRequests">--</b></div><div><label>Error</label><b id="healthApiError">--</b></div></div></div>
+            <div class="ops-tile"><strong><i class="health-dot" id="healthPgDot"></i>PostgreSQL</strong><span id="healthPg">--</span><div class="kv-mini"><div><label>Connections</label><b id="healthPgConnections">--</b></div><div><label>Slow</label><b id="healthPgSlow">--</b></div><div><label>Pool Wait</label><b id="healthPgWait">--</b></div></div></div>
+            <div class="ops-tile"><strong><i class="health-dot" id="healthRedisDot"></i>Redis</strong><span id="healthRedis">--</span><div class="kv-mini"><div><label>Mode</label><b id="healthRedisMode">--</b></div><div><label>State</label><b id="healthRedisState">--</b></div><div><label>Use</label><b id="healthRedisUse">optional</b></div></div></div>
+            <div class="ops-tile"><strong><i class="health-dot" id="healthRpcDot"></i>RPC</strong><span id="healthRpc">--</span><div class="kv-mini"><div><label>Latency</label><b id="healthRpcLatency">--</b></div><div><label>Health</label><b id="healthRpcHealth">--</b></div><div><label>Fallback</label><b id="healthRpcFallback">--</b></div></div></div>
+            <div class="ops-tile"><strong><i class="health-dot" id="healthPspDot"></i>PSP</strong><span id="healthPsp">--</span><div class="kv-mini"><div><label>PIX</label><b id="healthPspPix">--</b></div><div><label>Errors</label><b id="healthPspErrors">--</b></div><div><label>Status</label><b id="healthPspState">--</b></div></div></div>
+            <div class="ops-tile"><strong><i class="health-dot" id="healthWorkersDot"></i>Workers</strong><span id="healthWorkers">--</span><div class="kv-mini"><div><label>Queue</label><b id="healthWorkersQueue">--</b></div><div><label>Retries</label><b id="healthWorkersRetries">--</b></div><div><label>Last Run</label><b id="healthWorkersLast">--</b></div></div></div>
+            <div class="ops-tile"><strong><i class="health-dot" id="healthMcpDot"></i>MCP</strong><span id="healthMcp">--</span><div class="kv-mini"><div><label>P95</label><b id="healthMcpP95">--</b></div><div><label>Calls</label><b id="healthMcpCalls">--</b></div><div><label>Errors</label><b id="healthMcpErrors">--</b></div></div></div>
+            <div class="ops-tile"><strong><i class="health-dot" id="healthMobileDot"></i>Mobile</strong><span id="healthMobile">--</span><div class="kv-mini"><div><label>P95</label><b id="healthMobileP95">--</b></div><div><label>Requests</label><b id="healthMobileRequests">--</b></div><div><label>Errors</label><b id="healthMobileErrors">--</b></div></div></div>
+            <div class="ops-tile"><strong><i class="health-dot" id="healthSecurityDot"></i>Security</strong><span id="healthSecurity">--</span><div class="kv-mini"><div><label>Penalty</label><b id="healthSecurityPenalty">--</b></div><div><label>429</label><b id="healthSecurity429">--</b></div><div><label>Invalid</label><b id="healthSecurityInvalid">--</b></div></div></div>
+            <div class="ops-tile"><strong>BSC RPC</strong><span>Circuit breaker</span><div class="kv-mini"><div><label>Latency</label><b id="infraRpcLatency">--</b></div><div><label>Fallback</label><b id="infraRpcFallback">--</b></div></div></div>
+            <div class="ops-tile"><strong>Pool PG</strong><span>Pool e disponibilidade</span><div class="kv-mini"><div><label>Pool</label><b id="infraPgPool">--</b></div><div><label>Wait</label><b id="infraPgWait">--</b></div></div></div>
+            <div class="ops-tile"><strong>PSP Latency</strong><span>PIX e liquidação fiat</span><div class="kv-mini"><div><label>Latency</label><b id="infraPspLatency">--</b></div><div><label>Errors</label><b id="infraPspErrors2">0</b></div></div></div>
           </div>
         </div>
       </section>
@@ -3597,8 +3520,8 @@
         }
         // Auto-refresh "Últimas Vendas" a cada 30s quando conectado
         setInterval(() => {
-          if (document.body.dataset.adminSection === 'recent-sales' && state.apiKey) {
-            tryFetchAdminCollections().then(() => renderRecentSales());
+          if (document.body.dataset.adminSection === 'recent-sales') {
+            fetchRecentSales();
           }
         }, 30000);
       });
@@ -3733,8 +3656,7 @@
             if (section === 'signer') resizeSignerCharts();
             if (section === 'eips') resizeEipCharts();
             if (section === 'recent-sales') {
-              renderRecentSales();
-              if (state.apiKey) { refreshBackend(); tryFetchAdminCollections(); }
+              fetchRecentSales();
             }
           });
         });
@@ -3800,12 +3722,7 @@
           renderAll();
           toast('Registros locais limpos.');
         });
-        $('refreshRecentSalesBtn').addEventListener('click', () => {
-          refreshBackend();
-          tryFetchAdminCollections();
-          renderRecentSales();
-          toast('Últimas vendas atualizadas.');
-        });
+        $('refreshRecentSalesBtn').addEventListener('click', () => fetchRecentSales(true));
         $('refreshWalletsBtn').addEventListener('click', () => fetchWallets(true));
         $('refreshKycBtn').addEventListener('click', () => fetchKycRequests(true));
         $('kycStatusFilter').addEventListener('change', () => fetchKycRequests(false));
@@ -5300,15 +5217,51 @@
         renderOperationalUX();
       }
 
+      async function fetchRecentSales(showToast = false) {
+        const liveEl = $('recentSalesLive');
+        const btn = $('refreshRecentSalesBtn');
+        const realKey = state.apiKey && state.apiKey !== 'dev-preview';
+        if (!realKey) {
+          if (showToast) toast('Conecte o backend para ver vendas reais. Mostrando dados de exemplo.');
+          renderRecentSales();
+          return;
+        }
+        if (btn) btn.disabled = true;
+        if (liveEl) liveEl.textContent = '⟳ Buscando...';
+        try {
+          const data = await request('/api/admin/transactions?limit=20');
+          const list = Array.isArray(data.transactions) ? data.transactions
+                      : Array.isArray(data) ? data : [];
+          const normalized = list.map((item) => normalizeRecord(item)).filter(Boolean);
+          // remove seed fictício e substitui por dados reais
+          state.transactions = state.transactions.filter((t) => t.id !== 'prod-first-sale-20260727');
+          mergeTransactions(normalized);
+          renderAll();
+          if (showToast) toast(`${normalized.length} venda(s) carregada(s).`);
+        } catch (err) {
+          if (showToast) toast(`Erro ao buscar transações: ${err.message}`);
+          renderRecentSales();
+        } finally {
+          if (btn) btn.disabled = false;
+          if (liveEl) liveEl.textContent = '● Ao vivo';
+        }
+      }
+
       function renderRecentSales() {
-        const rows = state.transactions.slice(0, 20);
+        // filtra seed fictício quando há dados reais
+        const hasReal = state.transactions.some((t) => t.id !== 'prod-first-sale-20260727');
+        const rows = (hasReal
+          ? state.transactions.filter((t) => t.id !== 'prod-first-sale-20260727')
+          : state.transactions
+        ).slice(0, 20);
         const body = $('recentSalesBody');
         const empty = $('recentSalesEmpty');
         const countEl = $('recentSalesCount');
         const liveEl = $('recentSalesLive');
         if (!body) return;
-        if (countEl) countEl.textContent = String(rows.length);
-        if (liveEl) liveEl.style.display = state.apiKey ? 'inline-flex' : 'none';
+        const realKey = state.apiKey && state.apiKey !== 'dev-preview';
+        if (countEl) countEl.textContent = hasReal ? String(rows.length) : '1 (exemplo)';
+        if (liveEl) liveEl.style.display = realKey ? 'inline-flex' : 'none';
         if (!rows.length) {
           body.innerHTML = '';
           if (empty) empty.style.display = 'block';
@@ -5320,10 +5273,11 @@
           const cliente = email !== '--' ? escapeHtml(email) : '<span style="color:var(--text-muted,#9ca3af)">WEB (sem cadastro)</span>';
           const wallet = row.address ? `<code title="${escapeHtml(row.address)}">${escapeHtml(shorten(row.address))}</code>` : '--';
           const cripto = row.cryptoAmount ? `${formatAmount(row.cryptoAmount)} ${escapeHtml(row.asset || '')}` : '--';
+          const isSeed = row.id === 'prod-first-sale-20260727';
           return `
-            <tr style="cursor:default">
+            <tr style="cursor:default${isSeed ? ';opacity:.7' : ''}">
               <td style="white-space:nowrap">${formatDate(row.createdAt)}</td>
-              <td>${cliente}</td>
+              <td>${cliente}${isSeed ? ' <span style="font-size:.7rem;color:var(--text-muted,#9ca3af)">(exemplo)</span>' : ''}</td>
               <td>${money.format(row.amountBRL || row.amountFiat || 0)}</td>
               <td><strong>${escapeHtml(row.asset || '--')}</strong></td>
               <td><span class="badge info">${escapeHtml(row.network || '--')}</span></td>
