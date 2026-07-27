@@ -407,6 +407,82 @@
   color: #143f68;
 }
 
+.contact-view {
+  width: min(980px, calc(100vw - 48px));
+  margin: 0 auto;
+  padding: 118px 0 70px;
+  color: #143f68;
+}
+
+.contact-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+  gap: 24px;
+  align-items: center;
+}
+
+.contact-hero h2 {
+  margin: 0 0 12px;
+  font-size: clamp(2rem, 4vw, 3.8rem);
+  line-height: 1.04;
+  letter-spacing: 0;
+  background: linear-gradient(90deg, #0c4f84 0%, #6d8199 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.contact-hero p {
+  margin: 0;
+  max-width: 620px;
+  color: #52677c;
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.contact-card {
+  display: flex;
+  min-height: 220px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(148, 176, 205, 0.28);
+  border-radius: 8px;
+  box-shadow: 0 18px 48px rgba(42, 122, 181, 0.12);
+}
+
+.contact-card span {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.contact-card strong {
+  color: #0f172a;
+  font-size: clamp(1.35rem, 2.4vw, 2rem);
+  letter-spacing: 0;
+}
+
+.contact-whatsapp-action {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+  padding: 0 18px;
+  color: #ffffff;
+  font-weight: 800;
+  text-decoration: none;
+  background: linear-gradient(135deg, #0f8f5f, #13b981);
+  border-radius: 8px;
+  box-shadow: 0 14px 32px rgba(15, 143, 95, 0.22);
+}
+
 .pricing-shell {
   display: flex;
   flex-direction: column;
@@ -1199,6 +1275,10 @@ body.pricing-mode #app {
   display: none;
 }
 
+body.contact-mode #app {
+  display: none;
+}
+
 body.developers-mode .developers-view {
   display: block !important;
 }
@@ -1208,6 +1288,10 @@ body.markets-mode .markets-view {
 }
 
 body.pricing-mode .pricing-view {
+  display: block !important;
+}
+
+body.contact-mode .contact-view {
   display: block !important;
 }
 
