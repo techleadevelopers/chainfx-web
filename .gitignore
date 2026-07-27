@@ -45,7 +45,6 @@ out/
 # Windows
 Thumbs.db
 ehthumbs.db
-
 # IDE files
 .idea/
 *.sublime-project
