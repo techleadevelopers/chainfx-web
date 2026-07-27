@@ -523,6 +523,47 @@
   flex-shrink: 0;
 }
 
+/* Floating WhatsApp button */
+.fab-whatsapp {
+  position: fixed;
+  bottom: 28px;
+  left: 28px;
+  z-index: 999;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(10, 14, 30, 0.72);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.38),
+    0 1px 4px rgba(0, 0, 0, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  animation: fabFloat 3s ease-in-out infinite;
+}
+
+.fab-whatsapp img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.fab-whatsapp:hover {
+  transform: translateY(-4px) scale(1.08);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.45),
+    0 2px 8px rgba(0, 0, 0, 0.28);
+}
+
+@keyframes fabFloat {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-6px); }
+}
+
 .pricing-shell {
   display: flex;
   flex-direction: column;
