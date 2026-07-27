@@ -1,0 +1,16 @@
+.git
+.gitignore
+.env
+.env.*
+secrets
+*.exe
+*.log
+dist
+bin
+tmp
+node_modules
+.vscode
+.idea
+coverage.out
+bench-*.json
+bench-*.csv

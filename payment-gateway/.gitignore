@@ -1,0 +1,45 @@
+# Arquivos de Configuração Local (Contém senhas e chaves)
+.env
+.env.local
+secrets/
+chainfx-kyc-provider/
+.mcpregistry_*_token
+.gocache
+.gocache/
+# Binários compilados pelo Go (Executáveis)
+/dist/
+/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+__pycache__/
+*.pyc
+.pytest_cache/
+# Logs do sistema
+*.log
+agent-qa-report.json
+chainfx-test-report-*.json
+chainfx-test-report-*.txt
+
+# Node/Hardhat
+node_modules/
+contracts/node_modules/
+contracts/cache/
+contracts/artifacts/
+contracts/typechain-types/
+contracts/wallets/
+tests/security-cloud-report-*.json
+tests/security-cloud-report-*.txt
+tests/nfc-product-report-*.json
+tests/nfc-product-report-*.txt
+
+# Pastas de ferramentas ou IDEs (VS Code / JetBrains)
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

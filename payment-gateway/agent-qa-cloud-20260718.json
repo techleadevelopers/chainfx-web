@@ -1,0 +1,878 @@
+{
+  "started_at": "2026-07-18T04:05:19.778Z",
+  "card_url": "https://api-production-bc748.up.railway.app/.well-known/agent-card.json",
+  "objective": "Discover ChainFX Agent Pay from Agent Card only and execute A2A payment flow.",
+  "inputs": {
+    "amount_brl": "10.00",
+    "pix_key_configured": true,
+    "agent_wallet_configured": true,
+    "bearer_configured": false
+  },
+  "checks": {
+    "card_fetched": true,
+    "a2a_url_detected": true,
+    "skills_detected": true,
+    "payment_skill_selected": true,
+    "quote_called": false,
+    "auth_handled": true,
+    "intent_created": false,
+    "status_checked": false,
+    "jwks_fetched": true,
+    "signature_fetched": true,
+    "card_hash_verified": true,
+    "card_signature_verified": true,
+    "reputation_fetched": true,
+    "sla_fetched": true,
+    "task_created": true,
+    "task_status_checked": true,
+    "task_events_url_detected": true,
+    "x402_discovered": true,
+    "x402_challenge_received": false,
+    "registries_fetched": true,
+    "agntcy_fetched": true,
+    "oasf_fetched": true,
+    "registry_record_fetched": true,
+    "policy_discovery_fetched": true,
+    "capability_graph_fetched": true,
+    "capability_graph_v2_validated": true,
+    "pay_pix_graph_contract_validated": true,
+    "graph_phase_report_detected": true,
+    "capability_compositions_fetched": true,
+    "capability_compositions_validated": true,
+    "planner_api_called": true,
+    "planner_api_validated": true,
+    "episode_reputation_validated": true,
+    "graph_registry_fetched": true,
+    "graph_registry_validated": true,
+    "policy_required_detected": false
+  },
+  "selected_skills": {
+    "methods": "list_supported_payment_methods",
+    "quote": "quote_required_usdt",
+    "payPix": "pay_pix_with_usdt",
+    "status": "get_payment_status"
+  },
+  "steps": [
+    {
+      "name": "fetch_agent_card",
+      "at": "2026-07-18T04:05:21.111Z",
+      "request": {
+        "url": "https://api-production-bc748.up.railway.app/.well-known/agent-card.json",
+        "method": "GET"
+      },
+      "response": {
+        "status": 200,
+        "latency_ms": 1322,
+        "body": {
+          "truncated": true,
+          "preview": "{\"agent_identity\":{\"agent_id\":\"did:web:api-production-bc748.up.railway.app:chainfx-agent-pay\",\"algorithm\":\"EdDSA\",\"expires_at\":\"2027-07-17T00:00:00Z\",\"issued_at\":\"2026-07-17T00:00:00Z\",\"jwks_url\":\"https://api-production-bc748.up.railway.app/.well-known/jwks.json\",\"public_key\":{\"crv\":\"Ed25519\",\"kid\":\"chainfx-agent-pay-ed25519-ce7bc2a82e54\",\"kty\":\"OKP\",\"x\":\"4aM_tyr4MQ8v5a4N9C4QpZWSY4k2Lgk-lxlJ9q9VoCA\"},\"public_key_id\":\"chainfx-agent-pay-ed25519-ce7bc2a82e54\",\"reputation\":\"https://api-production-bc748.up.railway.app/.well-known/agent-reputation.json\",\"signature_url\":\"https://api-production-bc748.up.railway.app/.well-known/agent-card.signature\",\"sla\":\"https://api-production-bc748.up.railway.app/.well-known/agent-sla.json\",\"verified_by\":\"ChainFX\"},\"authentication\":{\"description\":\"Send Authorization: Bearer <ChainFX API key> for payment creation, quotes and private status.\",\"type\":\"bearer\"},\"capabilities\":{\"pushNotifications\":false,\"stateTransitionHistory\":true,\"streaming\":true,\"taskLifecycle\":true,\"taskStates\":[\"submitted\",\"working\",\"input_required\",\"completed\",\"failed\",\"canceled\",\"rejected\"]},\"decision_metadata\":{\"auth_required\":\"bearer\",\"fees_bps\":{\"credit_card\":1900,\"pix\":1000},\"funding_asset\":\"USDT\",\"funding_network\":\"BSC\",\"payment_methods\":[\"pix\",\"credit_card\"],\"risk_notes\":[\"Deposit exactly required_usdt to payment_address on BSC.\",\"Expired intents must not be funded.\",\"Overpayment and underpayment may require manual review.\",\"Bearer API key is required for quote, payment creation and private status.\"],\"sandbox_available\":true,\"settlement_countries\":[\"BR\"],\"sla\":{\"a2a_timeout_ms\":15000,\"discovery_timeout_ms\":3000,\"intent_ttl_minutes\":15,\"settlement_note\":\"PIX/card settlement starts after exact USDT deposit confirmation.\"},\"supported_assets\":[\"USDT\",\"USDC\"],\"supported_countries\":[\"BR\"],\"supported_networks\":[\"BSC\"]},\"defaultInputModes\":[\"application/json\"],\"defaultOutputModes\":[\"application/json\"],\"description\":\"Stablecoin-funded real-world payments for autonomous agents.\",\"endpoints\":{\"a2a\":\"https://api-production-bc748.up.railway.app/a2a\",\"a2a_events\":\"https://api-production-bc748.up.railway.app/a2a/tasks/{id}/events\",\"a2a_task\":\"https://api-production-bc748.up.railway.app/a2a/tasks/{id}\",\"a2a_tasks\":\"https://api-production-bc748.up.railway.app/a2a/tasks\",\"agent_pay\":\"https://api-production-bc748.up.railway.app/agent/v1/pay\",\"agntcy\":\"https://api-production-bc748.up.railway.app/.well-known/agntcy.json\",\"ai_services\":\"https://api-production-bc748.up.railway.app/.well-known/ai-services.json\",\"compositions\":\"https://api-production-bc748.up.railway.app/.well-known/capability-compositions.json\",\"graph\":\"https://api-production-bc748.up.railway.app/.well-known/capability-graph.json\",\"graph_registry\":\"https://api-production-bc748.up.railway.app/.well-known/capability-graph-registry.json\",\"mcp\":\"https://api-production-bc748.up.railway.app/mcp/initialize\",\"oasf\":\"https://api-production-bc748.up.railway.app/.well-known/oasf.json\",\"onboarding\":\"https://api-production-bc748.up.railway.app/agent-pay.json\",\"openapi\":\"https://api-production-bc748.up.railway.app/openapi.json\",\"planner\":\"https://api-production-bc748.up.railway.app/agent/v1/plans\",\"policy\":\"https://api-production-bc748.up.railway.app/.well-known/agent-policy.json\",\"registries\":\"https://api-production-bc748.up.railway.app/agent/v1/registries\",\"status\":\"https://api-production-bc748.up.railway.app/agent/v1/pay/{id}\",\"x402\":\"https://api-production-bc748.up.railway.app/.well-known/x402.json\",\"x402_execute\":\"https://api-production-bc748.up.railway.app/x402/capabilities/{capability}/execute\"},\"name\":\"ChainFX Agent Pay\",\"planning\":{\"capability_graph\":\"https://api-production-bc748.up.railway.app/.well-known/capability-graph.json\",\"capability_graph_api\":\"https://api-production-bc748.up.railway.app/agent/v1/capability-graph\",\"compositions\":\"https://api-production-bc748.up.railway.app/.well-known/capability-compositions.json\",\"compositions_api\":\"https://api-production-bc748.up.railway.app/"
+        }
+      }
+    },
+    {
+      "name": "fetch_agent_trust_documents",
+      "at": "2026-07-18T04:05:22.086Z",
+      "requests": {
+        "jwks_url": "https://api-production-bc748.up.railway.app/.well-known/jwks.json",
+        "signature_url": "https://api-production-bc748.up.railway.app/.well-known/agent-card.signature",
+        "reputation_url": "https://api-production-bc748.up.railway.app/.well-known/agent-reputation.json",
+        "sla_url": "https://api-production-bc748.up.railway.app/.well-known/agent-sla.json",
+        "graph_registry_url": "https://api-production-bc748.up.railway.app/.well-known/capability-graph-registry.json"
+      },
+      "responses": {
+        "jwks": {
+          "status": 200,
+          "latency_ms": 709,
+          "body": {
+            "keys": [
+              {
+                "alg": "EdDSA",
+                "crv": "Ed25519",
+                "kid": "chainfx-agent-pay-ed25519-ce7bc2a82e54",
+                "kty": "OKP",
+                "use": "sig",
+                "x": "4aM_tyr4MQ8v5a4N9C4QpZWSY4k2Lgk-lxlJ9q9VoCA"
+              }
+            ]
+          }
+        },
+        "signature": {
+          "status": 200,
+          "latency_ms": 704,
+          "body": {
+            "agent": "ChainFX Agent Pay",
+            "agent_id": "did:web:api-production-bc748.up.railway.app:chainfx-agent-pay",
+            "algorithm": "EdDSA",
+            "card_hash": "1db045209740f4c6d735dffb89c2761546c30c97e0730198438309d1415fef71",
+            "card_url": "https://api-production-bc748.up.railway.app/.well-known/agent-card.json",
+            "expires_at": "2026-07-19T04:05:20Z",
+            "jwks_url": "https://api-production-bc748.up.railway.app/.well-known/jwks.json",
+            "public_key_id": "chainfx-agent-pay-ed25519-ce7bc2a82e54",
+            "signature": "SW2xPjxG6DEpKx3DmwVSVQgtuUD4v5ZpkTslO42y0Tzu6zTrkMWRGLXtVwHh9XtSXkxaFhb7gQgVRVVQxtegBQ",
+            "signature_encoding": "base64url",
+            "signed_at": "2026-07-18T04:05:20Z",
+            "verification": {
+              "message": "Verify Ed25519 signature over the canonical JSON bytes of the Agent Card response."
+            },
+            "verified_by": "ChainFX"
+          }
+        },
+        "reputation": {
+          "status": 200,
+          "latency_ms": 744,
+          "body": {
+            "agent": "ChainFX Agent Pay",
+            "agent_card": "https://api-production-bc748.up.railway.app/.well-known/agent-card.json",
+            "failed_episodes": 0,
+            "fraud_reports": 0,
+            "latency_ms": {
+              "p50": null,
+              "p95": null,
+              "p99": null
+            },
+            "phase_report": {
+              "episodes_aggregated": 0,
+              "failures_by_type": {},
+              "graph_registry": "https://api-production-bc748.up.railway.app/.well-known/capability-graph-registry.json",
+              "id": "reputation_graph_registry_report",
+              "latency_ms": {
+                "p50": null,
+                "p95": null,
+                "p99": null
+              },
+              "metrics_by_skill": {},
+              "phase": "3",
+              "qa_expected_check": "episode_reputation_validated",
+              "score_calculated": "AAA"
+            },
+            "reputation": {
+              "by_skill": {},
+              "failed_episodes": 0,
+              "failures_by_type": {},
+              "latency_ms": {
+                "p50": null,
+                "p95": null,
+                "p99": null
+              },
+              "score": "AAA",
+              "success_rate": "n/a",
+              "successful_episodes": 0,
+              "total_episodes": 0
+            },
+            "reputation_score": "AAA",
+            "sample_window": "in_memory_recent_episodes",
+            "settlement_success_rate": "derived_by_skill_when_settlement_status_is_observed",
+            "success_by_skill": {},
+            "success_rate": "1.0000",
+            "successful_episodes": 0,
+            "total_episodes": 0,
+            "updated_at": "2026-07-18T04:05:20Z"
+          }
+        },
+        "sla": {
+          "status": 200,
+          "latency_ms": 730,
+          "body": {
+            "agent": "ChainFX Agent Pay",
+            "agent_card": "https://api-production-bc748.up.railway.app/.well-known/agent-card.json",
+            "availability": {
+              "health_check": "https://api-production-bc748.up.railway.app/readyz",
+              "measurement": "rolling_30d",
+              "public_status": "https://api-production-bc748.up.railway.app/.well-known/agent-reputation.json",
+              "target": "99.9%"
+            },
+            "latency_objectives_ms": {
+              "a2a_sync_p95": 15000,
+              "discovery_p95": 3000,
+              "quote_p95": 5000,
+              "settlement_started": "after exact USDT deposit confirmation",
+              "status_p95": 3000
+            },
+            "payment_terms": {
+              "fees_bps": {
+                "credit_card": 1900,
+                "pix": 1000
+              },
+              "funding_assets": [
+                "USDT",
+                "USDC"
+              ],
+              "funding_network": "BSC",
+              "intent_ttl": "15m",
+              "payment_methods": [
+                "pix",
+                "credit_card"
+              ],
+              "risk_rule": "deposit exactly required_usdt to the returned BSC payment_address before expires_at"
+            },
+            "rate_limit_headers": [
+              "X-RateLimit-Limit",
+              "X-RateLimit-Remaining",
+              "X-RateLimit-Reset"
+            ],
+            "sla_version": "2026-07-17",
+            "support": {
+              "email": "pauloti.engenharia@gmail.com"
+            },
+            "updated_at": "2026-07-18T04:05:20Z"
+          }
+        },
+        "x402": {
+          "status": 200,
+          "latency_ms": 656,
+          "body": {
+            "accepts": [
+              {
+                "address": "0x7e3bf3fdfef16040ce3ec60a663381766d3db375",
+                "asset": "USDT",
+                "chainId": 56,
+                "network": "BSC"
+              },
+              {
+                "address": "0x7e3bf3fdfef16040ce3ec60a663381766d3db375",
+                "asset": "USDT",
+                "chainId": 137,
+                "contract": "0xc2132d05d31c914a87c6611c10748aeb04b58e8f",
+                "network": "POLYGON"
+              }
+            ],
+            "resources": [
+              {
+                "capabilities": "https://api-production-bc748.up.railway.app/marketplace/capabilities",
+                "description": "Execute digital capabilities with HTTP 402 payment challenge. First call returns payment_requirements; replay with PAYMENT header after BSC or Polygon stablecoin transfer.",
+                "path": "/x402/capabilities/{capability}/execute",
+                "pricing": "exact",
+                "replayHeader": "PAYMENT"
+              },
+              {
+                "description": "Buy temporary API access with BSC USDT after receiving a quote.",
+                "path": "/v1/access/purchase",
+                "quote": "https://api-production-bc748.up.railway.app/v1/access/quote"
+              },
+              {
+                "assets": "https://api-production-bc748.up.railway.app/agent/v1/assets",
+                "description": "Machine-to-machine liquidity rail: agent pays one enabled BSC/Polygon stablecoin and receives another enabled stablecoin on the same network.",
+                "path": "/agent/v1/trade/execute",
+                "quote": "https://api-production-bc748.up.railway.app/agent/v1/trade/quote"
+              }
+            ],
+            "security": [
+              "request_hash_bound_to_product_wallet_price_quota_nonce",
+              "idempotency_required",
+              "quota_debited_before_execution",
+              "bsc_receipt_verification_required"
+            ],
+            "seller": "ChainFX",
+            "x402Version": "chainfx-m2m-0.1"
+          }
+        },
+        "registries": {
+          "status": 200,
+          "latency_ms": 732,
+          "body": {
+            "agent": "ChainFX Agent Pay",
+            "planning": {
+              "capability_compositions": "https://api-production-bc748.up.railway.app/.well-known/capability-compositions.json",
+              "capability_graph": "https://api-production-bc748.up.railway.app/.well-known/capability-graph.json",
+              "capability_graph_registry": "https://api-production-bc748.up.railway.app/.well-known/capability-graph-registry.json",
+              "planner_api": "https://api-production-bc748.up.railway.app/agent/v1/plans"
+            },
+            "registries": [
+              {
+                "id": "mcp-registry",
+                "manifest": "https://api-production-bc748.up.railway.app/mcp/initialize",
+                "name": "Model Context Protocol Registry",
+                "protocol": "mcp",
+                "server_json": "https://api-production-bc748.up.railway.app/.well-known/mcp-server.json",
+                "status": "published"
+              },
+              {
+                "id": "a2a-agent-card",
+                "manifest": "https://api-production-bc748.up.railway.app/.well-known/agent-card.json",
+                "name": "A2A Agent Card",
+                "protocol": "a2a",
+                "status": "available"
+              },
+              {
+                "id": "agntcy-oasf",
+                "manifest": "https://api-production-bc748.up.railway.app/.well-known/agntcy.json",
+                "name": "AGNTCY / OASF Agent Directory Record",
+                "protocol": "oasf",
+                "record": "https://api-production-bc748.up.railway.app/agent/v1/registry-records/agntcy-oasf",
+                "status": "ready_to_publish"
+              },
+              {
+                "id": "openapi",
+                "manifest": "https://api-production-bc748.up.railway.app/openapi.json",
+                "name": "OpenAPI Catalog",
+                "protocol": "openapi",
+                "status": "available"
+              },
+              {
+                "id": "x402",
+                "manifest": "https://api-production-bc748.up.railway.app/.well-known/x402.json",
+                "name": "x402 Capability Payments",
+                "protocol": "x402",
+                "status": "available"
+              },
+              {
+                "api": "https://api-production-bc748.up.railway.app/agent/v1/graph-registry",
+                "id": "capability-graph-registry",
+                "manifest": "https://api-production-bc748.up.railway.app/.well-known/capability-graph-registry.json",
+                "name": "ChainFX Agent Capability Graph Registry",
+                "protocol": "chainfx-capability-graph",
+                "status": "available"
+              }
+            ],
+            "trust": {
+              "agent_card_sig": "https://api-production-bc748.up.railway.app/.well-known/agent-card.signature",
+              "jwks": "https://api-production-bc748.up.railway.app/.well-known/jwks.json",
+              "reputation": "https://api-production-bc748.up.railway.app/.well-known/agent-reputation.json",
+              "sla": "https://api-production-bc748.up.railway.app/.well-known/agent-sla.json"
+            },
+            "updated_at": "2026-07-18T04:05:20Z",
+            "version": "1.0.0"
+          }
+        },
+        "agntcy": {
+          "status": 200,
+          "latency_ms": 696,
+          "body": {
+            "truncated": true,
+            "preview": "{\"provenance\":{\"algorithm\":\"EdDSA\",\"jwks_url\":\"https://api-production-bc748.up.railway.app/.well-known/jwks.json\",\"public_key_id\":\"chainfx-agent-pay-ed25519-ce7bc2a82e54\",\"record_hash\":\"0652a7a45a0a66c19eb4e4b41fc3b679f21e1f72205c93ca793408698ae41db2\",\"signature\":\"mFC7L_zlWmOOT1nGXuz3-_yutOuJRhlixPHBdKNsDm6hRm07XoGGHWtoPCBdpnuBKTZEUf3tGtHi4wLRgmfQDg\",\"signature_encoding\":\"base64url\",\"signed_at\":\"2026-07-18T04:05:20Z\"},\"publishable\":true,\"record\":{\"capability_constraints\":{\"auth\":[\"bearer\",\"x402_payment\"],\"supported_assets\":[\"USDT\",\"USDC\"],\"supported_country\":[\"BR\"],\"supported_network\":[\"BSC\"],\"task_lifecycle\":[\"submitted\",\"working\",\"input_required\",\"completed\",\"failed\",\"canceled\",\"rejected\"]},\"description\":\"Verifiable A2A payment agent and capability network for autonomous agents using BSC stablecoins.\",\"displayName\":\"ChainFX Agent Pay\",\"economics\":{\"agent_pay\":{\"fees_bps\":{\"credit_card\":1900,\"pix\":1000},\"funding_asset\":\"USDT\",\"funding_network\":\"BSC\",\"payment_methods\":[\"pix\",\"credit_card\"]},\"x402\":{\"asset\":\"USDT\",\"endpoint\":\"https://api-production-bc748.up.railway.app/x402/capabilities/{capability}/execute\",\"network\":\"BSC\",\"settlement\":\"ERC20 transfer receipt verification\",\"status\":\"available\"}},\"locators\":{\"a2a\":\"https://api-production-bc748.up.railway.app/a2a\",\"a2a_tasks\":\"https://api-production-bc748.up.railway.app/a2a/tasks\",\"agent_card\":\"https://api-production-bc748.up.railway.app/.well-known/agent-card.json\",\"agent_pay\":\"https://api-production-bc748.up.railway.app/agent-pay.json\",\"capabilities\":\"https://api-production-bc748.up.railway.app/marketplace/capabilities\",\"compositions\":\"https://api-production-bc748.up.railway.app/.well-known/capability-compositions.json\",\"graph\":\"https://api-production-bc748.up.railway.app/.well-known/capability-graph.json\",\"graph_registry\":\"https://api-production-bc748.up.railway.app/.well-known/capability-graph-registry.json\",\"mcp\":\"https://api-production-bc748.up.railway.app/mcp/initialize\",\"openapi\":\"https://api-production-bc748.up.railway.app/openapi.json\",\"planner\":\"https://api-production-bc748.up.railway.app/agent/v1/plans\",\"policy\":\"https://api-production-bc748.up.railway.app/.well-known/agent-policy.json\",\"registry\":\"https://api-production-bc748.up.railway.app/agent/v1/registries\",\"x402\":\"https://api-production-bc748.up.railway.app/.well-known/x402.json\"},\"metadata\":{\"generated_at\":\"2026-07-18T04:05:20Z\",\"registry_ready\":true,\"release_channel\":\"production\"},\"name\":\"ChainFX Agent Pay\",\"planning\":{\"capability_graph\":\"https://api-production-bc748.up.railway.app/.well-known/capability-graph.json\",\"compositions\":\"https://api-production-bc748.up.railway.app/.well-known/capability-compositions.json\",\"graph_registry\":\"https://api-production-bc748.up.railway.app/.well-known/capability-graph-registry.json\",\"planner_api\":\"https://api-production-bc748.up.railway.app/agent/v1/plans\",\"policy_discovery\":\"https://api-production-bc748.up.railway.app/.well-known/agent-policy.json\",\"semantic_aliases\":[\"pay pix\",\"quote usdt\",\"stablecoin swap\",\"ocr\",\"llm chat\",\"semantic memory\",\"pay-per-call api\"]},\"provider\":{\"name\":\"ChainFX\",\"url\":\"https://www.chainfx.store\"},\"skills\":[{\"assets\":[\"USDT\"],\"category\":\"payments\",\"countries\":[\"BR\"],\"id\":\"pay_pix_with_usdt\",\"networks\":[\"BSC\"],\"protocols\":[\"a2a\"]},{\"assets\":[\"USDT\"],\"category\":\"payments\",\"countries\":[\"BR\"],\"id\":\"pay_card_bill_with_usdt\",\"networks\":[\"BSC\"],\"protocols\":[\"a2a\"]},{\"assets\":[\"USDT\",\"USDC\"],\"category\":\"settlement\",\"id\":\"stablecoin_exchange\",\"networks\":[\"BSC\"],\"protocols\":[\"a2a\",\"rest\"]},{\"category\":\"marketplace\",\"id\":\"capability_exchange\",\"protocols\":[\"a2a\",\"mcp\",\"rest\",\"x402\"]},{\"category\":\"capability\",\"id\":\"document_ocr\",\"protocols\":[\"a2a\",\"mcp\",\"x402\"]},{\"category\":\"capability\",\"id\":\"llm_chat\",\"protocols\":[\"a2a\",\"mcp\",\"x402\"]},{\"category\":\"capability\",\"id\":\"semantic_memory\",\"protocols\":[\"a2a\",\"mcp\",\"x402\"]}],\"trust\":{\"identity\":{\"agent_id\":\"did:web:api-production-bc748.up.railway.app:chainfx-agent-pay\",\"algorithm\":\"EdDSA\",\"expires_at\":\"2027-07-17"
+          }
+        },
+        "oasf": {
+          "status": 200,
+          "latency_ms": 690,
+          "body": {
+            "truncated": true,
+            "preview": "{\"provenance\":{\"algorithm\":\"EdDSA\",\"jwks_url\":\"https://api-production-bc748.up.railway.app/.well-known/jwks.json\",\"public_key_id\":\"chainfx-agent-pay-ed25519-ce7bc2a82e54\",\"record_hash\":\"0652a7a45a0a66c19eb4e4b41fc3b679f21e1f72205c93ca793408698ae41db2\",\"signature\":\"mFC7L_zlWmOOT1nGXuz3-_yutOuJRhlixPHBdKNsDm6hRm07XoGGHWtoPCBdpnuBKTZEUf3tGtHi4wLRgmfQDg\",\"signature_encoding\":\"base64url\",\"signed_at\":\"2026-07-18T04:05:20Z\"},\"record\":{\"capability_constraints\":{\"auth\":[\"bearer\",\"x402_payment\"],\"supported_assets\":[\"USDT\",\"USDC\"],\"supported_country\":[\"BR\"],\"supported_network\":[\"BSC\"],\"task_lifecycle\":[\"submitted\",\"working\",\"input_required\",\"completed\",\"failed\",\"canceled\",\"rejected\"]},\"description\":\"Verifiable A2A payment agent and capability network for autonomous agents using BSC stablecoins.\",\"displayName\":\"ChainFX Agent Pay\",\"economics\":{\"agent_pay\":{\"fees_bps\":{\"credit_card\":1900,\"pix\":1000},\"funding_asset\":\"USDT\",\"funding_network\":\"BSC\",\"payment_methods\":[\"pix\",\"credit_card\"]},\"x402\":{\"asset\":\"USDT\",\"endpoint\":\"https://api-production-bc748.up.railway.app/x402/capabilities/{capability}/execute\",\"network\":\"BSC\",\"settlement\":\"ERC20 transfer receipt verification\",\"status\":\"available\"}},\"locators\":{\"a2a\":\"https://api-production-bc748.up.railway.app/a2a\",\"a2a_tasks\":\"https://api-production-bc748.up.railway.app/a2a/tasks\",\"agent_card\":\"https://api-production-bc748.up.railway.app/.well-known/agent-card.json\",\"agent_pay\":\"https://api-production-bc748.up.railway.app/agent-pay.json\",\"capabilities\":\"https://api-production-bc748.up.railway.app/marketplace/capabilities\",\"compositions\":\"https://api-production-bc748.up.railway.app/.well-known/capability-compositions.json\",\"graph\":\"https://api-production-bc748.up.railway.app/.well-known/capability-graph.json\",\"graph_registry\":\"https://api-production-bc748.up.railway.app/.well-known/capability-graph-registry.json\",\"mcp\":\"https://api-production-bc748.up.railway.app/mcp/initialize\",\"openapi\":\"https://api-production-bc748.up.railway.app/openapi.json\",\"planner\":\"https://api-production-bc748.up.railway.app/agent/v1/plans\",\"policy\":\"https://api-production-bc748.up.railway.app/.well-known/agent-policy.json\",\"registry\":\"https://api-production-bc748.up.railway.app/agent/v1/registries\",\"x402\":\"https://api-production-bc748.up.railway.app/.well-known/x402.json\"},\"metadata\":{\"generated_at\":\"2026-07-18T04:05:20Z\",\"registry_ready\":true,\"release_channel\":\"production\"},\"name\":\"ChainFX Agent Pay\",\"planning\":{\"capability_graph\":\"https://api-production-bc748.up.railway.app/.well-known/capability-graph.json\",\"compositions\":\"https://api-production-bc748.up.railway.app/.well-known/capability-compositions.json\",\"graph_registry\":\"https://api-production-bc748.up.railway.app/.well-known/capability-graph-registry.json\",\"planner_api\":\"https://api-production-bc748.up.railway.app/agent/v1/plans\",\"policy_discovery\":\"https://api-production-bc748.up.railway.app/.well-known/agent-policy.json\",\"semantic_aliases\":[\"pay pix\",\"quote usdt\",\"stablecoin swap\",\"ocr\",\"llm chat\",\"semantic memory\",\"pay-per-call api\"]},\"provider\":{\"name\":\"ChainFX\",\"url\":\"https://www.chainfx.store\"},\"skills\":[{\"assets\":[\"USDT\"],\"category\":\"payments\",\"countries\":[\"BR\"],\"id\":\"pay_pix_with_usdt\",\"networks\":[\"BSC\"],\"protocols\":[\"a2a\"]},{\"assets\":[\"USDT\"],\"category\":\"payments\",\"countries\":[\"BR\"],\"id\":\"pay_card_bill_with_usdt\",\"networks\":[\"BSC\"],\"protocols\":[\"a2a\"]},{\"assets\":[\"USDT\",\"USDC\"],\"category\":\"settlement\",\"id\":\"stablecoin_exchange\",\"networks\":[\"BSC\"],\"protocols\":[\"a2a\",\"rest\"]},{\"category\":\"marketplace\",\"id\":\"capability_exchange\",\"protocols\":[\"a2a\",\"mcp\",\"rest\",\"x402\"]},{\"category\":\"capability\",\"id\":\"document_ocr\",\"protocols\":[\"a2a\",\"mcp\",\"x402\"]},{\"category\":\"capability\",\"id\":\"llm_chat\",\"protocols\":[\"a2a\",\"mcp\",\"x402\"]},{\"category\":\"capability\",\"id\":\"semantic_memory\",\"protocols\":[\"a2a\",\"mcp\",\"x402\"]}],\"trust\":{\"identity\":{\"agent_id\":\"did:web:api-production-bc748.up.railway.app:chainfx-agent-pay\",\"algorithm\":\"EdDSA\",\"expires_at\":\"2027-07-17T00:00:00Z\",\"issued"
+          }
+        },
+        "registry_record": {
+          "status": 200,
+          "latency_ms": 687,
+          "body": {
+            "truncated": true,
+            "preview": "{\"id\":\"agntcy-oasf\",\"index\":\"https://api-production-bc748.up.railway.app/agent/v1/registries\",\"provenance\":{\"algorithm\":\"EdDSA\",\"jwks_url\":\"https://api-production-bc748.up.railway.app/.well-known/jwks.json\",\"public_key_id\":\"chainfx-agent-pay-ed25519-ce7bc2a82e54\",\"record_hash\":\"0652a7a45a0a66c19eb4e4b41fc3b679f21e1f72205c93ca793408698ae41db2\",\"signature\":\"mFC7L_zlWmOOT1nGXuz3-_yutOuJRhlixPHBdKNsDm6hRm07XoGGHWtoPCBdpnuBKTZEUf3tGtHi4wLRgmfQDg\",\"signature_encoding\":\"base64url\",\"signed_at\":\"2026-07-18T04:05:20Z\"},\"record\":{\"capability_constraints\":{\"auth\":[\"bearer\",\"x402_payment\"],\"supported_assets\":[\"USDT\",\"USDC\"],\"supported_country\":[\"BR\"],\"supported_network\":[\"BSC\"],\"task_lifecycle\":[\"submitted\",\"working\",\"input_required\",\"completed\",\"failed\",\"canceled\",\"rejected\"]},\"description\":\"Verifiable A2A payment agent and capability network for autonomous agents using BSC stablecoins.\",\"displayName\":\"ChainFX Agent Pay\",\"economics\":{\"agent_pay\":{\"fees_bps\":{\"credit_card\":1900,\"pix\":1000},\"funding_asset\":\"USDT\",\"funding_network\":\"BSC\",\"payment_methods\":[\"pix\",\"credit_card\"]},\"x402\":{\"asset\":\"USDT\",\"endpoint\":\"https://api-production-bc748.up.railway.app/x402/capabilities/{capability}/execute\",\"network\":\"BSC\",\"settlement\":\"ERC20 transfer receipt verification\",\"status\":\"available\"}},\"locators\":{\"a2a\":\"https://api-production-bc748.up.railway.app/a2a\",\"a2a_tasks\":\"https://api-production-bc748.up.railway.app/a2a/tasks\",\"agent_card\":\"https://api-production-bc748.up.railway.app/.well-known/agent-card.json\",\"agent_pay\":\"https://api-production-bc748.up.railway.app/agent-pay.json\",\"capabilities\":\"https://api-production-bc748.up.railway.app/marketplace/capabilities\",\"compositions\":\"https://api-production-bc748.up.railway.app/.well-known/capability-compositions.json\",\"graph\":\"https://api-production-bc748.up.railway.app/.well-known/capability-graph.json\",\"graph_registry\":\"https://api-production-bc748.up.railway.app/.well-known/capability-graph-registry.json\",\"mcp\":\"https://api-production-bc748.up.railway.app/mcp/initialize\",\"openapi\":\"https://api-production-bc748.up.railway.app/openapi.json\",\"planner\":\"https://api-production-bc748.up.railway.app/agent/v1/plans\",\"policy\":\"https://api-production-bc748.up.railway.app/.well-known/agent-policy.json\",\"registry\":\"https://api-production-bc748.up.railway.app/agent/v1/registries\",\"x402\":\"https://api-production-bc748.up.railway.app/.well-known/x402.json\"},\"metadata\":{\"generated_at\":\"2026-07-18T04:05:20Z\",\"registry_ready\":true,\"release_channel\":\"production\"},\"name\":\"ChainFX Agent Pay\",\"planning\":{\"capability_graph\":\"https://api-production-bc748.up.railway.app/.well-known/capability-graph.json\",\"compositions\":\"https://api-production-bc748.up.railway.app/.well-known/capability-compositions.json\",\"graph_registry\":\"https://api-production-bc748.up.railway.app/.well-known/capability-graph-registry.json\",\"planner_api\":\"https://api-production-bc748.up.railway.app/agent/v1/plans\",\"policy_discovery\":\"https://api-production-bc748.up.railway.app/.well-known/agent-policy.json\",\"semantic_aliases\":[\"pay pix\",\"quote usdt\",\"stablecoin swap\",\"ocr\",\"llm chat\",\"semantic memory\",\"pay-per-call api\"]},\"provider\":{\"name\":\"ChainFX\",\"url\":\"https://www.chainfx.store\"},\"skills\":[{\"assets\":[\"USDT\"],\"category\":\"payments\",\"countries\":[\"BR\"],\"id\":\"pay_pix_with_usdt\",\"networks\":[\"BSC\"],\"protocols\":[\"a2a\"]},{\"assets\":[\"USDT\"],\"category\":\"payments\",\"countries\":[\"BR\"],\"id\":\"pay_card_bill_with_usdt\",\"networks\":[\"BSC\"],\"protocols\":[\"a2a\"]},{\"assets\":[\"USDT\",\"USDC\"],\"category\":\"settlement\",\"id\":\"stablecoin_exchange\",\"networks\":[\"BSC\"],\"protocols\":[\"a2a\",\"rest\"]},{\"category\":\"marketplace\",\"id\":\"capability_exchange\",\"protocols\":[\"a2a\",\"mcp\",\"rest\",\"x402\"]},{\"category\":\"capability\",\"id\":\"document_ocr\",\"protocols\":[\"a2a\",\"mcp\",\"x402\"]},{\"category\":\"capability\",\"id\":\"llm_chat\",\"protocols\":[\"a2a\",\"mcp\",\"x402\"]},{\"category\":\"capability\",\"id\":\"semantic_memory\",\"protocols\":[\"a2a\",\"mcp\",\"x402\"]}],\"trust\":{\"identity\":{\"agent_id\":\"did:web:api-production-bc748.up.r"
+          }
+        },
+        "policy_discovery": {
+          "status": 200,
+          "latency_ms": 665,
+          "body": {
+            "agent": "ChainFX Agent Pay",
+            "error_recovery": {
+              "AGENT_POLICY_INACTIVE": {
+                "meaning": "The policy exists but is not active.",
+                "next_action": "Update policy status to active through PATCH /agent/{id}/policy."
+              },
+              "AGENT_POLICY_REQUIRED": {
+                "docs": "https://api-production-bc748.up.railway.app/.well-known/agent-policy.json",
+                "meaning": "The paying agent wallet has no active policy.",
+                "next_action": "Call /agent/connect with the agent wallet or ask the ChainFX admin to create an active policy."
+              },
+              "MAX_TRANSACTION_EXCEEDED": {
+                "meaning": "The requested amount exceeds maxTransactionUsdt.",
+                "next_action": "Lower the amount or update the policy limit."
+              }
+            },
+            "onboarding": {
+              "auth": "Authorization: Bearer <ChainFX API key>",
+              "connect": "https://api-production-bc748.up.railway.app/agent/connect",
+              "example": {
+                "agentType": "autonomous",
+                "agentWallet": "0x830000000000000000000000000000000000019a",
+                "allowedAssets": [
+                  "USDT",
+                  "USDC"
+                ],
+                "dailyLimitUsdt": "500",
+                "environment": "production",
+                "maxTransactionUsdt": "100",
+                "monthlyLimitUsdt": "5000",
+                "name": "Agent QA",
+                "permissions": [
+                  "capabilities:read",
+                  "capabilities:purchase",
+                  "capabilities:execute",
+                  "trades:create",
+                  "payments:create",
+                  "settlements:read"
+                ],
+                "walletMode": "existing"
+              },
+              "method": "POST"
+            },
+            "policy_required_for": [
+              "pay_pix_with_usdt",
+              "pay_card_bill_with_usdt",
+              "stablecoin_exchange",
+              "capability_purchase",
+              "capability_execution",
+              "x402_capability_execution"
+            ],
+            "required_policy": {
+              "assets": [
+                "USDT",
+                "USDC"
+              ],
+              "identity": "agent wallet must be connected through POST /agent/connect or have an active marketplace_agent_policy",
+              "limits": {
+                "daily_limit_usdt": "policy.dailyLimitUsdt",
+                "max_transaction_usdt": "policy.maxTransactionUsdt",
+                "monthly_limit_usdt": "policy.monthlyLimitUsdt"
+              },
+              "network": [
+                "BSC"
+              ],
+              "permissions": [
+                "payments:create",
+                "capabilities:read",
+                "capabilities:purchase",
+                "capabilities:execute",
+                "trades:create",
+                "settlements:read"
+              ],
+              "status": "active"
+            },
+            "supported_policies": [
+              {
+                "allowed_assets": [
+                  "USDT",
+                  "USDC"
+                ],
+                "description": "Default active policy created by /agent/connect for autonomous agents.",
+                "id": "default_autonomous_agent",
+                "mock_fallback": true,
+                "permissions": [
+                  "capabilities:read",
+                  "capabilities:purchase",
+                  "capabilities:execute",
+                  "trades:create",
+                  "payments:create",
+                  "settlements:read",
+                  "webhooks:write"
+                ],
+                "require_real_provider": false,
+                "wallet_mode": "existing"
+              }
+            ],
+            "updated_at": "2026-07-18T04:05:20Z",
+            "version": "1.0.0"
+          }
+        },
+        "capability_graph": {
+          "status": 200,
+          "latency_ms": 713,
+          "body": {
+            "truncated": true,
+            "preview": "{\"agent\":\"ChainFX Agent Pay\",\"edges\":[{\"from\":\"agent_identity\",\"relation\":\"requires\",\"to\":\"agent_policy\"},{\"from\":\"pay_pix_with_usdt\",\"relation\":\"requires\",\"to\":\"agent_policy\"},{\"from\":\"pay_card_bill_with_usdt\",\"relation\":\"requires\",\"to\":\"agent_policy\"},{\"from\":\"stablecoin_exchange\",\"relation\":\"requires\",\"to\":\"agent_policy\"},{\"from\":\"capability_exchange\",\"relation\":\"recommended_for_purchase\",\"to\":\"agent_policy\"},{\"from\":\"quote_required_usdt\",\"relation\":\"depends_on\",\"to\":\"payment_methods\"},{\"from\":\"pay_pix_with_usdt\",\"relation\":\"depends_on\",\"to\":\"quote_required_usdt\"},{\"from\":\"pay_pix_with_usdt\",\"relation\":\"follow_up\",\"to\":\"payment_status\"},{\"from\":\"x402_capability_execution\",\"relation\":\"depends_on\",\"to\":\"capability_exchange\"},{\"from\":\"x402_capability_execution\",\"relation\":\"emits\",\"to\":\"episodes\"},{\"from\":\"pay_pix_with_usdt\",\"relation\":\"emits\",\"to\":\"episodes\"},{\"from\":\"episodes\",\"relation\":\"aggregates_into\",\"to\":\"reputation\"},{\"from\":\"episodes\",\"relation\":\"measures\",\"to\":\"sla\"}],\"name\":\"ChainFX Agent Capability Graph\",\"nodes\":[{\"endpoint\":\"https://api-production-bc748.up.railway.app/.well-known/agent-card.json\",\"id\":\"agent_card\",\"type\":\"discovery\"},{\"endpoint\":\"https://api-production-bc748.up.railway.app/.well-known/agent-card.json\",\"id\":\"agent_identity\",\"type\":\"trust\"},{\"endpoint\":\"https://api-production-bc748.up.railway.app/.well-known/agent-policy.json\",\"id\":\"agent_policy\",\"type\":\"policy\"},{\"a2a_skill\":\"list_supported_payment_methods\",\"id\":\"payment_methods\",\"type\":\"discovery\"},{\"a2a_skill\":\"quote_required_usdt\",\"id\":\"quote_required_usdt\",\"type\":\"quote\"},{\"a2a_skill\":\"pay_pix_with_usdt\",\"id\":\"pay_pix_with_usdt\",\"type\":\"payment\"},{\"a2a_skill\":\"pay_card_bill_with_usdt\",\"id\":\"pay_card_bill_with_usdt\",\"type\":\"payment\"},{\"a2a_skill\":\"stablecoin_exchange\",\"id\":\"stablecoin_exchange\",\"type\":\"settlement\"},{\"a2a_skill\":\"capability_exchange\",\"id\":\"capability_exchange\",\"type\":\"marketplace\"},{\"endpoint\":\"https://api-production-bc748.up.railway.app/x402/capabilities/{capability}/execute\",\"id\":\"x402_capability_execution\",\"type\":\"payment_protocol\"},{\"a2a_skill\":\"get_payment_status\",\"id\":\"payment_status\",\"type\":\"status\"},{\"endpoint\":\"https://api-production-bc748.up.railway.app/agent/v1/episodes\",\"id\":\"episodes\",\"type\":\"observability\"},{\"endpoint\":\"https://api-production-bc748.up.railway.app/.well-known/agent-reputation.json\",\"id\":\"reputation\",\"type\":\"trust_metric\"},{\"endpoint\":\"https://api-production-bc748.up.railway.app/.well-known/agent-sla.json\",\"id\":\"sla\",\"type\":\"trust_metric\"}],\"objective\":\"Let autonomous agents understand how to use each ChainFX skill before execution.\",\"phase_report\":{\"acceptance_criteria\":\"An agent can read the graph and infer the correct sequence without human documentation.\",\"coverage\":[\"requires\",\"produces\",\"preconditions\",\"failure_modes\",\"recovery_actions\",\"estimated_cost\",\"expected_latency_ms\",\"policy_requirements\",\"input_schema\",\"output_schema\"],\"endpoints\":[\"https://api-production-bc748.up.railway.app/.well-known/capability-graph.json\",\"https://api-production-bc748.up.railway.app/agent/v1/capability-graph\"],\"id\":\"agent_graph_v2_report\",\"objective\":\"Discovery becomes understanding: an agent can read the graph and know dependencies, outputs, failures and recovery actions for each skill.\",\"phase\":\"1\",\"qa\":{\"expected_check\":\"capability_graph_v2_validated\",\"tool\":\"tools/agent-qa/openai-agent-pay-test\"},\"skills_mapped\":[\"list_supported_payment_methods\",\"quote_required_usdt\",\"pay_pix_with_usdt\",\"pay_card_bill_with_usdt\",\"get_payment_status\",\"stablecoin_exchange\",\"capability_exchange\",\"document_ocr\",\"llm_chat\",\"semantic_memory\",\"x402_capability_execution\"]},\"plans\":[{\"description\":\"Policy-aware PIX payment sequence.\",\"id\":\"pay_pix_with_usdt_happy_path\",\"steps\":[\"fetch_agent_card\",\"fetch_agent_policy_discovery\",\"ensure_agent_policy_or_call_agent_connect\",\"call_quote_required_usdt\",\"call_pay_pix_with_usdt\",\"deposit_exact_required_usdt_on_bsc\",\"poll_get_payment_status\",\"read_episode_and_reputation\"]},{\"description\":\"Pay-p"
+          }
+        },
+        "capability_compositions": {
+          "status": 200,
+          "latency_ms": 673,
+          "body": {
+            "truncated": true,
+            "preview": "{\"agent\":\"ChainFX Agent Pay\",\"compositions\":[{\"description\":\"Extract a document, summarize it, save the summary to semantic memory and create a USDT-funded PIX payment intent.\",\"estimated_cost\":{\"sources\":[\"capability_plan_or_x402\",\"quote_required_usdt\"],\"type\":\"mixed\"},\"estimated_latency_ms\":{\"p95\":45000},\"execution_mode\":\"manual_or_agent_driven\",\"id\":\"document_to_memory_payment\",\"name\":\"OCR, summarize, store and pay\",\"pipeline\":[{\"operation\":\"extract_text\",\"protocols\":[\"a2a\",\"mcp\",\"x402\"],\"skill\":\"document_ocr\",\"step\":\"extract_document_text\"},{\"operation\":\"summarize\",\"protocols\":[\"a2a\",\"mcp\"],\"skill\":\"llm_chat\",\"step\":\"summarize_text\"},{\"operation\":\"save_memory\",\"protocols\":[\"a2a\",\"mcp\"],\"skill\":\"semantic_memory\",\"step\":\"save_summary\"},{\"operation\":\"create_payment_intent\",\"protocols\":[\"a2a\"],\"skill\":\"pay_pix_with_usdt\",\"step\":\"create_payment_intent\"}],\"planner_goal_aliases\":[\"ocr summarize store pay\",\"read document and pay pix\",\"document to memory payment\"],\"produces\":[\"ocr_text\",\"summary\",\"memory_record\",\"payment_intent\"],\"requires\":[\"agent_policy\",\"capability_grant_or_x402_payment\",\"payment_asset_usdt\",\"agent_wallet\",\"document_url_or_payload\",\"amount_brl\",\"pix_key\"]},{\"description\":\"Discover policy, quote required USDT and create a PIX intent without exposing REST internals to the agent.\",\"estimated_cost\":{\"source\":\"quote_required_usdt\",\"type\":\"dynamic\"},\"estimated_latency_ms\":{\"p95\":15000},\"execution_mode\":\"manual_or_agent_driven\",\"id\":\"pix_payment_with_quote\",\"name\":\"Quote and create PIX payment intent\",\"pipeline\":[{\"operation\":\"read_policy_discovery\",\"protocols\":[\"http\"],\"skill\":\"agent_policy\",\"step\":\"fetch_policy\"},{\"operation\":\"quote\",\"protocols\":[\"a2a\"],\"skill\":\"quote_required_usdt\",\"step\":\"quote_payment\"},{\"operation\":\"create_payment_intent\",\"protocols\":[\"a2a\"],\"skill\":\"pay_pix_with_usdt\",\"step\":\"create_payment_intent\"},{\"operation\":\"poll\",\"protocols\":[\"a2a\"],\"skill\":\"get_payment_status\",\"step\":\"poll_status\"}],\"planner_goal_aliases\":[\"pay pix\",\"pix payment\",\"send brl using usdt\",\"pay a pix recipient using usdt\"],\"produces\":[\"quote\",\"required_usdt\",\"payment_intent\",\"payment_address\",\"status\"],\"requires\":[\"agent_policy\",\"agent_wallet\",\"amount_brl\",\"pix_key\",\"payment_asset_usdt\"]},{\"description\":\"Receive an HTTP 402 challenge for document OCR, pay on BSC and replay with PAYMENT proof.\",\"estimated_cost\":{\"source\":\"payment_requirements.amount\",\"type\":\"exact\"},\"estimated_latency_ms\":{\"p95\":20000},\"execution_mode\":\"manual_or_agent_driven\",\"id\":\"x402_document_ocr\",\"name\":\"Pay-per-call OCR through x402\",\"pipeline\":[{\"operation\":\"discover\",\"protocols\":[\"http\"],\"skill\":\"x402_capability_execution\",\"step\":\"discover_x402\"},{\"operation\":\"extract_text\",\"protocols\":[\"x402\"],\"skill\":\"document_ocr\",\"step\":\"request_without_payment\"},{\"operation\":\"transfer_usdt\",\"protocols\":[\"bsc\"],\"skill\":\"stablecoin_payment\",\"step\":\"pay_requirements\"},{\"operation\":\"extract_text\",\"protocols\":[\"x402\"],\"skill\":\"document_ocr\",\"step\":\"replay_with_payment\"}],\"planner_goal_aliases\":[\"ocr with x402\",\"pay per call ocr\",\"extract text with http 402\"],\"produces\":[\"payment_requirements\",\"purchase_id\",\"ocr_text\",\"payment_response\"],\"requires\":[\"agent_wallet\",\"payer_wallet\",\"payment_asset_usdt\",\"document_url_or_payload\"]},{\"description\":\"Plan a USDT/USDC stablecoin exchange before creating a payment intent.\",\"estimated_cost\":{\"source\":\"stablecoin_exchange plus quote_required_usdt\",\"type\":\"dynamic\"},\"estimated_latency_ms\":{\"p95\":25000},\"execution_mode\":\"manual_or_agent_driven\",\"id\":\"stablecoin_exchange_then_payment\",\"name\":\"Exchange stablecoin and pay\",\"pipeline\":[{\"operation\":\"read_policy_discovery\",\"protocols\":[\"http\"],\"skill\":\"agent_policy\",\"step\":\"fetch_policy\"},{\"operation\":\"quote\",\"protocols\":[\"a2a\"],\"skill\":\"stablecoin_exchange\",\"step\":\"quote_exchange\"},{\"operation\":\"quote\",\"protocols\":[\"a2a\"],\"skill\":\"quote_required_usdt\",\"step\":\"quote_payment\"},{\"operation\":\"create_payment_intent\",\"protocols\":[\"a2a\"],\"skill\":\"pay_pix_with_usdt\",\"step\":\"create_payment_intent\""
+          }
+        },
+        "graph_registry": {
+          "status": 200,
+          "latency_ms": 752,
+          "body": {
+            "truncated": true,
+            "preview": "{\"agent\":\"ChainFX\",\"agent_card\":\"https://api-production-bc748.up.railway.app/.well-known/agent-card.json\",\"description\":\"Relational registry that exposes how ChainFX trust, planning, payment, settlement and marketplace capabilities connect.\",\"graph\":{\"marketplace\":[\"capability_exchange\",\"document_ocr\",\"llm_chat\",\"semantic_memory\"],\"observability\":[\"agent_episodes\",\"episode_derived_reputation\",\"phase_reports\"],\"payment\":[\"quote_required_usdt\",\"pay_pix_with_usdt\",\"pay_card_bill_with_usdt\",\"get_payment_status\"],\"payment_protocols\":[\"a2a\",\"mcp\",\"x402\"],\"planning\":[\"capability_graph_v2\",\"capability_compositions\",\"planner_api\"],\"stablecoin\":[\"USDT\",\"USDC\",\"BSC\",\"stablecoin_exchange\"],\"trust\":[\"jwks\",\"agent_card_signature\",\"agent_policy\",\"agent_sla\",\"agent_reputation\"]},\"locators\":{\"a2a\":\"https://api-production-bc748.up.railway.app/a2a\",\"agent_card\":\"https://api-production-bc748.up.railway.app/.well-known/agent-card.json\",\"capability_compositions\":\"https://api-production-bc748.up.railway.app/.well-known/capability-compositions.json\",\"capability_graph\":\"https://api-production-bc748.up.railway.app/.well-known/capability-graph.json\",\"episodes\":\"https://api-production-bc748.up.railway.app/agent/v1/episodes\",\"jwks\":\"https://api-production-bc748.up.railway.app/.well-known/jwks.json\",\"mcp\":\"https://api-production-bc748.up.railway.app/mcp/initialize\",\"planner_api\":\"https://api-production-bc748.up.railway.app/agent/v1/plans\",\"policy\":\"https://api-production-bc748.up.railway.app/.well-known/agent-policy.json\",\"registries\":\"https://api-production-bc748.up.railway.app/agent/v1/registries\",\"reputation\":\"https://api-production-bc748.up.railway.app/.well-known/agent-reputation.json\",\"signature\":\"https://api-production-bc748.up.railway.app/.well-known/agent-card.signature\",\"sla\":\"https://api-production-bc748.up.railway.app/.well-known/agent-sla.json\",\"x402\":\"https://api-production-bc748.up.railway.app/.well-known/x402.json\"},\"name\":\"ChainFX Agent Capability Graph Registry\",\"phase_report\":{\"acceptance\":\"Another agent can compare ChainFX as a provider using episode-derived reputation and understand how payment, marketplace, stablecoin, trust and planning capabilities connect.\",\"agent_qa_validation\":[\"episode_reputation_validated\",\"graph_registry_fetched\",\"graph_registry_validated\"],\"episodes_aggregated\":\"https://api-production-bc748.up.railway.app/agent/v1/episodes\",\"failures_by_type\":\"reputation.failures_by_type\",\"graph_registry_published\":true,\"id\":\"reputation_graph_registry_report\",\"latency_percentiles\":\"reputation.latency_ms\",\"metrics_by_skill\":\"https://api-production-bc748.up.railway.app/.well-known/agent-reputation.json\",\"metrics_source\":\"agent_episodes\",\"phase\":\"3\",\"score_calculated\":\"reputation.score\"},\"provider_comparison\":{\"decision_fields\":[\"reputation.score\",\"reputation.success_rate\",\"reputation.latency_ms.p95\",\"reputation.by_skill\",\"graph.payment\",\"graph.marketplace\",\"graph.trust\"],\"graph\":\"https://api-production-bc748.up.railway.app/.well-known/capability-graph.json\",\"graph_index\":\"https://api-production-bc748.up.railway.app/.well-known/capability-graph-registry.json\",\"identity\":\"https://api-production-bc748.up.railway.app/.well-known/jwks.json\",\"reputation\":\"https://api-production-bc748.up.railway.app/.well-known/agent-reputation.json\",\"sla\":\"https://api-production-bc748.up.railway.app/.well-known/agent-sla.json\"},\"relations\":[{\"from\":\"agent_card\",\"relation\":\"announces\",\"to\":[\"skills\",\"identity\",\"planning\",\"registries\"]},{\"from\":\"agent_card_signature\",\"relation\":\"verifies\",\"to\":\"agent_card\"},{\"from\":\"agent_policy\",\"relation\":\"gates\",\"to\":[\"pay_pix_with_usdt\",\"pay_card_bill_with_usdt\",\"stablecoin_exchange\",\"capability_purchase\"]},{\"from\":\"quote_required_usdt\",\"relation\":\"precedes\",\"to\":[\"pay_pix_with_usdt\",\"pay_card_bill_with_usdt\"]},{\"from\":\"pay_pix_with_usdt\",\"relation\":\"produces\",\"to\":[\"payment_intent\",\"payment_address\",\"required_usdt\"]},{\"from\":\"payment_intent\",\"relation\":\"observed_by\",\"to\":\"get_payment_status\"},{\"from\":\"document_ocr"
+          }
+        }
+      }
+    },
+    {
+      "name": "planner:create_plan",
+      "at": "2026-07-18T04:05:22.751Z",
+      "request": {
+        "url": "https://api-production-bc748.up.railway.app/agent/v1/plans",
+        "method": "POST",
+        "body": {
+          "goal": "Pay a PIX recipient using USDT after quoting the amount",
+          "agent_wallet": "0x830000000000000000000000000000000000019a",
+          "amount_brl": "10.00",
+          "pix_key": "+5511999999999",
+          "constraints": {
+            "max_cost_usdt": "10",
+            "network": "BSC",
+            "asset": "USDT"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "latency_ms": 655,
+        "body": {
+          "composition_id": "pix_payment_with_quote",
+          "constraints": {
+            "asset": "USDT",
+            "max_cost_usdt": "10",
+            "network": "BSC"
+          },
+          "created_at": "2026-07-18T04:05:21Z",
+          "endpoints": {
+            "a2a": "https://api-production-bc748.up.railway.app/a2a",
+            "agent_card": "https://api-production-bc748.up.railway.app/.well-known/agent-card.json",
+            "compositions": "https://api-production-bc748.up.railway.app/.well-known/capability-compositions.json",
+            "graph": "https://api-production-bc748.up.railway.app/.well-known/capability-graph.json",
+            "policy": "https://api-production-bc748.up.railway.app/.well-known/agent-policy.json",
+            "x402": "https://api-production-bc748.up.railway.app/.well-known/x402.json"
+          },
+          "estimated_cost": {
+            "asset": "USDT",
+            "cost_constraint": "within_limit",
+            "estimated_cost_usdt": "2.148438",
+            "fee_bps": 1000,
+            "max_cost_usdt": "10",
+            "rate_usdt_brl": "5.1200",
+            "source": "local_price_worker_estimate",
+            "type": "dynamic"
+          },
+          "estimated_cost_usdt": "2.148438",
+          "estimated_latency_ms": 15000,
+          "executes_now": false,
+          "execution_mode": "manual_or_agent_driven",
+          "goal": "Pay a PIX recipient using USDT after quoting the amount",
+          "missing_requirements": [
+            "agent_policy_verification"
+          ],
+          "phase_report": {
+            "agent_qa_expected_check": "planner_api_validated",
+            "estimated_cost_usdt": "2.148438",
+            "estimated_latency_ms": 15000,
+            "id": "planning_layer_report",
+            "missing_requirements": [
+              "agent_policy_verification"
+            ],
+            "phase": "2",
+            "plan_generated_by_goal": "Pay a PIX recipient using USDT after quoting the amount"
+          },
+          "plan_id": "plan_378c01d89549b405974e478a",
+          "produces": [
+            "quote",
+            "required_usdt",
+            "payment_intent",
+            "payment_address",
+            "status"
+          ],
+          "recovery": {
+            "if_auth_required": "send_authorization_bearer_chainfx_api_key",
+            "if_missing_policy": "call_agent_connect_or_activate_policy",
+            "if_over_budget": "lower_amount_or_update_constraints"
+          },
+          "requires": [
+            "agent_wallet",
+            "amount_brl",
+            "pix_key",
+            "agent_policy",
+            "payment_asset_usdt"
+          ],
+          "status": "input_required",
+          "steps": [
+            "fetch_policy",
+            "quote_required_usdt",
+            "pay_pix_with_usdt",
+            "poll_get_payment_status"
+          ]
+        }
+      }
+    },
+    {
+      "name": "a2a:list_supported_payment_methods",
+      "at": "2026-07-18T04:05:23.141Z",
+      "request": {
+        "url": "https://api-production-bc748.up.railway.app/a2a",
+        "method": "POST",
+        "headers": {},
+        "body": {
+          "jsonrpc": "2.0",
+          "id": "agentqa-1784347522761-d4aa630256415",
+          "skill": "list_supported_payment_methods",
+          "arguments": {}
+        }
+      },
+      "response": {
+        "status": 200,
+        "latency_ms": 379,
+        "body": {
+          "id": "agentqa-1784347522761-d4aa630256415",
+          "jsonrpc": "2.0",
+          "result": {
+            "payment_methods": [
+              {
+                "create_skill": "pay_pix_with_usdt",
+                "fee_bps": 1000,
+                "funding_asset": "USDT",
+                "funding_network": "BSC",
+                "type": "pix"
+              },
+              {
+                "create_skill": "pay_card_bill_with_usdt",
+                "fee_bps": 1900,
+                "funding_asset": "USDT",
+                "funding_network": "BSC",
+                "type": "credit_card"
+              }
+            ],
+            "quote_skill": "quote_required_usdt",
+            "rest": {
+              "create": "https://api-production-bc748.up.railway.app/agent/v1/pay",
+              "status": "https://api-production-bc748.up.railway.app/agent/v1/pay/{id}"
+            },
+            "status_skill": "get_payment_status"
+          },
+          "skill": "list_supported_payment_methods",
+          "status": "completed"
+        }
+      }
+    },
+    {
+      "name": "a2a-task:create:list_supported_payment_methods",
+      "at": "2026-07-18T04:05:23.506Z",
+      "request": {
+        "url": "https://api-production-bc748.up.railway.app/a2a/tasks",
+        "method": "POST",
+        "headers": {},
+        "body": {
+          "jsonrpc": "2.0",
+          "id": "agentqa-task-1784347523142-177ca3492e4ce",
+          "skill": "list_supported_payment_methods",
+          "arguments": {}
+        }
+      },
+      "response": {
+        "status": 202,
+        "latency_ms": 362,
+        "body": {
+          "created_at": "2026-07-18T04:05:22.215518493Z",
+          "events": [
+            {
+              "id": "evt_e4739fa8abc506f6ef36e538",
+              "task_id": "task_ecbcf23947973f0ebcbebfdd2c377020",
+              "state": "submitted",
+              "message": "Task submitted.",
+              "created_at": "2026-07-18T04:05:22.215518903Z"
+            }
+          ],
+          "events_url": "https://api-production-bc748.up.railway.app/a2a/tasks/task_ecbcf23947973f0ebcbebfdd2c377020/events",
+          "id": "task_ecbcf23947973f0ebcbebfdd2c377020",
+          "input_hash": "504300df3301db86c7b2278729c250b9ad8f7449db0c527107fa46b7aea0e25f",
+          "skill": "list_supported_payment_methods",
+          "state": "submitted",
+          "status_code": 202,
+          "status_url": "https://api-production-bc748.up.railway.app/a2a/tasks/task_ecbcf23947973f0ebcbebfdd2c377020",
+          "updated_at": "2026-07-18T04:05:22.215518573Z"
+        }
+      }
+    },
+    {
+      "name": "a2a-task:status",
+      "at": "2026-07-18T04:05:23.868Z",
+      "request": {
+        "url": "https://api-production-bc748.up.railway.app/a2a/tasks/task_ecbcf23947973f0ebcbebfdd2c377020",
+        "method": "GET"
+      },
+      "response": {
+        "status": 200,
+        "latency_ms": 360,
+        "body": {
+          "completed_at": "2026-07-18T04:05:22.21579473Z",
+          "created_at": "2026-07-18T04:05:22.215518493Z",
+          "episode_id": "ep_807f337144589e46f7915888",
+          "events": [
+            {
+              "id": "evt_e4739fa8abc506f6ef36e538",
+              "task_id": "task_ecbcf23947973f0ebcbebfdd2c377020",
+              "state": "submitted",
+              "message": "Task submitted.",
+              "created_at": "2026-07-18T04:05:22.215518903Z"
+            },
+            {
+              "id": "evt_4f3a1a08b6eeb5896e9f9fc9",
+              "task_id": "task_ecbcf23947973f0ebcbebfdd2c377020",
+              "state": "working",
+              "message": "Task execution started.",
+              "created_at": "2026-07-18T04:05:22.215765941Z"
+            },
+            {
+              "id": "evt_fc179fcc8e5cb0c659fbae90",
+              "task_id": "task_ecbcf23947973f0ebcbebfdd2c377020",
+              "state": "completed",
+              "message": "Task completed.",
+              "data": {
+                "episode_id": "ep_807f337144589e46f7915888",
+                "status_code": 200
+              },
+              "created_at": "2026-07-18T04:05:22.21582989Z"
+            }
+          ],
+          "events_url": "https://api-production-bc748.up.railway.app/a2a/tasks/task_ecbcf23947973f0ebcbebfdd2c377020/events",
+          "id": "task_ecbcf23947973f0ebcbebfdd2c377020",
+          "input_hash": "504300df3301db86c7b2278729c250b9ad8f7449db0c527107fa46b7aea0e25f",
+          "result": {
+            "payment_methods": [
+              {
+                "create_skill": "pay_pix_with_usdt",
+                "fee_bps": 1000,
+                "funding_asset": "USDT",
+                "funding_network": "BSC",
+                "type": "pix"
+              },
+              {
+                "create_skill": "pay_card_bill_with_usdt",
+                "fee_bps": 1900,
+                "funding_asset": "USDT",
+                "funding_network": "BSC",
+                "type": "credit_card"
+              }
+            ],
+            "quote_skill": "quote_required_usdt",
+            "rest": {
+              "create": "https://api-production-bc748.up.railway.app/agent/v1/pay",
+              "status": "https://api-production-bc748.up.railway.app/agent/v1/pay/{id}"
+            },
+            "status_skill": "get_payment_status"
+          },
+          "result_hash": "e6f97dcc6ef713341bfad69dfbb5223c001c2a778ee5e5a2f7458946719da32e",
+          "skill": "list_supported_payment_methods",
+          "state": "completed",
+          "status_code": 200,
+          "status_url": "https://api-production-bc748.up.railway.app/a2a/tasks/task_ecbcf23947973f0ebcbebfdd2c377020",
+          "updated_at": "2026-07-18T04:05:22.21579473Z"
+        }
+      }
+    },
+    {
+      "name": "x402:capability_challenge",
+      "at": "2026-07-18T04:05:26.053Z",
+      "request": {
+        "url": "https://api-production-bc748.up.railway.app/x402/capabilities/document_ocr/execute",
+        "method": "POST"
+      },
+      "response": {
+        "status": 400,
+        "latency_ms": 2184,
+        "body": {
+          "error": "AGENT_POLICY_REQUIRED: Agent policy is required for this operation."
+        }
+      }
+    },
+    {
+      "name": "a2a:quote_required_usdt",
+      "at": "2026-07-18T04:05:26.420Z",
+      "request": {
+        "url": "https://api-production-bc748.up.railway.app/a2a",
+        "method": "POST",
+        "headers": {},
+        "body": {
+          "jsonrpc": "2.0",
+          "id": "agentqa-1784347526054-f4035a6fabf79",
+          "skill": "quote_required_usdt",
+          "arguments": {
+            "type": "pix",
+            "amount_brl": "10.00",
+            "agent_wallet": "0x830000000000000000000000000000000000019a"
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "latency_ms": 364,
+        "body": {
+          "error": {
+            "error": "Authorization Bearer ChainFX API key is required"
+          },
+          "id": "agentqa-1784347526054-f4035a6fabf79",
+          "jsonrpc": "2.0",
+          "status": "failed",
+          "status_code": 401
+        }
+      }
+    }
+  ],
+  "completed": false,
+  "a2a_url": "https://api-production-bc748.up.railway.app/a2a",
+  "a2a_tasks_url": "https://api-production-bc748.up.railway.app/a2a/tasks",
+  "episode_derived_reputation": {
+    "score": "AAA",
+    "total_episodes": 0,
+    "success_rate": "n/a",
+    "has_latency_percentiles": true,
+    "by_skill_count": 0,
+    "failures_by_type_count": 0,
+    "phase_report_id": "reputation_graph_registry_report",
+    "valid": true
+  },
+  "capability_graph_v2": {
+    "version": "2.0.0",
+    "skill_contract_count": 11,
+    "pay_pix_contract_found": true,
+    "missing_required_arrays": [],
+    "has_failure_modes": true,
+    "has_estimated_cost": true,
+    "has_expected_latency": true,
+    "phase_report_id": "agent_graph_v2_report",
+    "phase_report_detected": true,
+    "valid": true
+  },
+  "capability_compositions": {
+    "version": "1.0.0",
+    "composition_count": 4,
+    "document_to_memory_payment_found": true,
+    "pix_payment_with_quote_found": true,
+    "phase_report_id": "planning_layer_report",
+    "valid": true
+  },
+  "graph_registry": {
+    "version": "1.0.0",
+    "missing_groups": [],
+    "relation_count": 11,
+    "provider_comparison": true,
+    "phase_report_id": "reputation_graph_registry_report",
+    "valid": true
+  },
+  "planner_api": {
+    "plan_id": "plan_378c01d89549b405974e478a",
+    "status": "input_required",
+    "composition_id": "pix_payment_with_quote",
+    "step_count": 4,
+    "executes_now": false,
+    "has_missing_requirements": true,
+    "estimated_cost_usdt": "2.148438",
+    "estimated_latency_ms": 15000,
+    "phase_report_id": "planning_layer_report",
+    "valid": true
+  },
+  "agent_card_verification": {
+    "hashOk": true,
+    "signatureOk": true,
+    "actualHash": "1db045209740f4c6d735dffb89c2761546c30c97e0730198438309d1415fef71",
+    "expectedHash": "1db045209740f4c6d735dffb89c2761546c30c97e0730198438309d1415fef71",
+    "publicKeyId": "chainfx-agent-pay-ed25519-ce7bc2a82e54"
+  },
+  "discovered_skill_count": 10,
+  "discovered_skills": [
+    "pay_pix_with_usdt",
+    "pay_card_bill_with_usdt",
+    "get_payment_status",
+    "quote_required_usdt",
+    "list_supported_payment_methods",
+    "stablecoin_exchange",
+    "capability_exchange",
+    "semantic_memory",
+    "document_ocr",
+    "llm_chat"
+  ],
+  "a2a_task_id": "task_ecbcf23947973f0ebcbebfdd2c377020",
+  "outcome": "discovery_ok_auth_required",
+  "failed_at": "quote_required_auth",
+  "finished_at": "2026-07-18T04:05:26.420Z"
+}

@@ -1,0 +1,208 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.techleadevelopers/chainfx-mcp",
+  "title": "ChainFX Capability Network",
+  "description": "Agent Pay and planning graph for stablecoin commerce.",
+  "websiteUrl": "https://www.chainfx.store",
+  "repository": {
+    "url": "https://github.com/chainfx/payment-gateway",
+    "source": "github"
+  },
+  "version": "1.4.2",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://api-production-bc748.up.railway.app/mcp/initialize",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Optional for discovery. Required as Bearer ChainFX API key for purchases, execution, private status and M2M payments.",
+          "isRequired": false,
+          "isSecret": true
+        }
+      ]
+    }
+  ],
+  "_meta": {
+    "io.modelcontextprotocol.registry/publisher-provided": {
+      "tool": "mcp-publisher",
+      "version": "1.4.2",
+      "build_info": {
+        "service": "chainfx-mcp",
+        "public_title": "ChainFX Capability Network MCP",
+        "release_channel": "production",
+        "timestamp": "2026-07-11T00:00:00Z"
+      }
+    },
+    "store.chainfx/product": {
+      "category": "capability-marketplace",
+      "positioning": "A2A payment agent, capability network and planning graph for autonomous agents to settle real-world payments with stablecoins",
+      "product_summary": "ChainFX Agent Pay lets agents pay PIX recipients and card bills using USDT on BSC, while the broader Capability Network lets agents discover, plan, buy and execute metered digital capabilities.",
+      "primary_flow": [
+        "discover_agent_graph",
+        "plan_capability_sequence",
+        "discover_capability",
+        "purchase_capability",
+        "pay_stablecoin",
+        "receive_access_grant",
+        "execute_capability",
+        "meter_usage",
+        "settle_provider"
+      ],
+      "agent_payments_flow": [
+        "create_payment_intent",
+        "quote_required_usdt",
+        "deposit_exact_usdt_to_payment_address",
+        "match_deposit_by_address",
+        "chainfx_pays_pix_payment_link_or_card_bill",
+        "attach_settlement_receipt",
+        "poll_payment_intent_status"
+      ],
+      "featured_tools": [
+        "searchCapabilities",
+        "listCapabilities",
+        "getCapability",
+        "getCapabilityContract",
+        "purchaseCapability",
+        "getPurchase",
+        "executeCapability",
+        "chooseRoute",
+        "getUsage",
+        "listAssets",
+        "quote",
+        "trade",
+        "settlementStatus",
+        "createPaymentIntent",
+        "getPaymentIntent",
+        "listAgentPaymentIntents"
+      ],
+      "featured_capabilities": [
+        "agent_payments",
+        "semantic_memory",
+        "llm_chat",
+        "document_ocr",
+        "payments_fx",
+        "capability_discovery",
+        "aml_screening"
+      ],
+      "agent_pay": {
+        "status": "available",
+        "public_name": "ChainFX Agent Pay",
+        "positioning": "A2A payment agent that lets autonomous agents pay PIX recipients and card bills by funding intents with USDT on BSC.",
+        "agent_card": "https://api-production-bc748.up.railway.app/.well-known/agent-card.json",
+        "jwks": "https://api-production-bc748.up.railway.app/.well-known/jwks.json",
+        "signature": "https://api-production-bc748.up.railway.app/.well-known/agent-card.signature",
+        "reputation": "https://api-production-bc748.up.railway.app/.well-known/agent-reputation.json",
+        "sla": "https://api-production-bc748.up.railway.app/.well-known/agent-sla.json",
+        "a2a": "https://api-production-bc748.up.railway.app/a2a",
+        "a2a_tasks": "https://api-production-bc748.up.railway.app/a2a/tasks",
+        "a2a_task_status": "https://api-production-bc748.up.railway.app/a2a/tasks/{id}",
+        "a2a_task_events": "https://api-production-bc748.up.railway.app/a2a/tasks/{id}/events",
+        "x402_execute": "https://api-production-bc748.up.railway.app/x402/capabilities/{capability}/execute",
+        "registries": "https://api-production-bc748.up.railway.app/agent/v1/registries",
+        "agntcy": "https://api-production-bc748.up.railway.app/.well-known/agntcy.json",
+        "oasf": "https://api-production-bc748.up.railway.app/.well-known/oasf.json",
+        "registry_record": "https://api-production-bc748.up.railway.app/agent/v1/registry-records/agntcy-oasf",
+        "policy_discovery": "https://api-production-bc748.up.railway.app/.well-known/agent-policy.json",
+        "capability_graph": "https://api-production-bc748.up.railway.app/.well-known/capability-graph.json",
+        "capability_compositions": "https://api-production-bc748.up.railway.app/.well-known/capability-compositions.json",
+        "capability_graph_registry": "https://api-production-bc748.up.railway.app/.well-known/capability-graph-registry.json",
+        "graph_registry_api": "https://api-production-bc748.up.railway.app/agent/v1/graph-registry",
+        "planner_api": "https://api-production-bc748.up.railway.app/agent/v1/plans",
+        "onboarding": "https://api-production-bc748.up.railway.app/agent-pay.json",
+        "trust_layer": {
+          "identity": "Ed25519-signed Agent Card with public JWKS discovery",
+          "reputation": "Machine-readable success and latency metrics for autonomous agents",
+          "sla": "Machine-readable service objectives, fees, settlement terms and rate-limit expectations",
+          "episodes": "Authenticated execution evidence for A2A Agent Pay calls",
+          "task_lifecycle": "Asynchronous A2A tasks with submitted, working, input_required, completed, failed, canceled and rejected states plus SSE events"
+          ,
+          "x402": "HTTP 402 payment challenge for pay-per-call digital capability execution with BSC stablecoin settlement",
+          "multi_registry": "Publishable records for MCP, A2A, OpenAPI, x402 and AGNTCY/OASF-style agent directories",
+          "policy_discovery": "Machine-readable policy requirements so agents avoid AGENT_POLICY_REQUIRED failures before execution",
+          "capability_graph": "Agent Graph v2 with per-skill dependencies, preconditions, outputs, failure modes, recovery actions, cost source, latency targets and policy requirements",
+          "planner_api": "Non-executing planning API that turns goals into steps, missing requirements, cost and latency estimates",
+          "episode_derived_reputation": "Reputation score, skill success rate, latency percentiles and failure types are calculated from recent execution episodes",
+          "capability_graph_registry": "Relational registry connecting payment, marketplace, stablecoin, trust, planning and observability capabilities"
+        },
+        "skills": [
+          "pay_pix_with_usdt",
+          "pay_card_bill_with_usdt",
+          "get_payment_status",
+          "quote_required_usdt",
+          "list_supported_payment_methods",
+          "stablecoin_exchange",
+          "capability_exchange",
+          "semantic_memory",
+          "document_ocr",
+          "llm_chat"
+        ]
+      },
+      "agent_payments": {
+        "status": "available",
+        "capability_id": "agent_payments",
+        "description": "Agents can pay real-world PIX recipients, payment links or card bills by funding an intent with the exact required USDT. ChainFX performs the fiat payment after deposit confirmation and returns settled status plus receipt.",
+        "types": [
+          "pix",
+          "credit_card"
+        ],
+        "destination_fields": {
+          "pix": [
+            "pix_key"
+          ],
+          "credit_card": [
+            "payment_link",
+            "barcode",
+            "beneficiary_name",
+            "due_date"
+          ]
+        },
+        "funding_asset": "USDT",
+        "funding_network": "BSC",
+        "rest_endpoints": {
+          "create": "https://api-production-bc748.up.railway.app/agent/v1/pay",
+          "status": "https://api-production-bc748.up.railway.app/agent/v1/pay/{id}"
+        },
+        "mcp_tools": [
+          "createPaymentIntent",
+          "getPaymentIntent",
+          "listAgentPaymentIntents"
+        ],
+        "settlement_policy": "ChainFX pays the fiat destination only after the agent-funded USDT deposit is confirmed.",
+        "agent_result": "Agents poll getPaymentIntent and receive lifecycle status, deposit transaction, settlement status and settlement_receipt_url or settlement_receipt_note when paid."
+      },
+      "payments": {
+        "assets": [
+          "USDT",
+          "USDC"
+        ],
+        "networks": [
+          "BSC"
+        ],
+        "settlement": "stablecoin"
+      },
+      "production_readiness": {
+        "catalog": true,
+        "metering_billing_settlement": true,
+        "mock_dev_fallback": false,
+        "seed_fixtures": false
+      },
+      "docs": {
+        "openapi": "https://api-production-bc748.up.railway.app/openapi.json",
+        "agent_capabilities": "https://api-production-bc748.up.railway.app/agent/v1/capabilities",
+        "agent_reputation": "https://api-production-bc748.up.railway.app/agent/v1/reputation",
+        "agent_sla": "https://api-production-bc748.up.railway.app/agent/v1/sla",
+        "agent_registries": "https://api-production-bc748.up.railway.app/agent/v1/registries",
+        "agent_policy": "https://api-production-bc748.up.railway.app/.well-known/agent-policy.json",
+        "capability_graph": "https://api-production-bc748.up.railway.app/.well-known/capability-graph.json",
+        "capability_compositions": "https://api-production-bc748.up.railway.app/.well-known/capability-compositions.json",
+        "capability_graph_registry": "https://api-production-bc748.up.railway.app/.well-known/capability-graph-registry.json",
+        "graph_registry_api": "https://api-production-bc748.up.railway.app/agent/v1/graph-registry",
+        "planner_api": "https://api-production-bc748.up.railway.app/agent/v1/plans",
+        "agntcy": "https://api-production-bc748.up.railway.app/.well-known/agntcy.json",
+        "oasf": "https://api-production-bc748.up.railway.app/.well-known/oasf.json",
+        "well_known": "https://api-production-bc748.up.railway.app/.well-known/ai-services.json"
+      }
+    }
+  }
+}

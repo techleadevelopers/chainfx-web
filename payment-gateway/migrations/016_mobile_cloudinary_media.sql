@@ -1,0 +1,6 @@
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(2048);
+
+ALTER TABLE kyc_requests
+  ADD COLUMN IF NOT EXISTS document_back_url VARCHAR(2048),
+  ADD COLUMN IF NOT EXISTS facial_video_url VARCHAR(2048);

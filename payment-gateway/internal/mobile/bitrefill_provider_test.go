@@ -1,0 +1,93 @@
+package mobile
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+func TestBitrefillProviderUsesBearerAndMapsProducts(t *testing.T) {
+	t.Setenv("BITREFILL_API_KEY", "test-api-key")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Authorization"); got != "Bearer test-api-key" {
+			t.Fatalf("Authorization header = %q", got)
+		}
+		if got := r.Header.Get("User-Agent"); got == "" {
+			t.Fatalf("missing User-Agent")
+		}
+		if r.URL.Path != "/products" {
+			t.Fatalf("path = %s", r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"data": []map[string]any{
+				{
+					"id":         "test-gift-card-code",
+					"name":       "Test Gift Card Code",
+					"country":    "BR",
+					"currency":   "BRL",
+					"categories": []string{"giftcard", "games"},
+					"in_stock":   true,
+					"packages": []map[string]any{
+						{"package_id": "test-gift-card-code<&>10", "value": 10},
+					},
+				},
+			},
+		})
+	}))
+	defer server.Close()
+	t.Setenv("BITREFILL_BASE_URL", server.URL)
+
+	products, err := newBitrefillProvider().ListProducts(context.Background(), commerceProductFilter{Country: "BR"})
+	if err != nil {
+		t.Fatalf("ListProducts returned error: %v", err)
+	}
+	if len(products) != 1 {
+		t.Fatalf("expected 1 product, got %d", len(products))
+	}
+	product := products[0]
+	if product.Provider != "bitrefill" || product.ProviderProductID != "test-gift-card-code" {
+		t.Fatalf("unexpected product: %+v", product)
+	}
+	if product.DenominationType != "fixed" || len(product.Packages) != 1 || product.Packages[0].ID == "" {
+		t.Fatalf("packages not normalized: %+v", product)
+	}
+}
+
+func TestBitrefillProviderMapsUnauthorized(t *testing.T) {
+	t.Setenv("BITREFILL_API_KEY", "test-api-key")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+	}))
+	defer server.Close()
+	t.Setenv("BITREFILL_BASE_URL", server.URL)
+
+	_, err := newBitrefillProvider().ListProducts(context.Background(), commerceProductFilter{})
+	providerErr, ok := err.(bitrefillProviderError)
+	if !ok {
+		t.Fatalf("expected bitrefillProviderError, got %T %v", err, err)
+	}
+	if providerErr.Code != "provider_unauthorized" || providerErr.HTTPStatus != http.StatusUnauthorized {
+		t.Fatalf("unexpected error mapping: %+v", providerErr)
+	}
+}
+
+func TestBitrefillProviderPurchaseRequiresLiveFlag(t *testing.T) {
+	t.Setenv("BITREFILL_API_KEY", "test-api-key")
+	t.Setenv("BITREFILL_LIVE_PURCHASES_ENABLED", "false")
+
+	_, err := newBitrefillProvider().Purchase(context.Background(), commercePurchaseRequest{
+		Product:        commerceProduct{ProviderProductID: "test-gift-card-code"},
+		Quantity:       1,
+		UnitPriceMinor: 1000,
+	})
+	providerErr, ok := err.(bitrefillProviderError)
+	if !ok {
+		t.Fatalf("expected bitrefillProviderError, got %T %v", err, err)
+	}
+	if providerErr.Code != "live_purchases_disabled" {
+		t.Fatalf("unexpected code: %s", providerErr.Code)
+	}
+}

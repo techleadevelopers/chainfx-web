@@ -1,0 +1,21 @@
+{
+  "name": "@chainfx/sdk",
+  "version": "0.1.0",
+  "description": "Node SDK for the ChainFX Digital FX Payments API.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "chainfx",
+    "pix",
+    "stablecoin",
+    "payments",
+    "usdt"
+  ],
+  "license": "UNLICENSED"
+}

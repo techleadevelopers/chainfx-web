@@ -1,0 +1,13 @@
+[project]
+name = "chainfx-sdk"
+version = "0.1.0"
+description = "Python SDK for the ChainFX Digital FX Payments API."
+requires-python = ">=3.10"
+authors = [
+  { name = "ChainFX" }
+]
+license = { text = "UNLICENSED" }
+keywords = ["chainfx", "pix", "stablecoin", "payments", "usdt"]
+
+[tool.setuptools]
+py-modules = ["chainfx"]

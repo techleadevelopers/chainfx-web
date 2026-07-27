@@ -1,0 +1,814 @@
+{
+  "components": {
+    "parameters": {
+      "CustomerAccessToken": {
+        "in": "header",
+        "name": "X-Customer-Access-Token",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "IdempotencyKey": {
+        "in": "header",
+        "name": "Idempotency-Key",
+        "required": true,
+        "schema": {
+          "maxLength": 128,
+          "minLength": 8,
+          "type": "string"
+        }
+      }
+    },
+    "responses": {
+      "Error": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/APIError"
+            }
+          }
+        },
+        "description": "Standard error response."
+      }
+    },
+    "schemas": {
+      "APIError": {
+        "properties": {
+          "code": {
+            "examples": [
+              "QUOTE_EXPIRED",
+              "IDEMPOTENCY_PAYLOAD_MISMATCH"
+            ],
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "type": "object"
+      },
+      "AgentTradeExecuteRequest": {
+        "properties": {
+          "idempotencyKey": {
+            "type": "string"
+          },
+          "requestHash": {
+            "type": "string"
+          },
+          "tradeIntentId": {
+            "type": "string"
+          },
+          "txHash": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tradeIntentId",
+          "txHash",
+          "idempotencyKey"
+        ],
+        "type": "object"
+      },
+      "AgentTradeIntent": {
+        "properties": {
+          "agentWallet": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "feeBps": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "network": {
+            "type": "string"
+          },
+          "payAmount": {
+            "type": "number"
+          },
+          "payAsset": {
+            "type": "string"
+          },
+          "receiveAmount": {
+            "type": "number"
+          },
+          "receiveAsset": {
+            "type": "string"
+          },
+          "settlementTxHash": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "paid",
+              "settled",
+              "expired",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "txHash": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AgentTradeQuoteRequest": {
+        "properties": {
+          "agentWallet": {
+            "description": "EVM wallet that will pay the quoted stablecoin transfer.",
+            "type": "string"
+          },
+          "amount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "amountType": {
+            "default": "receive",
+            "enum": [
+              "receive",
+              "pay"
+            ],
+            "type": "string"
+          },
+          "destinationWallet": {
+            "description": "Optional EVM recipient for receiveAsset settlement. Defaults to agentWallet.",
+            "type": "string"
+          },
+          "network": {
+            "enum": [
+              "BSC",
+              "POLYGON"
+            ],
+            "type": "string"
+          },
+          "payAsset": {
+            "description": "Stablecoin the agent will transfer to ChainFX.",
+            "enum": [
+              "USDT",
+              "USDC"
+            ],
+            "type": "string"
+          },
+          "receiveAsset": {
+            "description": "Stablecoin ChainFX will settle to destinationWallet after receipt verification.",
+            "enum": [
+              "USDT",
+              "USDC"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "payAsset",
+          "receiveAsset",
+          "network",
+          "amount",
+          "agentWallet"
+        ],
+        "type": "object"
+      },
+      "AgentTradeQuoteResponse": {
+        "properties": {
+          "chainfxFeeAmount": {
+            "type": "string"
+          },
+          "destinationWallet": {
+            "type": "string"
+          },
+          "executeUrl": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "feeBps": {
+            "type": "integer"
+          },
+          "feeCalculation": {
+            "type": "string"
+          },
+          "feeFormula": {
+            "type": "string"
+          },
+          "network": {
+            "type": "string"
+          },
+          "nonce": {
+            "type": "string"
+          },
+          "overpaymentPolicy": {
+            "type": "string"
+          },
+          "payAmount": {
+            "type": "string"
+          },
+          "payAsset": {
+            "type": "string"
+          },
+          "payTokenContract": {
+            "type": "string"
+          },
+          "paymentAddress": {
+            "type": "string"
+          },
+          "receiveAmount": {
+            "type": "string"
+          },
+          "receiveAsset": {
+            "type": "string"
+          },
+          "receiveTokenContract": {
+            "type": "string"
+          },
+          "requestHash": {
+            "type": "string"
+          },
+          "tradeIntentId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tradeIntentId",
+          "payAsset",
+          "receiveAsset",
+          "payAmount",
+          "receiveAmount",
+          "network",
+          "paymentAddress",
+          "requestHash",
+          "expiresAt",
+          "executeUrl"
+        ],
+        "type": "object"
+      },
+      "BuyRequest": {
+        "properties": {
+          "cardBrand": {
+            "enum": [
+              "visa",
+              "mastercard",
+              "amex",
+              "elo"
+            ],
+            "type": "string"
+          },
+          "customer": {
+            "properties": {
+              "birthDate": {
+                "type": "string"
+              },
+              "cpf": {
+                "type": "string"
+              },
+              "email": {
+                "format": "email",
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "installments": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "paymentMethod": {
+            "enum": [
+              "pix",
+              "credit_card"
+            ],
+            "type": "string"
+          },
+          "paymentToken": {
+            "description": "Efí payment_token generated in the frontend by the official Efí JavaScript library.",
+            "type": "string"
+          },
+          "quoteId": {
+            "type": "string"
+          },
+          "wallet": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "quoteId",
+          "wallet",
+          "customer"
+        ],
+        "type": "object"
+      },
+      "Order": {
+        "properties": {
+          "amountMinor": {
+            "type": "integer"
+          },
+          "cryptoAmountUnits": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "rate": {
+            "type": "string"
+          },
+          "side": {
+            "enum": [
+              "buy",
+              "sell"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "Quote": {
+        "properties": {
+          "amountMinor": {
+            "description": "Fiat amount in minor units, such as BRL cents.",
+            "type": "integer"
+          },
+          "asset": {
+            "type": "string"
+          },
+          "cryptoAmountUnits": {
+            "description": "Stablecoin amount in minimum units.",
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "feeMinor": {
+            "type": "integer"
+          },
+          "fiat": {
+            "type": "string"
+          },
+          "quoteId": {
+            "type": "string"
+          },
+          "rate": {
+            "description": "Decimal rate serialized as a string.",
+            "type": "string"
+          },
+          "side": {
+            "enum": [
+              "buy",
+              "sell"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "quoteId",
+          "side",
+          "asset",
+          "rate",
+          "expiresAt"
+        ],
+        "type": "object"
+      },
+      "QuoteRequest": {
+        "properties": {
+          "amount": {
+            "description": "Buy uses fiat major units; sell uses token major units.",
+            "type": "number"
+          },
+          "asset": {
+            "enum": [
+              "USDT"
+            ],
+            "type": "string"
+          },
+          "fiat": {
+            "default": "BRL",
+            "enum": [
+              "BRL",
+              "USD"
+            ],
+            "type": "string"
+          },
+          "paymentMethod": {
+            "enum": [
+              "pix",
+              "credit_card"
+            ],
+            "type": "string"
+          },
+          "side": {
+            "enum": [
+              "buy",
+              "sell"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "side",
+          "asset",
+          "amount"
+        ],
+        "type": "object"
+      },
+      "SellRequest": {
+        "properties": {
+          "network": {
+            "enum": [
+              "BSC",
+              "POLYGON"
+            ],
+            "type": "string"
+          },
+          "pix": {
+            "properties": {
+              "cpf": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "quoteId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "quoteId",
+          "pix"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "description": "Digital FX Payments API for PIX, stablecoin settlement, marketplace purchases and agent execution.",
+    "title": "ChainFX API",
+    "version": "1.0.0-phase3"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/agent/v1/assets": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Enabled and disabled agent trade assets by network."
+          }
+        },
+        "security": [],
+        "summary": "List stablecoin symbols enabled for machine-to-machine liquidity trades."
+      }
+    },
+    "/agent/v1/trade/execute": {
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentTradeExecuteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "settlementTxHash": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "tradeIntent": {
+                      "$ref": "#/components/schemas/AgentTradeIntent"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Settled trade intent."
+          },
+          "402": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "Verify on-chain stablecoin payment and settle receiveAsset to the destination wallet."
+      }
+    },
+    "/agent/v1/trade/quote": {
+      "post": {
+        "description": "This is the Agent Trade quote route. Use /quote for the public buy/sell REST quote. POST /agent/v1/quote is not implemented.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentTradeQuoteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentTradeQuoteResponse"
+                }
+              }
+            },
+            "description": "Agent trade quote and payment instructions."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "Create a machine-to-machine liquidity quote."
+      }
+    },
+    "/agent/v1/trade/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentTradeIntent"
+                }
+              }
+            },
+            "description": "Agent trade intent."
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "Read machine trade intent status."
+      }
+    },
+    "/api/buy": {
+      "post": {
+        "deprecated": true,
+        "responses": {
+          "201": {
+            "description": "Legacy buy response."
+          }
+        },
+        "summary": "Legacy buy adapter. Use /buy."
+      }
+    },
+    "/api/order": {
+      "post": {
+        "deprecated": true,
+        "responses": {
+          "201": {
+            "description": "Legacy sell response."
+          }
+        },
+        "summary": "Legacy sell adapter. Use /sell."
+      }
+    },
+    "/api/quote": {
+      "post": {
+        "deprecated": true,
+        "responses": {
+          "200": {
+            "description": "Legacy quote response."
+          }
+        },
+        "summary": "Legacy quote adapter."
+      }
+    },
+    "/buy": {
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Buy order created."
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "Consume a quote and create a fiat-to-stablecoin order."
+      }
+    },
+    "/order/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/CustomerAccessToken"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            },
+            "description": "Order."
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "Read an order by ID using customer access token."
+      }
+    },
+    "/quote": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Quote"
+                }
+              }
+            },
+            "description": "Persisted quote."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "Create and persist a rate-locked quote."
+      }
+    },
+    "/rates": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Rates."
+          }
+        },
+        "summary": "Current FX and crypto rates."
+      }
+    },
+    "/sell": {
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SellRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Sell order created."
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "Consume a quote and create a stablecoin-to-PIX order."
+      }
+    },
+    "/webhooks/retry": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Retry attempt."
+          }
+        },
+        "summary": "Retry a registered webhook subscription delivery."
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "servers": [
+    {
+      "description": "Production",
+      "url": "https://api.chainfx.com"
+    },
+    {
+      "description": "Sandbox",
+      "url": "https://sandbox-api.chainfx.com"
+    }
+  ],
+  "x-chainfx": {
+    "idempotency": {
+      "differentPayload": "returns 409",
+      "header": "Idempotency-Key",
+      "samePayload": "replays the original result"
+    },
+    "money": {
+      "fiat": "MoneyMinor, persisted in minor units.",
+      "rate": "RateDecimal, serialized as decimal string.",
+      "stablecoin": "TokenUnits, persisted in minimum units."
+    }
+  }
+}
