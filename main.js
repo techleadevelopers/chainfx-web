@@ -116,10 +116,18 @@ const priceState = {
     BNBBRL: 0,
     SOLUSDT: 0,
     SOLBRL: 0,
+    ETHUSDT: 0,
+    ETHBRL: 0,
     LINKUSDT: 0,
     LINKBRL: 0,
     AVAXUSDT: 0,
-    AVAXBRL: 0
+    AVAXBRL: 0,
+    XRPUSDT: 0,
+    XRPBRL: 0
+  },
+  changes: {
+    USDT: null, BTC: null, BNB: null, SOL: null, ETH: null,
+    LINK: null, AVAX: null, XRP: null, EURUSD: null
   }
 };
 
@@ -634,6 +642,7 @@ const applyPriceSnapshot = (snapshot) => {
   LIQUIDITY_POOLS.SOL.price = priceState.rates.SOLBRL || LIQUIDITY_POOLS.SOL.price;
   LIQUIDITY_POOLS.LINK.price = priceState.rates.LINKBRL || LIQUIDITY_POOLS.LINK.price;
   LIQUIDITY_POOLS.AVAX.price = priceState.rates.AVAXBRL || LIQUIDITY_POOLS.AVAX.price;
+  if (snapshot.changes) priceState.changes = { ...priceState.changes, ...snapshot.changes };
 
   FIAT_RATES_TO_BRL.BRL = 1;
   setFiatRateToBrl('USD', priceState.rates.USDTBRL);
@@ -858,9 +867,15 @@ const updateSellDepositWallet = () => {
 
 const syncMarketsFromPriceState = () => {
   const marketPrices = {
-    USDT: priceState.rates.USDTBRL,
-    EURUSDT: priceState.rates.EURBRL,
-    BTC: priceState.rates.BTCBRL
+    USDT:   priceState.rates.USDTBRL,
+    EURUSD: priceState.rates.EURBRL,
+    BTC:    priceState.rates.BTCBRL,
+    BNB:    priceState.rates.BNBBRL,
+    SOL:    priceState.rates.SOLBRL,
+    ETH:    priceState.rates.ETHBRL,
+    LINK:   priceState.rates.LINKBRL,
+    AVAX:   priceState.rates.AVAXBRL,
+    XRP:    priceState.rates.XRPBRL,
   };
 
   document.querySelectorAll('.markets-row[data-market-category]').forEach(row => {
@@ -872,10 +887,18 @@ const syncMarketsFromPriceState = () => {
     const priceEl = row.querySelector('.market-price');
     const pairEl = priceEl?.nextElementSibling;
     const statusEl = row.querySelector('.market-status');
+    const changeEl = row.querySelector('.market-change');
 
     if (priceEl) priceEl.textContent = priceLabel;
     if (pairEl) pairEl.textContent = `1 ${asset} = ${priceLabel}`;
     if (statusEl) statusEl.textContent = priceState.source === 'backend' ? 'Live' : 'Fallback';
+
+    const change = priceState.changes?.[asset];
+    if (changeEl && change !== null && change !== undefined) {
+      const sign = change >= 0 ? '+' : '';
+      changeEl.textContent = `${sign}${change.toFixed(2)}%`;
+      changeEl.className = 'market-change ' + (change >= 0 ? 'positive' : 'negative');
+    }
   });
 };
 
@@ -1259,11 +1282,23 @@ const normalizePriceSnapshot = (data, source = 'backend') => {
   const sellUsdtBrl = readPositiveNumber(data?.sellUsdtBrl, data?.SELLUSDTBRL, data?.sellUSDTBRL, rates?.SELL_USDT_BRL, rates?.SELLUSDTBRL);
   const usdtEur = readPositiveNumber(data?.eur, data?.USDTEUR, data?.tether?.eur, rates?.USDT_EUR, rates?.USDTEUR, rates?.EUR);
   const eurUsd = readPositiveNumber(data?.eurusd, data?.EURUSD, rates?.EUR_USD, rates?.EURUSD);
-  const btcUsdt = readPositiveNumber(data?.btcusdt, data?.BTCUSDT, rates?.BTC_USDT, rates?.BTCUSDT);
-  const bnbUsdt = readPositiveNumber(data?.bnbusdt, data?.BNBUSDT, rates?.BNB_USDT, rates?.BNBUSDT);
-  const solUsdt = readPositiveNumber(data?.solusdt, data?.SOLUSDT, rates?.SOL_USDT, rates?.SOLUSDT);
-  const linkUsdt = readPositiveNumber(data?.linkusdt, data?.LINKUSDT, rates?.LINK_USDT, rates?.LINKUSDT);
-  const avaxUsdt = readPositiveNumber(data?.avaxusdt, data?.AVAXUSDT, rates?.AVAX_USDT, rates?.AVAXUSDT);
+  const btcUsdt = readPositiveNumber(data?.btcusdt, data?.BTCUSDT, rates?.BTC_USDT, rates?.BTCUSDT, data?.bitcoin?.usd);
+  const bnbUsdt = readPositiveNumber(data?.bnbusdt, data?.BNBUSDT, rates?.BNB_USDT, rates?.BNBUSDT, data?.binancecoin?.usd);
+  const solUsdt = readPositiveNumber(data?.solusdt, data?.SOLUSDT, rates?.SOL_USDT, rates?.SOLUSDT, data?.solana?.usd);
+  const ethUsdt = readPositiveNumber(data?.ethusdt, data?.ETHUSDT, rates?.ETH_USDT, rates?.ETHUSDT, data?.ethereum?.usd);
+  const linkUsdt = readPositiveNumber(data?.linkusdt, data?.LINKUSDT, rates?.LINK_USDT, rates?.LINKUSDT, data?.chainlink?.usd);
+  const avaxUsdt = readPositiveNumber(data?.avaxusdt, data?.AVAXUSDT, rates?.AVAX_USDT, rates?.AVAXUSDT, data?.['avalanche-2']?.usd);
+  const xrpUsdt = readPositiveNumber(data?.xrpusdt, data?.XRPUSDT, rates?.XRP_USDT, rates?.XRPUSDT, data?.ripple?.usd);
+
+  // Direct BRL prices from CoinGecko nested format (more accurate than USDT×rate)
+  const bnbBrlDirect = readPositiveNumber(data?.binancecoin?.brl, data?.bnbbrl, data?.BNBBRL);
+  const solBrlDirect = readPositiveNumber(data?.solana?.brl, data?.solbrl, data?.SOLBRL);
+  const ethBrlDirect = readPositiveNumber(data?.ethereum?.brl, data?.ethbrl, data?.ETHBRL);
+  const linkBrlDirect = readPositiveNumber(data?.chainlink?.brl, data?.linkbrl, data?.LINKBRL);
+  const avaxBrlDirect = readPositiveNumber(data?.['avalanche-2']?.brl, data?.avaxbrl, data?.AVAXBRL);
+  const xrpBrlDirect = readPositiveNumber(data?.ripple?.brl, data?.xrpbrl, data?.XRPBRL);
+  const btcBrlDirect = readPositiveNumber(data?.bitcoin?.brl, data?.btcbrl, data?.BTCBRL);
+
   const eurBrl = readPositiveNumber(
     data?.eurbrl,
     data?.EURBRL,
@@ -1273,12 +1308,27 @@ const normalizePriceSnapshot = (data, source = 'backend') => {
     usdtBrl > 0 && usdtUsd > 0 && usdtEur > 0 ? usdtBrl * (usdtUsd / usdtEur) : 0
   );
 
+  // 24h change extraction (CoinGecko includes brl_24h_change with include_24hr_change=true)
+  const readChange = (...vals) => { for (const v of vals) { if (typeof v === 'number' && isFinite(v)) return v; } return null; };
+  const changes = {
+    USDT:  readChange(data?.tether?.brl_24h_change,       data?.changes?.USDT),
+    BTC:   readChange(data?.bitcoin?.brl_24h_change,      data?.changes?.BTC),
+    BNB:   readChange(data?.binancecoin?.brl_24h_change,  data?.changes?.BNB),
+    SOL:   readChange(data?.solana?.brl_24h_change,       data?.changes?.SOL),
+    ETH:   readChange(data?.ethereum?.brl_24h_change,     data?.changes?.ETH),
+    LINK:  readChange(data?.chainlink?.brl_24h_change,    data?.changes?.LINK),
+    AVAX:  readChange(data?.['avalanche-2']?.brl_24h_change, data?.changes?.AVAX),
+    XRP:   readChange(data?.ripple?.brl_24h_change,       data?.changes?.XRP),
+    EURUSD: readChange(data?.changes?.EURUSD),
+  };
+
   return {
     source,
     fetchedAt: Date.now(),
     sellWallet: data?.sellWallet || data?.sellWalletAddress || data?.SELL_WALLET_ADDRESS || rates?.sellWallet || rates?.SELL_WALLET_ADDRESS,
     sellNetwork: data?.sellNetwork || data?.SELL_NETWORK || rates?.sellNetwork || 'BEP20',
     sellNetworks: data?.sellNetworks || data?.supportedSellNetworks || rates?.sellNetworks || rates?.supportedSellNetworks,
+    changes,
     rates: {
       USDTBRL: usdtBrl,
       SELLUSDTBRL: sellUsdtBrl || usdtBrl,
@@ -1286,15 +1336,19 @@ const normalizePriceSnapshot = (data, source = 'backend') => {
       EUR: usdtEur,
       EURBRL: eurBrl,
       BTCUSDT: btcUsdt,
-      BTCBRL: usdtBrl > 0 && btcUsdt > 0 ? usdtBrl * btcUsdt : 0,
+      BTCBRL: btcBrlDirect || (usdtBrl > 0 && btcUsdt > 0 ? usdtBrl * btcUsdt : 0),
       BNBUSDT: bnbUsdt,
-      BNBBRL: usdtBrl > 0 && bnbUsdt > 0 ? usdtBrl * bnbUsdt : 0,
+      BNBBRL: bnbBrlDirect || (usdtBrl > 0 && bnbUsdt > 0 ? usdtBrl * bnbUsdt : 0),
       SOLUSDT: solUsdt,
-      SOLBRL: usdtBrl > 0 && solUsdt > 0 ? usdtBrl * solUsdt : 0,
+      SOLBRL: solBrlDirect || (usdtBrl > 0 && solUsdt > 0 ? usdtBrl * solUsdt : 0),
+      ETHUSDT: ethUsdt,
+      ETHBRL: ethBrlDirect || (usdtBrl > 0 && ethUsdt > 0 ? usdtBrl * ethUsdt : 0),
       LINKUSDT: linkUsdt,
-      LINKBRL: usdtBrl > 0 && linkUsdt > 0 ? usdtBrl * linkUsdt : 0,
+      LINKBRL: linkBrlDirect || (usdtBrl > 0 && linkUsdt > 0 ? usdtBrl * linkUsdt : 0),
       AVAXUSDT: avaxUsdt,
-      AVAXBRL: usdtBrl > 0 && avaxUsdt > 0 ? usdtBrl * avaxUsdt : 0
+      AVAXBRL: avaxBrlDirect || (usdtBrl > 0 && avaxUsdt > 0 ? usdtBrl * avaxUsdt : 0),
+      XRPUSDT: xrpUsdt,
+      XRPBRL: xrpBrlDirect || (usdtBrl > 0 && xrpUsdt > 0 ? usdtBrl * xrpUsdt : 0),
     }
   };
 };
@@ -2608,7 +2662,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const attempts = [
       async () => normalizePriceSnapshot(await fetchJson(`${API_BASE}/api/price`), 'backend'),
       async () => normalizePriceSnapshot(await fetchJson(`${API_BASE}/rates`), 'backend'),
-      async () => normalizePriceSnapshot(await fetchJson('https://api.coingecko.com/api/v3/simple/price?ids=tether,bitcoin&vs_currencies=brl,usd,eur'), 'coingecko'),
+      async () => normalizePriceSnapshot(await fetchJson('https://api.coingecko.com/api/v3/simple/price?ids=tether,bitcoin,binancecoin,solana,ethereum,chainlink,avalanche-2,ripple&vs_currencies=brl,usd,eur&include_24hr_change=true'), 'coingecko'),
       async () => {
         const [usdtBrl, btcUsdt, eurUsdt] = await Promise.all([
           fetchJson('https://api.binance.com/api/v3/ticker/price?symbol=USDTBRL'),

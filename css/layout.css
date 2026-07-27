@@ -862,12 +862,33 @@
 }
 
 .markets-table {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   border: 1px solid rgba(148, 176, 205, 0.28);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.88);
   box-shadow: 0 18px 48px rgba(42, 122, 181, 0.12);
+}
+
+.markets-body {
+  overflow-y: auto;
+  max-height: 312px;
+  scrollbar-width: thin;
+  scrollbar-color: #1767b7 transparent;
+}
+
+.markets-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.markets-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.markets-body::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #1767b7 0%, #10aec8 100%);
+  border-radius: 2px;
 }
 
 .markets-row {
