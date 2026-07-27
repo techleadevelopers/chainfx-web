@@ -248,6 +248,7 @@ void main() {
                 <a href="#markets" data-view="markets">Markets</a>
                 <a href="#developers" data-view="developers">Developers</a>
                 <a href="#pricing" data-view="pricing">Price</a>
+                <a href="#contact" data-view="contact">Contact</a>
             </div>
         </div>
     </nav>
@@ -260,10 +261,10 @@ void main() {
                 <h1 class="hero-title">
                   <span class="title-text"
       id="premiumTitle"
-      data-text-en="Buy USDT with PIX and receive it directly in your wallet."
-      data-text-ar="Buy USDT with PIX and receive it directly in your wallet."
-      data-text-mobile="Buy USDT with PIX and receive it directly in your wallet.">
-    Buy USDT with PIX and receive it directly in your wallet.
+      data-text-en="Buy BTC with PIX and receive it directly in your wallet."
+      data-text-ar="Buy BTC with PIX and receive it directly in your wallet."
+      data-text-mobile="Buy BTC with PIX and receive it directly in your wallet.">
+    Buy BTC with PIX and receive it directly in your wallet.
 </span>
                 </h1>
                 <p class="hero-subtitle">Complete your payment and receive your digital assets directly in your wallet.</p>
@@ -351,7 +352,11 @@ void main() {
                   <p>Receber: <strong id="displayReceiveAmountStep2"></strong></p>
               </div>
               <div class="wallet-input" id="walletGroup">
-                  <label for="walletAddress">Wallet Address (BSC / USDT BEP20)</label>
+                  <div class="sell-network-input hidden" id="buyNetworkInput">
+                      <label>Rede para receber</label>
+                      <div class="sell-network-options" id="buyNetworkOptions" role="radiogroup" aria-label="Escolha a rede de recebimento"></div>
+                  </div>
+                  <label for="walletAddress">Wallet Address (BSC / USDT BEP20):</label>
                   <div class="input-group">
                       <input type="text" id="walletAddress" placeholder="Cole um endereco BSC 0x..." />
                   </div>
@@ -359,13 +364,19 @@ void main() {
 
               <div class="buy-payer-info hidden" id="buyPayerInfo">
                   <div class="wallet-input">
-                      <label for="buyCustomerName">Nome do pagador</label>
+                      <label for="buyCustomerName">Nome do pagador:</label>
                       <div class="input-group">
                           <input type="text" id="buyCustomerName" autocomplete="name" placeholder="Nome completo" />
                       </div>
                   </div>
                   <div class="wallet-input">
-                      <label for="buyCustomerCpf">CPF do pagador</label>
+                      <label for="buyCustomerEmail">Email do pagador:</label>
+                      <div class="input-group">
+                          <input type="email" id="buyCustomerEmail" autocomplete="email" placeholder="email@exemplo.com" />
+                      </div>
+                  </div>
+                  <div class="wallet-input">
+                      <label for="buyCustomerCpf">CPF do pagador:</label>
                       <div class="input-group">
                           <input type="text" id="buyCustomerCpf" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" />
                       </div>
@@ -1218,6 +1229,18 @@ Response 402
             </div>
         </div>
     </section>
+
+   <section id="contactView" class="contact-view hidden" aria-labelledby="contactTitle">
+     <div class="contact-shell">
+       <div class="contact-hero">
+         <h2 id="contactTitle">Contact support</h2>
+         <p>Fale com o suporte ChainFX para compra, PIX, envio cripto e auditoria operacional.</p>
+       </div>
+
+         <a class="contact-whatsapp-action" href="https://wa.me/5519993223932" target="_blank" rel="noopener">Abrir WhatsApp</a>
+       
+     </div>
+   </section>
 
    <div class="efeito-bolinha-container">
      <div class="efeito-bolinha" id="bolinhaEfeito"></div>
