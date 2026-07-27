@@ -247,7 +247,6 @@ void main() {
                 <a href="#trade" class="active" data-view="trade">Trade</a>
                 <a href="#markets" data-view="markets">Markets</a>
                 <a href="#developers" data-view="developers">Developers</a>
-                <a href="#pricing" data-view="pricing">Price</a>
                 <a href="#contact" data-view="contact">Contact</a>
             </div>
         </div>
@@ -725,6 +724,7 @@ void main() {
                     <a href="#api-webhooks" data-dev-link>Webhooks</a>
                     <a href="#api-pricing" data-dev-link>Pricing</a>
                     <a href="#api-roadmap" data-dev-link>Roadmap</a>
+                    <a href="#api-plans" data-dev-link>Plans</a>
                 </aside>
 
                 <div class="developers-content">
@@ -1146,69 +1146,61 @@ Response 402
                         <h2>Roadmap</h2>
                         <p>MCP, A2A, Agent Pay, signed Agent Card, reputation, SLA, episodes, policy discovery, capability graph, x402, capability catalog, contracts, route preview, hybrid execution, access grants, usage metering and AGNTCY/OASF-style registry records are available. Next steps are more real providers, durable A2A task storage and enterprise routing policies. Bridge, pool, AMM, DEX and yield are intentionally out of scope.</p>
                     </article>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <section id="pricingView" class="pricing-view hidden" aria-labelledby="pricingTitle">
-        <div class="pricing-shell">
-            <div class="pricing-hero">
-                    <h2 id="pricingTitle">Start free. Pay only when an order is completed.</h2>
-                <p>Production access starts with no activation fee. ChainFX earns from successful transactions through a fixed fee, percentage fee and FX spread.</p>
-            </div>
+                    <article id="api-plans" class="developer-panel">
+                        <h2>Start free. Pay only when an order is completed.</h2>
+                        <p>Production access starts with no activation fee. ChainFX earns from successful transactions through a fixed fee, percentage fee and FX spread.</p>
 
-            <div class="pricing-cards">
-                <article class="pricing-card">
-                    <span class="pricing-label">Sandbox</span>
-                    <h2>Free</h2>
-                    <p>Build and test your integration with fake PIX, fake QR Codes and test API keys.</p>
-                    <ul>
-                        <li>pk_test / sk_test keys</li>
-                        <li>Simulated PIX payments</li>
-                        <li>Webhook test events</li>
-                        <li>No production settlement</li>
-                    </ul>
-                    <button type="button" class="pricing-card-action">Start Sandbox</button>
-                </article>
+                        <div class="pricing-cards">
+                            <article class="pricing-card">
+                                <span class="pricing-label">Sandbox</span>
+                                <h2>Free</h2>
+                                <p>Build and test your integration with fake PIX, fake QR Codes and test API keys.</p>
+                                <ul>
+                                    <li>pk_test / sk_test keys</li>
+                                    <li>Simulated PIX payments</li>
+                                    <li>Webhook test events</li>
+                                    <li>No production settlement</li>
+                                </ul>
+                                <button type="button" class="pricing-card-action">Start Sandbox</button>
+                            </article>
 
-                <article class="pricing-card featured">
-                    <span class="pricing-label">Live Starter</span>
-                    <h2>Free activation</h2>
-                    <p>Designed for developers launching real PIX to USDT flows without upfront cost.</p>
-                    <div class="pricing-fee">4.5%-7.5% + R$ 1,99</div>
-                    <ul>
-                        <li>Charged only on completed orders</li>
-                        <li>Initial limit: R$ 2.000/day</li>
-                        <li>USDT delivery on BSC</li>
-                        <li>Minimum fee R$ 4,99</li>
-                        <li>FX spread included in quote</li>
-                    </ul>
-                    <button type="button" class="pricing-card-action">Start Live</button>
-                </article>
+                            <article class="pricing-card featured">
+                                <span class="pricing-label">Live Starter</span>
+                                <h2>Free activation</h2>
+                                <p>Designed for developers launching real PIX to USDT flows without upfront cost.</p>
+                                <div class="pricing-fee">4.5%-7.5% + R$ 1,99</div>
+                                <ul>
+                                    <li>Charged only on completed orders</li>
+                                    <li>Initial limit: R$ 2.000/day</li>
+                                    <li>USDT delivery on BSC</li>
+                                    <li>Minimum fee R$ 4,99</li>
+                                    <li>FX spread included in quote</li>
+                                </ul>
+                                <button type="button" class="pricing-card-action">Start Live</button>
+                            </article>
 
-                <article class="pricing-card">
-                    <span class="pricing-label">Growth</span>
-                    <h2>R$ 299/mo</h2>
-                    <p>Lower fees for teams with steady payment volume and operational needs.</p>
-                    <div class="pricing-fee">1.8% + R$ 0,99</div>
-                    <ul>
-                        <li>Higher transaction limits</li>
-                        <li>Webhook retry and logs</li>
-                        <li>Priority support</li>
-                        <li>Volume review available</li>
-                    </ul>
-                    <button type="button" class="pricing-card-action">Select Growth</button>
-                </article>
-            </div>
+                            <article class="pricing-card">
+                                <span class="pricing-label">Growth</span>
+                                <h2>R$ 299/mo</h2>
+                                <p>Lower fees for teams with steady payment volume and operational needs.</p>
+                                <div class="pricing-fee">1.8% + R$ 0,99</div>
+                                <ul>
+                                    <li>Higher transaction limits</li>
+                                    <li>Webhook retry and logs</li>
+                                    <li>Priority support</li>
+                                    <li>Volume review available</li>
+                                </ul>
+                                <button type="button" class="pricing-card-action">Select Growth</button>
+                            </article>
+                        </div>
 
-            <div class="pricing-breakdown">
-                <div>
-                    
-                    <h2>How ChainFX charges</h2>
-                    <p>Fees are deducted inside the payment flow before crypto delivery. The developer does not need to pay invoices after each transaction.</p>
-                </div>
-                <pre><code>{
+                        <div class="pricing-breakdown">
+                            <div>
+                                <h2>How ChainFX charges</h2>
+                                <p>Fees are deducted inside the payment flow before crypto delivery. The developer does not need to pay invoices after each transaction.</p>
+                            </div>
+                            <pre><code>{
   "fiatAmount": 500,
   "feeRate": "4.5%-7.5%",
   "networkFee": 1.99,
@@ -1218,11 +1210,14 @@ Response 402
   "rate": 5.53,
   "cryptoAmount": 90.42
 }</code></pre>
-            </div>
+                        </div>
 
-            <div class="pricing-enterprise">
-                <strong>Enterprise</strong>
-                <span>Custom limits, negotiated fees, SLA and dedicated operational support for high-volume partners.</span>
+                        <div class="pricing-enterprise">
+                            <strong>Enterprise</strong>
+                            <span>Custom limits, negotiated fees, SLA and dedicated operational support for high-volume partners.</span>
+                        </div>
+                    </article>
+                </div>
             </div>
         </div>
     </section>

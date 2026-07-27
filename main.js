@@ -1542,7 +1542,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const navViewLinks = document.querySelectorAll('.nav-links a[data-view]');
   const developersView = document.getElementById('developersView');
   const marketsView = document.getElementById('marketsView');
-  const pricingView = document.getElementById('pricingView');
   const contactView = document.getElementById('contactView');
   const marketFilterButtons = document.querySelectorAll('[data-market-filter]');
   const marketRows = document.querySelectorAll('.markets-row[data-market-category]');
@@ -1732,21 +1731,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   function setPageView(view) {
     const isDevelopers = view === 'developers';
     const isMarkets = view === 'markets';
-    const isPricing = view === 'pricing';
     const isContact = view === 'contact';
     document.body.classList.toggle('developers-mode', isDevelopers);
     document.body.classList.toggle('markets-mode', isMarkets);
-    document.body.classList.toggle('pricing-mode', isPricing);
     document.body.classList.toggle('contact-mode', isContact);
     if (developersView) developersView.classList.toggle('hidden', !isDevelopers);
     if (marketsView) marketsView.classList.toggle('hidden', !isMarkets);
-    if (pricingView) pricingView.classList.toggle('hidden', !isPricing);
     if (contactView) contactView.classList.toggle('hidden', !isContact);
     navViewLinks.forEach(link => {
       const linkView = link.dataset.view || 'trade';
-      link.classList.toggle('active', isDevelopers || isMarkets || isPricing || isContact ? linkView === view : linkView === 'trade');
+      link.classList.toggle('active', isDevelopers || isMarkets || isContact ? linkView === view : linkView === 'trade');
     });
-    if (isDevelopers || isMarkets || isPricing || isContact) {
+    if (isDevelopers || isMarkets || isContact) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }
@@ -1792,12 +1788,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         setPageView('markets');
         return;
       }
-      if (view === 'pricing') {
-        event.preventDefault();
-        history.replaceState(null, '', '#pricing');
-        setPageView('pricing');
-        return;
-      }
       if (view === 'contact') {
         event.preventDefault();
         history.replaceState(null, '', '#contact');
@@ -1814,8 +1804,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     setPageView('developers');
   } else if (window.location.hash === '#markets') {
     setPageView('markets');
-  } else if (window.location.hash === '#pricing') {
-    setPageView('pricing');
   } else if (window.location.hash === '#contact') {
     setPageView('contact');
   } else {
