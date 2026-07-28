@@ -1677,22 +1677,64 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!networks.includes(normalizeBuyNetwork(state.receiveNetwork))) {
       state.receiveNetwork = networks[0];
     }
-    buyNetworkOptions.innerHTML = networks.map(network => {
-      const meta = getBuyNetworkMeta(network);
-      const active = normalizeBuyNetwork(state.receiveNetwork) === network;
-      return `
-        <button class="sell-network-option ${active ? 'active' : ''}" type="button" data-network="${meta.code}" role="radio" aria-checked="${active ? 'true' : 'false'}">
-          <img src="${meta.icon}" alt="${meta.shortLabel}" />
+    const activeMeta = getBuyNetworkMeta(normalizeBuyNetwork(state.receiveNetwork));
+    buyNetworkOptions.innerHTML = `
+      <div class="buy-network-dropdown" id="buyNetworkDropdown">
+        <button class="buy-network-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Rede selecionada: ${activeMeta.shortLabel}">
+          <img src="${activeMeta.icon}" alt="${activeMeta.shortLabel}" />
           <span>
-            <strong>${meta.shortLabel}</strong>
-            <small>${meta.displayLabel.replace(/^Rede\s*/i, '')}</small>
+            <strong>${activeMeta.shortLabel}</strong>
+            <small>${activeMeta.displayLabel.replace(/^Rede\s*/i, '')}</small>
           </span>
+          <svg class="buy-network-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-      `;
-    }).join('');
-    buyNetworkOptions.querySelectorAll('.sell-network-option[data-network]').forEach(button => {
-      button.addEventListener('click', () => {
-        state.receiveNetwork = normalizeBuyNetwork(button.dataset.network);
+        <ul class="buy-network-panel" role="listbox" aria-label="Escolha a rede de recebimento">
+          ${networks.map(network => {
+            const meta = getBuyNetworkMeta(network);
+            const active = normalizeBuyNetwork(state.receiveNetwork) === network;
+            return `
+              <li class="buy-network-item${active ? ' active' : ''}" role="option" aria-selected="${active}" data-network="${meta.code}" tabindex="0">
+                <img src="${meta.icon}" alt="${meta.shortLabel}" />
+                <span>
+                  <strong>${meta.shortLabel}</strong>
+                  <small>${meta.displayLabel.replace(/^Rede\s*/i, '')}</small>
+                </span>
+                ${active ? `<svg class="buy-network-check" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
+              </li>
+            `;
+          }).join('')}
+        </ul>
+      </div>
+    `;
+    const dropdown = buyNetworkOptions.querySelector('#buyNetworkDropdown');
+    const trigger = dropdown.querySelector('.buy-network-trigger');
+    const panel = dropdown.querySelector('.buy-network-panel');
+    const closeDropdown = () => {
+      dropdown.classList.remove('open');
+      trigger.setAttribute('aria-expanded', 'false');
+    };
+    const outsideHandler = (e) => {
+      if (!dropdown.contains(e.target)) {
+        closeDropdown();
+        document.removeEventListener('click', outsideHandler);
+      }
+    };
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (dropdown.classList.contains('open')) {
+        closeDropdown();
+        document.removeEventListener('click', outsideHandler);
+      } else {
+        dropdown.classList.add('open');
+        trigger.setAttribute('aria-expanded', 'true');
+        setTimeout(() => document.addEventListener('click', outsideHandler), 0);
+      }
+    });
+    panel.querySelectorAll('.buy-network-item[data-network]').forEach(item => {
+      item.addEventListener('click', () => {
+        state.receiveNetwork = normalizeBuyNetwork(item.dataset.network);
+        closeDropdown();
+        document.removeEventListener('click', outsideHandler);
         clearLastBuyQuote();
         renderBuyNetworkOptions();
         syncBuyWalletInputHint();
