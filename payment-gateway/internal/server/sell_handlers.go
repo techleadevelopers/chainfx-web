@@ -41,7 +41,7 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	network := normalizeSellNetwork(defaultString(req.Network, "BSC"))
 	asset := strings.ToUpper(defaultString(req.Asset, "USDT"))
-	if asset != "USDT" && asset != "BTC" && asset != "BNB" {
+	if asset != "USDT" && asset != "BTC" && asset != "ETH" && asset != "BNB" {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "asset de sell nao suportado"})
 		return
 	}
@@ -51,14 +51,23 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	var idx *int
-	depositAddress := strings.TrimSpace(firstNonEmpty(s.cfg.SellWalletAddress, req.Address))
-	if depositAddress == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "endereco EVM de deposito obrigatorio"})
-		return
-	}
-	if !common.IsHexAddress(depositAddress) {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "endereco EVM invalido"})
-		return
+	var depositAddress string
+	if network == "BITCOIN" {
+		depositAddress = strings.TrimSpace(s.cfg.SellBTCWalletAddress)
+		if depositAddress == "" {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "carteira BTC de deposito nao configurada"})
+			return
+		}
+	} else {
+		depositAddress = strings.TrimSpace(firstNonEmpty(s.cfg.SellWalletAddress, req.Address))
+		if depositAddress == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "endereco EVM de deposito obrigatorio"})
+			return
+		}
+		if !common.IsHexAddress(depositAddress) {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "endereco EVM invalido"})
+			return
+		}
 	}
 	rate := req.RateLocked
 	if rate <= 0 {

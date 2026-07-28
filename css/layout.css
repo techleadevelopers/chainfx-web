@@ -585,20 +585,12 @@
   pointer-events: none;
 }
 
-/* Icon — gradient only on the icon shape via mask-image */
-.fab-icon-mask {
+/* Icon — direct image, no tint */
+.fab-icon-img {
   display: block;
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, #1767b7 0%, #10aec8 100%);
-  -webkit-mask-image: url('https://res.cloudinary.com/limpeja/image/upload/v1785201554/support_d52kdz.png');
-  mask-image: url('https://res.cloudinary.com/limpeja/image/upload/v1785201554/support_d52kdz.png');
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
+  object-fit: contain;
   flex-shrink: 0;
 }
 

@@ -18,9 +18,10 @@ func (s *Server) handleChainFXRates(w http.ResponseWriter, r *http.Request) {
 		"category":     "Digital FX Payments Infrastructure",
 		"description":  "Accept PIX. Deliver digital dollars. Receive stablecoins. Pay out PIX.",
 		"base":         "USDT",
-		"sellWallet":   s.cfg.SellWalletAddress,
-		"sellNetwork":  "BEP20",
-		"sellNetworks": s.supportedSellNetworks(),
+		"sellWallet":    s.cfg.SellWalletAddress,
+		"sellBTCWallet": s.cfg.SellBTCWalletAddress,
+		"sellNetwork":   "BEP20",
+		"sellNetworks":  s.supportedSellNetworks(),
 		"rates": map[string]float64{
 			"USDT_BRL":      s.workers.PriceWorker.GetPrice("BRL"),
 			"SELL_USDT_BRL": s.sellRate(price),

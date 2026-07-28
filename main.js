@@ -74,7 +74,9 @@ const SELL_RECEIVE_OPTIONS = [
 ];
 
 const SELL_PAY_OPTIONS = [
-  { code: 'USDT', label: 'USDT', icon: BUY_ASSET_META.USDT.icon }
+  { code: 'USDT', label: 'USDT', icon: BUY_ASSET_META.USDT.icon },
+  { code: 'BTC',  label: 'BTC',  icon: BUY_ASSET_META.BTC.icon  },
+  { code: 'ETH',  label: 'ETH',  icon: BUY_ASSET_META.ETH.icon  }
 ];
 
 const SELL_NETWORKS = {
@@ -89,6 +91,18 @@ const SELL_NETWORKS = {
     shortLabel: 'POL',
     displayLabel: 'Rede Polygon / POL',
     icon: 'https://cryptologos.cc/logos/polygon-matic-logo.png?v=033'
+  },
+  BITCOIN: {
+    code: 'BITCOIN',
+    shortLabel: 'BTC',
+    displayLabel: 'Rede Bitcoin / BTC',
+    icon: 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/btc.png'
+  },
+  ETHEREUM: {
+    code: 'ETHEREUM',
+    shortLabel: 'ETH',
+    displayLabel: 'Rede Ethereum / ERC20',
+    icon: 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/eth.png'
   }
 };
 
@@ -102,6 +116,7 @@ const priceState = {
   source: '',
   fetchedAt: 0,
   sellWallet: '0x7e3BF3FDfeF16040CE3ec60A663381766d3dB375',
+  sellBTCWallet: 'bc1qpu935hr3mx7zttznlemxv4xmqflg96fex6n0rn',
   sellNetwork: 'BEP20',
   sellNetworks: ['BSC'],
   rates: {
@@ -624,6 +639,7 @@ const applyPriceSnapshot = (snapshot) => {
   priceState.source = snapshot.source || 'unknown';
   priceState.fetchedAt = snapshot.fetchedAt || Date.now();
   priceState.sellWallet = snapshot.sellWallet || priceState.sellWallet;
+  priceState.sellBTCWallet = snapshot.sellBTCWallet || priceState.sellBTCWallet;
   priceState.sellNetworks = normalizeSellNetworks(snapshot.sellNetworks || priceState.sellNetworks);
   priceState.sellNetwork = normalizeSellNetwork(snapshot.sellNetwork || priceState.sellNetwork);
   state.sellNetwork = normalizeSellNetwork(state.sellNetwork || priceState.sellNetwork);
@@ -638,6 +654,7 @@ const applyPriceSnapshot = (snapshot) => {
   LIQUIDITY_POOLS.USDT.sellPrice = priceState.rates.SELLUSDTBRL || priceState.rates.USDTBRL;
   LIQUIDITY_POOLS.EURUSDT.price = priceState.rates.EURBRL || priceState.rates.USDTBRL;
   LIQUIDITY_POOLS.BTC.price = priceState.rates.BTCBRL || LIQUIDITY_POOLS.BTC.price;
+  LIQUIDITY_POOLS.ETH.price = priceState.rates.ETHBRL || LIQUIDITY_POOLS.ETH.price;
   LIQUIDITY_POOLS.BNB.price = priceState.rates.BNBBRL || LIQUIDITY_POOLS.BNB.price;
   LIQUIDITY_POOLS.SOL.price = priceState.rates.SOLBRL || LIQUIDITY_POOLS.SOL.price;
   LIQUIDITY_POOLS.LINK.price = priceState.rates.LINKBRL || LIQUIDITY_POOLS.LINK.price;
@@ -679,6 +696,8 @@ const normalizeSellNetwork = (network) => {
   const value = String(network || '').trim().toUpperCase();
   if (!value || value === 'BEP20' || value === 'BINANCE') return 'BSC';
   if (value === 'POL' || value === 'MATIC') return 'POLYGON';
+  if (value === 'BTC') return 'BITCOIN';
+  if (value === 'ETH' || value === 'ERC20' || value === 'ERC-20') return 'ETHEREUM';
   return SELL_NETWORKS[value] ? value : 'BSC';
 };
 
@@ -811,6 +830,19 @@ const getSellNetworkMeta = (network = state.sellNetwork) => {
   return SELL_NETWORKS[normalizeSellNetwork(network)] || SELL_NETWORKS.BSC;
 };
 
+const getSellNetworkForAsset = (asset) => {
+  const code = String(asset || 'USDT').toUpperCase();
+  if (code === 'BTC') return 'BITCOIN';
+  if (code === 'ETH') return 'ETHEREUM';
+  return normalizeSellNetwork(state.sellNetwork) || 'BSC';
+};
+
+const getSellDepositWalletForAsset = (asset) => {
+  const code = String(asset || 'USDT').toUpperCase();
+  if (code === 'BTC') return priceState.sellBTCWallet;
+  return priceState.sellWallet;
+};
+
 const getBuyNetworkMeta = (network = state.receiveNetwork) => {
   const normalized = normalizeBuyNetwork(network);
   return BUY_NETWORKS[normalized] || {
@@ -830,33 +862,44 @@ const getSellAssetBrlPrice = (asset) => {
 };
 
 const updateSellDepositWallet = () => {
-  const enabledNetworks = normalizeSellNetworks(priceState.sellNetworks);
-  if (!enabledNetworks.includes(normalizeSellNetwork(state.sellNetwork))) {
-    state.sellNetwork = enabledNetworks[0];
-    priceState.sellNetwork = state.sellNetwork;
+  const asset = String(state.payCurrency || 'USDT').toUpperCase();
+
+  // Force network based on selected sell asset
+  if (asset === 'BTC') {
+    state.sellNetwork = 'BITCOIN';
+    priceState.sellNetwork = 'BITCOIN';
+  } else if (asset === 'ETH') {
+    state.sellNetwork = 'ETHEREUM';
+    priceState.sellNetwork = 'ETHEREUM';
+  } else {
+    // USDT: use BSC/POLYGON selection, filter out BTC/ETH networks
+    const evmNetworks = normalizeSellNetworks(priceState.sellNetworks).filter(n => n !== 'BITCOIN' && n !== 'ETHEREUM');
+    const current = normalizeSellNetwork(state.sellNetwork);
+    if (!evmNetworks.includes(current)) {
+      state.sellNetwork = evmNetworks[0] || 'BSC';
+      priceState.sellNetwork = state.sellNetwork;
+    }
   }
+
+  const depositWallet = getSellDepositWalletForAsset(asset);
+  const meta = getSellNetworkMeta(state.sellNetwork);
+
   const walletEl = document.getElementById('sellDepositWallet');
-  if (walletEl) walletEl.textContent = priceState.sellWallet;
-  const meta = getSellNetworkMeta();
+  if (walletEl) walletEl.textContent = depositWallet;
+
   const iconEl = document.getElementById('sellDepositNetworkIcon');
   const labelEl = document.getElementById('sellDepositNetworkLabel');
   const selectEl = document.getElementById('sellNetwork');
-  if (iconEl) {
-    iconEl.src = meta.icon;
-    iconEl.alt = meta.shortLabel;
-  }
+  if (iconEl) { iconEl.src = meta.icon; iconEl.alt = meta.shortLabel; }
   if (labelEl) labelEl.textContent = meta.displayLabel;
-  if (selectEl) {
-    Array.from(selectEl.options || []).forEach(option => {
-      const network = normalizeSellNetwork(option.value);
-      option.disabled = !enabledNetworks.includes(network);
-    });
-    selectEl.value = meta.code;
-  }
-  document.querySelectorAll('.sell-network-option[data-network]').forEach(button => {
+  if (selectEl) selectEl.value = meta.code;
+
+  // Update network option buttons (only relevant for USDT mode with BSC/POLYGON)
+  const evmNetworks = normalizeSellNetworks(priceState.sellNetworks).filter(n => n !== 'BITCOIN' && n !== 'ETHEREUM');
+  document.querySelectorAll('#sellNetworkOptions .sell-network-option[data-network]').forEach(button => {
     const network = normalizeSellNetwork(button.dataset.network);
-    const enabled = enabledNetworks.includes(network);
-    const selected = enabled && network === meta.code;
+    const enabled = asset === 'USDT' && evmNetworks.includes(network);
+    const selected = enabled && network === normalizeSellNetwork(state.sellNetwork);
     button.disabled = !enabled;
     button.classList.toggle('disabled', !enabled);
     button.classList.toggle('active', selected);
@@ -1326,6 +1369,7 @@ const normalizePriceSnapshot = (data, source = 'backend') => {
     source,
     fetchedAt: Date.now(),
     sellWallet: data?.sellWallet || data?.sellWalletAddress || data?.SELL_WALLET_ADDRESS || rates?.sellWallet || rates?.SELL_WALLET_ADDRESS,
+    sellBTCWallet: data?.sellBTCWallet || data?.sellBtcWallet || data?.SELL_BTC_WALLET_ADDRESS || rates?.sellBTCWallet,
     sellNetwork: data?.sellNetwork || data?.SELL_NETWORK || rates?.sellNetwork || 'BEP20',
     sellNetworks: data?.sellNetworks || data?.supportedSellNetworks || rates?.sellNetworks || rates?.supportedSellNetworks,
     changes,
@@ -1510,7 +1554,9 @@ const updateStep = (step) => {
 
       if (state.action === 'sell') {
         if (paymentStatusLabel) paymentStatusLabel.textContent = paymentStatusLabel.textContent || 'Aguardando deposito';
-        if (paymentBtcAmountDisplay) paymentBtcAmountDisplay.textContent = `${(state.payAmount || 0).toFixed(6)} USDT`;
+        const _sellAsset = String(state.payCurrency || 'USDT').toUpperCase();
+        const _prec = _sellAsset === 'BTC' ? 8 : 6;
+        if (paymentBtcAmountDisplay) paymentBtcAmountDisplay.textContent = `${(state.payAmount || 0).toFixed(_prec)} ${_sellAsset}`;
         if (paymentWalletDisplay && !paymentWalletDisplay.textContent) paymentWalletDisplay.textContent = getReceiveDisplayValue();
       } else {
         const paymentInfoSection = document.getElementById('paymentInfoSection');
@@ -1822,6 +1868,98 @@ document.addEventListener('DOMContentLoaded', async () => {
     state.sellNetwork = enabledNetworks.includes(requested) ? requested : enabledNetworks[0];
     priceState.sellNetwork = state.sellNetwork;
     updateSellDepositWallet();
+  }
+
+  // Render the sell asset selector chips (USDT / BTC / ETH)
+  function renderSellAssetSelector() {
+    const container = document.getElementById('sellAssetOptions');
+    if (!container) return;
+    const currentAsset = String(state.payCurrency || 'USDT').toUpperCase();
+    container.innerHTML = SELL_PAY_OPTIONS.map(opt => {
+      const active = opt.code === currentAsset;
+      return `<button class="sell-network-option${active ? ' active' : ''}" type="button"
+                data-sell-asset="${opt.code}" role="radio" aria-checked="${active}">
+                <img src="${opt.icon}" alt="${opt.code}" width="22" height="22" />
+                <span><strong>${opt.code}</strong></span>
+              </button>`;
+    }).join('');
+    container.querySelectorAll('[data-sell-asset]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const asset = btn.dataset.sellAsset;
+        if (asset === state.payCurrency) return;
+        state.payCurrency = asset;
+        setSelectorButton(payCurrencyBtn, SELL_PAY_OPTIONS.find(o => o.code === asset) || SELL_PAY_OPTIONS[0]);
+        renderSellAssetSelector();
+        renderSellNetworkOptions(asset);
+        updateSellDepositWallet();
+        updateRateLabel();
+        updateReceiveAmount();
+        updateOrderSummaries();
+      });
+    });
+  }
+
+  // Render network options in #sellNetworkOptions based on selected sell asset
+  function renderSellNetworkOptions(asset) {
+    const container = document.getElementById('sellNetworkOptions');
+    const labelEl = document.getElementById('sellNetworkLabel');
+    if (!container) return;
+    const assetCode = String(asset || 'USDT').toUpperCase();
+
+    if (assetCode === 'BTC') {
+      if (labelEl) labelEl.textContent = 'Rede para envio do BTC';
+      container.innerHTML = `<button class="sell-network-option active" type="button" data-network="BITCOIN" role="radio" aria-checked="true" disabled>
+        <img src="${SELL_NETWORKS.BITCOIN.icon}" alt="BTC" width="22" />
+        <span><strong>Bitcoin</strong><small>Rede nativa</small></span>
+      </button>`;
+      state.sellNetwork = 'BITCOIN';
+      priceState.sellNetwork = 'BITCOIN';
+    } else if (assetCode === 'ETH') {
+      if (labelEl) labelEl.textContent = 'Rede para envio do ETH';
+      const ethNetworks = [
+        { code: 'ETHEREUM', label: 'Ethereum', sub: 'ERC20', icon: SELL_NETWORKS.ETHEREUM.icon },
+        { code: 'BSC',      label: 'BSC',      sub: 'BEP20', icon: SELL_NETWORKS.BSC.icon }
+      ];
+      if (!['ETHEREUM','BSC'].includes(normalizeSellNetwork(state.sellNetwork))) {
+        state.sellNetwork = 'ETHEREUM';
+        priceState.sellNetwork = 'ETHEREUM';
+      }
+      container.innerHTML = ethNetworks.map(n => {
+        const active = normalizeSellNetwork(state.sellNetwork) === n.code;
+        return `<button class="sell-network-option${active ? ' active' : ''}" type="button" data-network="${n.code}" role="radio" aria-checked="${active}">
+          <img src="${n.icon}" alt="${n.label}" width="22" />
+          <span><strong>${n.label}</strong><small>${n.sub}</small></span>
+        </button>`;
+      }).join('');
+      container.querySelectorAll('[data-network]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.sellNetwork = normalizeSellNetwork(btn.dataset.network);
+          priceState.sellNetwork = state.sellNetwork;
+          renderSellNetworkOptions('ETH');
+          updateSellDepositWallet();
+        });
+      });
+    } else {
+      // USDT: show BSC + POLYGON
+      if (labelEl) labelEl.textContent = 'Rede para envio do USDT';
+      const evmNetworks = normalizeSellNetworks(priceState.sellNetworks).filter(n => n !== 'BITCOIN' && n !== 'ETHEREUM');
+      if (!evmNetworks.includes(normalizeSellNetwork(state.sellNetwork))) {
+        state.sellNetwork = evmNetworks[0] || 'BSC';
+        priceState.sellNetwork = state.sellNetwork;
+      }
+      container.innerHTML = evmNetworks.map(network => {
+        const meta = SELL_NETWORKS[network] || SELL_NETWORKS.BSC;
+        const active = network === normalizeSellNetwork(state.sellNetwork);
+        const sublabel = network === 'BSC' ? 'BEP20' : network === 'POLYGON' ? 'Polygon' : meta.shortLabel;
+        return `<button class="sell-network-option${active ? ' active' : ''}" type="button" data-network="${meta.code}" role="radio" aria-checked="${active}">
+          <img src="${meta.icon}" alt="${meta.shortLabel}" width="22" />
+          <span><strong>${meta.shortLabel}</strong><small>${sublabel}</small></span>
+        </button>`;
+      }).join('');
+      container.querySelectorAll('[data-network]').forEach(btn => {
+        btn.addEventListener('click', () => setSelectedSellNetwork(btn.dataset.network));
+      });
+    }
   }
 
   function setPageView(view) {
@@ -2172,6 +2310,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       setPayCurrency(optionFor('USDT'));
       setReceiveCurrency(optionFor('BRL'));
       setSelectedSellNetwork(state.sellNetwork || 'BSC');
+      renderSellAssetSelector();
+      renderSellNetworkOptions(state.payCurrency || 'USDT');
     } else {
       setPayCurrency(optionFor('BRL'));
       setReceiveCurrency(BUY_RECEIVE_OPTIONS[0] || optionFor('USDT'));
@@ -2626,11 +2766,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function createSellOrder() {
     setOrderError('');
-    const amountUSDT = parseFloat(payAmountInput?.value || '0');
+    const asset = String(state.payCurrency || 'USDT').toUpperCase();
+    const cryptoAmount = parseFloat(payAmountInput?.value || '0');
     const cpf = pixCpfInput?.value?.replace(/\D/g, '') || '';
     const phone = pixPhoneInput?.value?.replace(/\D/g, '') || '';
 
-    if (!amountUSDT || amountUSDT <= 0) {
+    if (!cryptoAmount || cryptoAmount <= 0) {
       showUxMessage('invalid_amount', 'warning');
       return null;
     }
@@ -2640,15 +2781,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     try {
-      const selectedNetwork = normalizeSellNetwork(state.sellNetwork);
-      const payoutBRL = parseFloat(receiveAmountInput?.value || '0') || 0;
+      const selectedNetwork = getSellNetworkForAsset(asset);
+      const brlRate = getSellAssetBrlPrice(asset);
+      const amountBRL = brlRate > 0 ? cryptoAmount * brlRate : (parseFloat(receiveAmountInput?.value || '0') || 0);
+      const payoutBRL = parseFloat(receiveAmountInput?.value || '0') || amountBRL;
+
+      // Update UI labels based on asset before order creation
+      const orderInfoTitle = document.getElementById('orderInfoTitle');
+      const orderNoticeEl = document.getElementById('orderNotice');
+      const createOrderBtnEl = document.getElementById('createOrderBtn');
+      const assetNetworkLabel = asset === 'BTC' ? 'Bitcoin / BTC' : asset === 'ETH' ? 'Ethereum / ETH' : `BSC / USDT (BEP20)`;
+      if (orderInfoTitle) orderInfoTitle.textContent = `Ordem ${assetNetworkLabel}`;
+      if (orderNoticeEl) orderNoticeEl.textContent = asset === 'BTC'
+        ? 'Rede Bitcoin nativa. Envie BTC para o endereço acima.'
+        : asset === 'ETH'
+        ? 'Rede Ethereum (ERC20). Envie ETH para o endereço acima.'
+        : 'Rede BSC / USDT (BEP20). Envie também 0.003-0.01 BNB para fee do sweep.';
+      if (createOrderBtnEl) createOrderBtnEl.textContent = `Criar ordem ${asset}`;
+
       const resp = await fetch(`${API_BASE}/api/order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amountUSDT,
-          amountBRL: payoutBRL,
-          asset: 'USDT',
+          amountUSDT: asset === 'USDT' ? cryptoAmount : 0,
+          cryptoAmount,
+          amountBRL,
+          asset,
           network: selectedNetwork,
           pixCpf: cpf,
           pixPhone: phone
@@ -2664,20 +2822,33 @@ document.addEventListener('DOMContentLoaded', async () => {
       const data = await resp.json();
       currentSellId = data.orderId || data.id || null;
       currentSellAccessToken = data.accessToken || null;
-      priceState.sellWallet = data.depositAddress || data.address || priceState.sellWallet;
-      setSelectedSellNetwork(data.network || selectedNetwork);
-      state.totalPayAmount = amountUSDT;
+
+      // Update wallet state based on asset
+      const depositAddr = data.depositAddress || data.address || getSellDepositWalletForAsset(asset);
+      if (asset === 'BTC') {
+        priceState.sellBTCWallet = depositAddr || priceState.sellBTCWallet;
+      } else {
+        priceState.sellWallet = depositAddr || priceState.sellWallet;
+      }
+
+      const responseNetwork = normalizeSellNetwork(data.network || selectedNetwork);
+      state.sellNetwork = responseNetwork;
+      priceState.sellNetwork = responseNetwork;
+
+      state.totalPayAmount = cryptoAmount;
       state.platformFee = Number(data.spreadBRL || data.feeBRL || 0) || 0;
       const pixReceiveBRL = Number(data.payoutBRL || payoutBRL || receiveAmountInput?.value || 0);
       if (receiveAmountInput && pixReceiveBRL > 0) receiveAmountInput.value = pixReceiveBRL.toFixed(2);
       if (orderIdEl) orderIdEl.textContent = currentSellId || '-';
       if (orderStatusEl) orderStatusEl.textContent = data.status || 'aguardando_deposito';
-      if (depositAddressEl) depositAddressEl.textContent = data.depositAddress || data.address || priceState.sellWallet;
-      if (sellDepositAddressInput) sellDepositAddressInput.value = data.depositAddress || data.address || priceState.sellWallet;
-      if (paymentBtcAmountEl) paymentBtcAmountEl.textContent = `${amountUSDT.toFixed(6)} USDT`;
+      if (depositAddressEl) depositAddressEl.textContent = depositAddr;
+      if (sellDepositAddressInput) sellDepositAddressInput.value = depositAddr;
+      const precision = asset === 'BTC' ? 8 : asset === 'ETH' ? 6 : 6;
+      if (paymentBtcAmountEl) paymentBtcAmountEl.textContent = `${cryptoAmount.toFixed(precision)} ${asset}`;
       if (paymentWalletEl) paymentWalletEl.textContent = pixReceiveBRL > 0 ? `R$ ${pixReceiveBRL.toFixed(2).replace('.', ',')}` : getReceiveDisplayValue();
       if (paymentStatusLabelEl) paymentStatusLabelEl.textContent = 'Aguardando deposito';
       if (sellDepositBlock) sellDepositBlock.classList.remove('hidden');
+      updateSellDepositWallet();
       updatePaymentTxHash(data.depositTx || data.txHash || '');
       updateOrderSummaries();
       applySellStatus(data);

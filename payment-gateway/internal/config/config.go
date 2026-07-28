@@ -79,6 +79,7 @@ type Config struct {
 	SellSpreadHighValueBrl        float64
 	SellUsdtBrlRate               float64
 	SellWalletAddress             string
+	SellBTCWalletAddress          string
 	BuyHotDerivationIndex         int
 	ChainFXLiveSecretKeys         string
 	ChainFXTestSecretKeys         string
@@ -323,6 +324,7 @@ func LoadConfig() *Config {
 		SellSpreadHighValueBrl:        getEnvAsFloat("FEE_SELL_HIGH_VALUE_BRL", 1000),
 		SellUsdtBrlRate:               getEnvAsFloat("SELL_USDT_BRL_RATE", 0),
 		SellWalletAddress:             getEnv("SELL_WALLET_ADDRESS", "0x7e3BF3FDfeF16040CE3ec60A663381766d3dB375"),
+		SellBTCWalletAddress:          getEnv("SELL_BTC_WALLET_ADDRESS", "bc1qpu935hr3mx7zttznlemxv4xmqflg96fex6n0rn"),
 		BuyHotDerivationIndex:         getEnvAsInt("BUY_HOT_DERIVATION_INDEX", 0),
 		ChainFXLiveSecretKeys:         getEnv("CHAINFX_LIVE_SECRET_KEYS", ""),
 		ChainFXTestSecretKeys:         getEnv("CHAINFX_TEST_SECRET_KEYS", "sk_test_chainfx_local"),

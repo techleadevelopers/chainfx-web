@@ -383,23 +383,16 @@ void main() {
               </div>
 
               <div class="sell-info hidden" id="sellInfo">
-                  <div class="wallet-input sell-network-input">
-                      <label>Rede para envio do USDT</label>
+                  <div class="wallet-input sell-network-input" id="sellAssetSection">
+                      <label>Cripto para vender</label>
+                      <div class="sell-network-options" id="sellAssetOptions" role="radiogroup" aria-label="Escolha o ativo para vender">
+                          <!-- populated by renderSellAssetSelector() -->
+                      </div>
+                  </div>
+                  <div class="wallet-input sell-network-input" id="sellNetworkSection">
+                      <label id="sellNetworkLabel">Rede para envio</label>
                       <div class="sell-network-options" id="sellNetworkOptions" role="radiogroup" aria-label="Escolha a rede de envio">
-                          <button class="sell-network-option active" type="button" data-network="BSC" role="radio" aria-checked="true">
-                              <img src="https://cryptologos.cc/logos/bnb-bnb-logo.png?v=033" alt="BNB" />
-                              <span>
-                                  <strong>BSC</strong>
-                                  <small>BEP20</small>
-                              </span>
-                          </button>
-                          <button class="sell-network-option" type="button" data-network="POLYGON" role="radio" aria-checked="false">
-                              <img src="https://cryptologos.cc/logos/polygon-matic-logo.png?v=033" alt="POL" />
-                              <span>
-                                  <strong>POL</strong>
-                                  <small>Polygon</small>
-                              </span>
-                          </button>
+                          <!-- populated by renderSellNetworkOptions() -->
                       </div>
                   </div>
                   <div class="wallet-input">
@@ -604,16 +597,16 @@ void main() {
 </div>
 
             <div class="payment-info hidden" id="orderInfoBox" style="margin-top:20px;">
-                <h3>Ordem BSC/USDT</h3>
+                <h3 id="orderInfoTitle">Ordem BSC/USDT</h3>
                 <p class="payment-summary-text">
-                    <strong>Endereço BSC:</strong><br>
+                    <strong>Endereço de depósito:</strong><br>
                     <code id="depositAddress">—</code><br>
                     <strong>Status:</strong> <span id="orderStatus">—</span><br>
                     <strong>Ordem:</strong> <span id="orderId">—</span>
                 </p>
                 <p class="payment-summary-text" id="orderNotice">Rede BSC / USDT (BEP20). Envie também 0.003-0.01 BNB para fee do sweep.</p>
                 <p class="payment-summary-text" id="orderError" style="color:#c0392b; display:none;"></p>
-                <button class="confirm-payment-btn" id="createOrderBtn" type="button">Criar ordem BSC/USDT</button>
+                <button class="confirm-payment-btn" id="createOrderBtn" type="button">Criar ordem USDT</button>
             </div>
             
             
@@ -1318,7 +1311,7 @@ Response 402
 
    <!-- Floating WhatsApp button -->
    <a href="https://wa.me/5519993223932" target="_blank" rel="noopener" class="fab-whatsapp" aria-label="Abrir WhatsApp">
-     <span class="fab-icon-mask"></span>
+     <img class="fab-icon-img" src="https://res.cloudinary.com/limpeja/image/upload/v1785201554/support_d52kdz.png" alt="Suporte" />
    </a>
 
    <div class="efeito-bolinha-container">

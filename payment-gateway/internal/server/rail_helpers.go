@@ -22,6 +22,10 @@ func normalizeSellNetwork(network string) string {
 		return "BSC"
 	case "POL", "POLYGON", "MATIC":
 		return "POLYGON"
+	case "BTC", "BITCOIN":
+		return "BITCOIN"
+	case "ETH", "ETHEREUM", "ERC20", "ERC-20":
+		return "ETHEREUM"
 	default:
 		return strings.ToUpper(strings.TrimSpace(network))
 	}
@@ -88,6 +92,13 @@ func (s *Server) supportedSellNetworks() []string {
 	if len(networks) == 0 {
 		networks = append(networks, "BSC")
 	}
+	if strings.TrimSpace(s.cfg.SellBTCWalletAddress) != "" {
+		networks = append(networks, "BITCOIN")
+	}
+	// Ethereum uses the same EVM sell wallet
+	if strings.TrimSpace(s.cfg.SellWalletAddress) != "" {
+		networks = append(networks, "ETHEREUM")
+	}
 	return networks
 }
 
@@ -97,6 +108,10 @@ func (s *Server) sellNetworkEnabled(network string) bool {
 		return true
 	case "POLYGON":
 		return strings.TrimSpace(s.cfg.PolygonRpcUrls) != "" && strings.TrimSpace(s.cfg.PolygonUsdtContract) != ""
+	case "BITCOIN":
+		return strings.TrimSpace(s.cfg.SellBTCWalletAddress) != ""
+	case "ETHEREUM":
+		return strings.TrimSpace(s.cfg.SellWalletAddress) != ""
 	default:
 		return false
 	}
