@@ -437,6 +437,40 @@ func (s *Server) handleWalletTokens(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleBaseAddress — GET /api/mobile/base/address
+// GAP-013: returns the user's EVM wallet address explicitly labelled for Base Network.
+// Base is EVM-compatible, so the on-chain address is identical to the primary EVM
+// wallet address.  Having a dedicated endpoint makes the contract explicit: if the
+// HD-wallet derivation path for Base ever diverges it can be updated here without
+// touching the generic /wallet/address handler.
+func (s *Server) handleBaseAddress(w http.ResponseWriter, r *http.Request) {
+	uid := userIDFromCtx(r)
+	user, err := mobileDB(s.db).GetUserByID(r.Context(), uid)
+	if err != nil || user == nil {
+		writeJSON(w, http.StatusNotFound, map[string]any{"error": "usuario nao encontrado"})
+		return
+	}
+	user, err = s.ensureUserWallet(r.Context(), user)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro ao criar carteira do usuario"})
+		return
+	}
+	if user != nil && user.WalletAddress != nil && *user.WalletAddress != "" {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"wallet_address": *user.WalletAddress,
+			"address":        *user.WalletAddress,
+			"network":        "BASE",
+			"network_label":  "Base Network",
+			"evm_compatible": true,
+		})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"wallet_address": nil,
+		"hint":           "use POST /api/mobile/wallet/generate com wallet_address",
+	})
+}
+
 func (s *Server) handleWalletAddress(w http.ResponseWriter, r *http.Request) {
 	uid := userIDFromCtx(r)
 	user, err := mobileDB(s.db).GetUserByID(r.Context(), uid)
