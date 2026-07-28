@@ -757,22 +757,37 @@ body.index-page .contact-hero::before {
   }
 
   body.index-page #sellInfo .input-group:has(#pixCpf),
-  body.index-page #sellInfo .input-group:has(#pixPhone),
-  body.index-page #buyPayerInfo .input-group {
+  body.index-page #sellInfo .input-group:has(#pixPhone) {
     min-height: 33px;
     padding: 3px 10px;
   }
 
+  body.index-page #buyPayerInfo .input-group {
+    min-height: 34.3px;
+    padding: 3px 10px;
+  }
+
   body.index-page #pixCpf,
-  body.index-page #pixPhone,
-  body.index-page #buyCustomerName,
-  body.index-page #buyCustomerCpf {
+  body.index-page #pixPhone {
     min-height: 26px;
     height: 26px;
     padding: 0 8px !important;
     font-size: 0.84rem;
     line-height: 26px;
   }
+
+  body.index-page #buyCustomerName,
+  body.index-page #buyCustomerEmail,
+  body.index-page #buyCustomerCpf {
+    min-height: 27px;
+    height: 27px;
+    padding: 0 4px !important;
+    font-size: 0.84rem;
+    line-height: 27px;
+    background: transparent;
+    box-shadow: none;
+  }
+
 
   body.index-page .currency-selector {
     flex: 0 0 auto;
@@ -897,6 +912,29 @@ body.index-page .contact-hero::before {
 
   body.index-page .toggle-container {
     flex-direction: row;
+  }
+
+  /* Labels do pagador — 1px menor no mobile */
+  body.index-page #buyPayerInfo .wallet-input label {
+    font-size: calc(0.86rem - 1px);
+  }
+
+  /* Buy network dropdown — 5% menor no mobile */
+  body.index-page .buy-network-trigger img,
+  body.index-page .buy-network-item img {
+    width: 20.9px;
+    height: 20.9px;
+    flex: 0 0 20.9px;
+  }
+
+  body.index-page .buy-network-trigger strong,
+  body.index-page .buy-network-item strong {
+    font-size: 0.817rem;
+  }
+
+  body.index-page .buy-network-trigger small,
+  body.index-page .buy-network-item small {
+    font-size: 0.665rem;
   }
 }
 
