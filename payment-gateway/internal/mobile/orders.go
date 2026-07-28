@@ -217,16 +217,6 @@ func (s *Server) handleMobileBuy(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "par asset/network nao suportado para compra"})
 		return
 	}
-	// P0-02: Reject EVM-style 0x addresses for Bitcoin purchases. A Bitcoin
-	// address is required when asset=BTC / network=BITCOIN; an EVM address
-	// sent here would route funds to an unreachable on-chain address.
-	if req.Asset == "BTC" && network == "BITCOIN" && looksLikeEVMAddress(req.DestAddress) {
-		writeJSON(w, http.StatusBadRequest, map[string]any{
-			"code":    "INVALID_BTC_ADDRESS",
-			"message": "Endereço Bitcoin inválido: forneça um endereço BTC (bc1...) para compras de Bitcoin",
-		})
-		return
-	}
 	claims, err := s.verifyMobileQuote(req.QuoteID, "buy", req.Asset, req.AmountBRL, time.Now(), network)
 	if err != nil {
 		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "code": "MOBILE_QUOTE_INVALID"})
