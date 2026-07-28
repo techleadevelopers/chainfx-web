@@ -284,6 +284,8 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/mobile/wallet/balance", s.requireAuth(s.handleWalletBalance))
 	mux.HandleFunc("GET /api/mobile/wallet/tokens", s.requireAuth(s.handleWalletTokens))
 	mux.HandleFunc("GET /api/mobile/wallet/address", s.requireAuth(s.handleWalletAddress))
+	// GAP-013: explicit Base Network address — same EVM address but with a named contract
+	mux.HandleFunc("GET /api/mobile/base/address", s.requireAuth(s.handleBaseAddress))
 	mux.HandleFunc("GET /api/mobile/sol/address", s.requireAuth(s.handleSolanaAddress))
 	mux.HandleFunc("GET /api/mobile/sol/balance", s.requireAuth(s.handleSolanaBalance))
 	mux.HandleFunc("GET /api/mobile/sol/fee-estimate", s.requireAuth(s.handleSolanaFeeEstimate))
