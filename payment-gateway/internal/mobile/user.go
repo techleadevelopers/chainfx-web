@@ -139,35 +139,24 @@ func (s *Server) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *Server) handleSubmitKYC(w http.ResponseWriter, r *http.Request) {
-	uid := userIDFromCtx(r)
-	var req struct {
-		DocumentType   string `json:"document_type"`
-		DocumentNumber string `json:"document_number"`
-		DocumentFront  string `json:"document_front_base64"`
-		DocumentBack   string `json:"document_back_base64"`
-		Selfie         string `json:"selfie_base64"`
-	}
-	if err := decodeJSON(r, &req); err != nil || req.DocumentType == "" || req.DocumentNumber == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "document_type e document_number obrigatórios"})
-		return
-	}
-	docs, _ := marshalJSON(map[string]any{
-		"type":       req.DocumentType,
-		"number":     req.DocumentNumber,
-		"has_front":  req.DocumentFront != "",
-		"has_back":   req.DocumentBack != "",
-		"has_selfie": req.Selfie != "",
+// handleSubmitKYC is the DEPRECATED legacy KYC submission endpoint.
+//
+// This route (POST /api/mobile/user/kyc) accepted base64-encoded images and
+// only set kyc_status = "submitted" on the user record, bypassing the OCR
+// pipeline entirely.  The canonical endpoint is POST /api/mobile/kyc/submit
+// (handleKYCSubmit in kyc_v2.go), which uploads documents via URL, runs the
+// async OCR engine, and creates a properly tracked KYCRequest record.
+//
+// Status 410 Gone is returned so any caller — internal or third-party — gets
+// an unambiguous failure instead of silently landing on the wrong pipeline.
+func (s *Server) handleSubmitKYC(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("X-Deprecated-By", "POST /api/mobile/kyc/submit")
+	writeJSON(w, http.StatusGone, map[string]any{
+		"error":       "Este endpoint foi descontinuado. Use POST /api/mobile/kyc/submit.",
+		"canonical":   "POST /api/mobile/kyc/submit",
+		"docs":        "O novo endpoint aceita URLs de documentos (document_front_url, document_back_url, selfie_url) e executa OCR assíncrono via KYC engine.",
+		"deprecated":  true,
 	})
-	docsStr := string(docs)
-	if err := mobileDB(s.db).UpdateUser(r.Context(), uid, map[string]any{
-		"kyc_status":    "submitted",
-		"kyc_documents": docsStr,
-	}); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "kyc_status": "submitted"})
 }
 
 func (s *Server) handleKYCStatus(w http.ResponseWriter, r *http.Request) {
