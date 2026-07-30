@@ -96,10 +96,9 @@ type contextKey string
 
 const ctxUserID contextKey = "uid"
 
-// userActiveCacheTTL is the TTL for the in-memory "is user active" cache.
-// Short enough to propagate account deletions (30 s), long enough to avoid a
-// DB round-trip on every authenticated request.
-const userActiveCacheTTL = 30 * time.Second
+// userActiveCacheTTL keeps the active-user check warm without leaving a long
+// fraud window after account deletion or lockout operations.
+const userActiveCacheTTL = 5 * time.Second
 
 func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
