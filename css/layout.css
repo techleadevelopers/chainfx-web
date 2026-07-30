@@ -567,21 +567,7 @@
 
 /* Shimmer sweep — same as Buy Now */
 .fab-whatsapp::after {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(
-    45deg,
-    transparent,
-    rgba(23, 103, 183, 0.22),
-    rgba(16, 174, 200, 0.22),
-    transparent
-  );
-  transform: rotate(45deg);
-  animation: buttonGlow 2s infinite;
+  content: none;
   pointer-events: none;
 }
 
