@@ -241,6 +241,10 @@
       transform: rotate(90deg);
     }
 
+    .nav-group:not(:has(.nav-child)) .nav-chevron {
+      display: none;
+    }
+
     .nav-children {
       display: none;
       gap: 2px;
@@ -258,6 +262,10 @@
       padding: 0 8px;
       font-size: 12px;
       color: #637083;
+    }
+
+    .settlement-advanced {
+      display: none !important;
     }
 
     .sidebar-foot {
@@ -2453,8 +2461,6 @@
             <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
           </button>
           <div class="nav-children">
-            <button class="nav-child" data-section="overview" type="button">Executive</button>
-            <button class="nav-child" data-section="overview" type="button">Activity</button>
             <button class="nav-child" data-section="recent-sales" type="button">Últimas Vendas</button>
           </div>
         </section>
@@ -2481,11 +2487,6 @@
             Settlement
             <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
           </button>
-          <div class="nav-children">
-            <button class="nav-child" data-section="settlement" type="button">Pending</button>
-            <button class="nav-child" data-section="settlement" type="button">Confirmed</button>
-            <button class="nav-child" data-section="settlement" type="button">Failed</button>
-          </div>
         </section>
         <section class="nav-group" data-nav-group="transactions">
           <button class="nav-main" data-section="transactions" type="button" aria-expanded="false">
@@ -2493,11 +2494,6 @@
             Payments
             <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
           </button>
-          <div class="nav-children">
-            <button class="nav-child" data-section="transactions" type="button">Buy Orders</button>
-            <button class="nav-child" data-section="transactions" type="button">Sell Orders</button>
-            <button class="nav-child" data-section="transactions" type="button">Quotes</button>
-          </div>
         </section>
         <section class="nav-group" data-nav-group="wallets">
           <button class="nav-main" data-section="wallets" type="button" aria-expanded="false">
@@ -2505,11 +2501,6 @@
             Wallets
             <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
           </button>
-          <div class="nav-children">
-            <button class="nav-child" data-section="wallets" type="button">Hot Wallet</button>
-            <button class="nav-child" data-section="wallets" type="button">Cold Wallet</button>
-            <button class="nav-child" data-section="wallets" type="button">Treasury</button>
-          </div>
         </section>
         <div class="nav-heading">Platform</div>
         <section class="nav-group" data-nav-group="developers">
@@ -2518,11 +2509,6 @@
             Developers
             <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
           </button>
-          <div class="nav-children">
-            <button class="nav-child" data-section="developers" type="button">API Keys</button>
-            <button class="nav-child" data-section="developers" type="button">Projects</button>
-            <button class="nav-child" data-section="developers" type="button">Webhooks</button>
-          </div>
         </section>
         <section class="nav-group" data-nav-group="mcp">
           <button class="nav-main" data-section="mcp" type="button" aria-expanded="false">
@@ -2530,11 +2516,6 @@
             MCP
             <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
           </button>
-          <div class="nav-children">
-            <button class="nav-child" data-section="mcp" type="button">Servers</button>
-            <button class="nav-child" data-section="mcp" type="button">Tools</button>
-            <button class="nav-child" data-section="mcp" type="button">Resources</button>
-          </div>
         </section>
         <section class="nav-group" data-nav-group="agent-funnel">
           <button class="nav-main" data-section="agent-funnel" type="button" aria-expanded="false">
@@ -2542,11 +2523,6 @@
             Agent Funnel
             <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
           </button>
-          <div class="nav-children">
-            <button class="nav-child" data-section="agent-funnel" type="button">Funnel</button>
-            <button class="nav-child" data-section="agent-funnel" type="button">Agent Payments</button>
-            <button class="nav-child" data-section="agent-funnel" type="button">Capabilities</button>
-          </div>
         </section>
         <section class="nav-group" data-nav-group="eips">
           <button class="nav-main" data-section="eips" type="button" aria-expanded="false">
@@ -2554,11 +2530,6 @@
             EIPs
             <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
           </button>
-          <div class="nav-children">
-            <button class="nav-child" data-section="eips" type="button">EIP-712</button>
-            <button class="nav-child" data-section="eips" type="button">EIP-2612</button>
-            <button class="nav-child" data-section="eips" type="button">EIP-3009</button>
-          </div>
         </section>
         <div class="nav-heading">Compliance</div>
         <section class="nav-group" data-nav-group="reports">
@@ -2567,11 +2538,6 @@
             Reports
             <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
           </button>
-          <div class="nav-children">
-            <button class="nav-child" data-section="reports" type="button">Exports</button>
-            <button class="nav-child" data-section="reports" type="button">Fiscal</button>
-            <button class="nav-child" data-section="reports" type="button">Reconciliation</button>
-          </div>
         </section>
         <section class="nav-group" data-nav-group="audit">
           <button class="nav-main" data-section="audit" type="button" aria-expanded="false">
@@ -2579,11 +2545,6 @@
             Audit
             <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
           </button>
-          <div class="nav-children">
-            <button class="nav-child" data-section="audit" type="button">Events</button>
-            <button class="nav-child" data-section="audit" type="button">Admin</button>
-            <button class="nav-child" data-section="audit" type="button">API</button>
-          </div>
         </section>
       </nav>
       <div class="sidebar-foot">
@@ -2854,7 +2815,7 @@
           <div class="panel-head">
             <div>
               <h2>Settlement Reconciliation & Finality</h2>
-              <p>Controle operacional para garantir que ordem, signer, vault, token, receipt, finality e ledger concordam antes de entrega.</p>
+              <p>Essencial para operar: pendentes, confirmando, reconciliadas e divergencias que bloqueiam entrega.</p>
             </div>
             <span class="badge info" id="settlementEngineStatus">Awaiting data</span>
           </div>
@@ -2864,7 +2825,7 @@
             <div class="metric-box"><label>Reconciled</label><strong id="settlementReconciled">0</strong><span>vault event + Transfer</span></div>
             <div class="metric-box"><label>Mismatches</label><strong id="settlementMismatches">0</strong><span id="settlementMismatchHint">sem divergencias carregadas</span></div>
           </div>
-          <div class="settlement-proof-grid">
+          <div class="settlement-proof-grid settlement-advanced">
             <div class="ops-tile">
               <strong><i class="health-dot" id="settlementTruthDot"></i>Princípio de verdade</strong>
               <span>Entrega só depois que todos os sinais concordam.</span>
@@ -2889,7 +2850,7 @@
           </div>
         </div>
 
-        <div class="panel">
+        <div class="panel settlement-advanced">
           <div class="panel-head">
             <div>
               <h2>Settlement lifecycle</h2>
@@ -2913,12 +2874,9 @@
               <thead>
                 <tr>
                   <th>Order</th>
-                  <th>Operation</th>
                   <th>Network</th>
                   <th>Status</th>
                   <th>Receipt</th>
-                  <th>Vault Event</th>
-                  <th>Transfer</th>
                   <th>Finality</th>
                   <th>TX</th>
                   <th>Failure</th>
@@ -2928,7 +2886,7 @@
             </table>
           </div>
           <div class="empty" id="settlementEmpty">Nenhuma operação de settlement carregada.</div>
-          <pre class="pre" id="settlementJson">{}</pre>
+          <pre class="pre settlement-advanced" id="settlementJson">{}</pre>
         </div>
       </section>
 
@@ -3093,6 +3051,21 @@
             <div class="ops-tile"><strong>API Explorer</strong><span>Endpoints para fallback de compra/venda cripto</span><div class="kv-mini"><div><label>Surface</label><b>REST Core</b></div><div><label>Flow</label><b id="devOpsMcp">Buy/Sell</b></div></div></div>
             <div class="ops-tile"><strong>Orders</strong><span>Status e auditoria de ordens REST</span><div class="kv-mini"><div><label>Top route</label><b id="devOpsTopProduct">/order</b></div><div><label>Scope</label><b id="devOpsTakeRate">REST</b></div></div></div>
           </div>
+          <div class="table-wrap" style="margin-top:16px">
+            <table>
+              <thead>
+                <tr>
+                  <th>Quando</th>
+                  <th>Rota</th>
+                  <th>Status</th>
+                  <th>Request</th>
+                  <th>Ordem</th>
+                </tr>
+              </thead>
+              <tbody id="devAccessBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="devAccessEmpty">Nenhuma tentativa REST buy/sell/order carregada.</div>
         </div>
       </section>
 
@@ -3915,7 +3888,8 @@
             const group = button.closest('.nav-group');
             const groupKey = group?.dataset.navGroup || section;
             const isMain = button.classList.contains('nav-main');
-            setExpandedNavGroup(isMain && state.navExpanded === groupKey ? null : groupKey);
+            const hasChildren = Boolean(group?.querySelector('.nav-child'));
+            setExpandedNavGroup(isMain && hasChildren ? (state.navExpanded === groupKey ? null : groupKey) : (hasChildren ? groupKey : null));
             document.querySelectorAll('.nav button').forEach((item) => item.classList.remove('active', 'parent-active'));
             document.querySelectorAll('.section').forEach((section) => section.classList.remove('active'));
             button.classList.add('active');
@@ -5906,12 +5880,9 @@
         $('settlementBody').innerHTML = rows.map((row) => `
           <tr>
             <td><code>${escapeHtml(shorten(row.orderId || row.order_id || '--'))}</code></td>
-            <td><code>${escapeHtml(shorten(row.operationId || row.operation_id || '--'))}</code></td>
             <td><span class="badge info">${escapeHtml(row.network || '--')}</span></td>
             <td><span class="badge ${badgeClass(String(row.reconciliationStatus || row.reconciliation_status || row.executionStatus || row.execution_status || row.status || 'pending').toLowerCase())}">${escapeHtml(row.reconciliationStatus || row.reconciliation_status || row.executionStatus || row.execution_status || row.status || 'pending')}</span></td>
             <td>${proofBadge(row.receiptVerified ?? row.receipt_verified)}</td>
-            <td>${proofBadge(row.vaultEventVerified ?? row.vault_event_verified)}</td>
-            <td>${proofBadge(row.transferEventVerified ?? row.transfer_event_verified)}</td>
             <td>${proofBadge(row.confirmationsVerified ?? row.confirmations_verified)}</td>
             <td><code>${escapeHtml(shorten(row.txHash || row.tx_hash || ''))}</code></td>
             <td>${escapeHtml(row.failureCode || row.failure_code || row.failureField || row.failure_field || '--')}</td>
@@ -6133,6 +6104,40 @@
         setText('devOpsMcp', 'Buy/Sell');
         setText('devOpsTopProduct', '/order');
         setText('devOpsTakeRate', 'REST');
+        const devAccessRows = samples
+          .filter((sample) => /\/(buy|sell|quote|order|rates)\b/i.test(String(sample.endpoint || '')))
+          .slice(-20)
+          .reverse()
+          .map((sample) => ({
+            at: sample.at || sample.createdAt || sample.timestamp || obs.sampledAt,
+            route: sample.endpoint || sample.path || '--',
+            status: sample.status || (sample.ok ? 200 : 'error'),
+            request: sample.traceId || sample.requestId || sample.request_id || '--',
+            order: sample.orderId || sample.order_id || '--'
+          }));
+        if (!devAccessRows.length) {
+          state.transactions.slice(-20).reverse().forEach((row) => {
+            devAccessRows.push({
+              at: row.updatedAt || row.createdAt,
+              route: row.type === 'sell' ? '/sell' : '/buy',
+              status: row.status || '--',
+              request: row.requestId || row.request_id || '--',
+              order: row.id || '--'
+            });
+          });
+        }
+        if ($('devAccessBody')) {
+          $('devAccessBody').innerHTML = devAccessRows.map((row) => `
+            <tr>
+              <td>${escapeHtml(formatDate(row.at))}</td>
+              <td><code>${escapeHtml(row.route)}</code></td>
+              <td><span class="badge ${badgeClass(String(row.status).toLowerCase())}">${escapeHtml(row.status)}</span></td>
+              <td><code>${escapeHtml(shorten(row.request))}</code></td>
+              <td><code>${escapeHtml(shorten(row.order))}</code></td>
+            </tr>
+          `).join('');
+        }
+        if ($('devAccessEmpty')) $('devAccessEmpty').style.display = devAccessRows.length ? 'none' : 'block';
 
         setText('mcpOpsLatency', mcpSummary.count ? `${mcpSummary.p95} ms` : '--');
         setText('mcpOpsErrors', String(mcpSummary.errors));
