@@ -880,12 +880,12 @@ Response 201
   "statusUrl": "/api/buy/buy_order_id?accessToken=customer_access_token"
 }</code></pre>
                         </div>
-                        <p class="developer-note">Consolidated with the backend path: /buy accepts customer name, email, CPF, phone, birth date and address, forwards those fields to the PIX provider when creating the PagBank charge, stores audit hashes locally, and returns the PIX QR payload. Current settlement supports USDT delivery on BSC; BTC and EURUSDT remain roadmap assets.</p>
+                        <p class="developer-note">Consolidated with the backend path: /buy accepts customer name, email, CPF, phone, birth date and address, forwards those fields to the PIX provider when creating the charge, stores audit hashes locally, and returns the PIX QR payload. Available buy assets and networks come from /api/buy/pairs.</p>
                     </article>
 
                     <article id="api-sell" class="developer-panel">
-                        <h2>USDT to PIX BRL</h2>
-                        <p>For sell flows, the customer sends USDT on BSC or Polygon to the generated deposit address and receives BRL via PIX after on-chain confirmation.</p>
+                        <h2>Crypto to PIX BRL</h2>
+                        <p>For sell flows, the customer sends USDT on BSC/Polygon, BTC on native Bitcoin, or ETH on Ethereum/BSC to the deposit wallet and receives BRL via PIX after confirmation.</p>
                         <div class="code-window">
                             <div class="code-window-bar">
                                 <span class="code-window-dots"><i></i><i></i><i></i></span>
