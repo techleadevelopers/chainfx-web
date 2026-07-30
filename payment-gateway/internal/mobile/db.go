@@ -1228,6 +1228,60 @@ func (q *mobileQueries) ListOrdersByUser(ctx context.Context, userID string, lim
 	return out, rows.Err()
 }
 
+func (q *mobileQueries) GetSellOrderByUser(ctx context.Context, orderID, userID string) (map[string]any, error) {
+	row := q.sql.QueryRowContext(ctx, `
+                SELECT id::text, amount_brl::float8, btc_amount::float8,
+                       COALESCE(fee_brl, 0)::float8, COALESCE(payout_brl, 0)::float8,
+                       status, asset, network, rate_locked::float8, tx_hash,
+                       address, pix_cpf, pix_phone, created_at, updated_at
+                FROM orders
+                WHERE id=$1::uuid AND user_id=$2::uuid`, orderID, userID)
+	var id, status, asset, network string
+	var address, pixCPF, pixPhone, txHash sql.NullString
+	var amountBRL, cryptoAmount, feeBRL, payoutBRL, rateLocked float64
+	var createdAt, updatedAt time.Time
+	if err := row.Scan(&id, &amountBRL, &cryptoAmount, &feeBRL, &payoutBRL, &status, &asset, &network, &rateLocked, &txHash, &address, &pixCPF, &pixPhone, &createdAt, &updatedAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	out := map[string]any{
+		"id":            id,
+		"order_id":      id,
+		"kind":          "sell",
+		"status":        status,
+		"amount_brl":    amountBRL,
+		"amountBRL":     amountBRL,
+		"crypto_amount": cryptoAmount,
+		"cryptoAmount":  cryptoAmount,
+		"fee_brl":       feeBRL,
+		"feeBRL":        feeBRL,
+		"payout_brl":    payoutBRL,
+		"payoutBRL":     payoutBRL,
+		"asset":         asset,
+		"network":       network,
+		"rate_locked":   rateLocked,
+		"rateLocked":    rateLocked,
+		"created_at":    createdAt,
+		"updated_at":    updatedAt,
+	}
+	if address.Valid {
+		out["address"] = address.String
+	}
+	if txHash.Valid {
+		out["tx_hash"] = txHash.String
+		out["txHash"] = txHash.String
+	}
+	if pixCPF.Valid {
+		out["pix_cpf"] = pixCPF.String
+	}
+	if pixPhone.Valid {
+		out["pix_phone"] = pixPhone.String
+	}
+	return out, nil
+}
+
 // TagOrderUser sets user_id on an order (used after anonymous order creation).
 func (q *mobileQueries) TagOrderUser(ctx context.Context, orderID, userID string) error {
 	_, err := q.sql.ExecContext(ctx,
