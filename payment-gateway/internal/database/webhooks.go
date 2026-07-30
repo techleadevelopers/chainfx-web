@@ -89,12 +89,12 @@ func (db *DB) ListWebhookSubscriptions(ctx context.Context) ([]*WebhookSubscript
 	return out, rows.Err()
 }
 
-// ListWebhookSubscriptionsByAgent returns subscriptions owned by a specific MCP agent
-// (filtered by agent_api_key_hash). If agentKeyHash is empty, returns all subscriptions
-// (for admin/dashboard use). This is the IDOR-safe variant for MCP callers.
+// ListWebhookSubscriptionsByAgent returns subscriptions owned by a specific MCP agent.
+// Empty hashes never fall back to all subscriptions; admin/dashboard callers must use
+// ListWebhookSubscriptions explicitly.
 func (db *DB) ListWebhookSubscriptionsByAgent(ctx context.Context, agentKeyHash string) ([]*WebhookSubscription, error) {
 	if agentKeyHash == "" {
-		return db.ListWebhookSubscriptions(ctx)
+		return []*WebhookSubscription{}, nil
 	}
 	rows, err := db.SQL.QueryContext(ctx, `
 SELECT id, provider, target_url, secret, events, active, COALESCE(description, ''),
