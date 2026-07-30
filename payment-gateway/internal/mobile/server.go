@@ -273,6 +273,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// ── User / KYC ────────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /api/mobile/user/profile", s.requireAuth(s.handleGetProfile))
+	mux.HandleFunc("GET /api/mobile/loyalty/points", s.requireAuth(s.handleLoyaltyPoints))
 	mux.HandleFunc("GET /api/mobile/user/membership", s.requireAuth(s.handleGetMembership))
 	mux.HandleFunc("PUT /api/mobile/user/profile", s.requireAuth(s.handleUpdateProfile))
 	mux.HandleFunc("POST /api/mobile/user/avatar", s.requireAuth(s.handleUploadAvatar))
@@ -341,6 +342,8 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/mobile/commerce/orders/{id}/delivery", s.requireAuth(s.handleGiftCardDelivery))
 	mux.HandleFunc("POST /api/mobile/commerce/bitrefill/webhook", s.handleCommerceBitrefillWebhook)
 	mux.HandleFunc("GET /api/mobile/travel/hotels", s.requireAuth(s.handleTravelHotels))
+	mux.HandleFunc("POST /api/mobile/travel/quote", s.requireAuth(s.handleTravelQuote))
+	mux.HandleFunc("POST /api/mobile/travel/orders", s.requireAuth(s.requireIdempotency("mobile.travel.orders", s.handleTravelOrder)))
 
 	// ── DCA ───────────────────────────────────────────────────────────────────
 	mux.HandleFunc("POST /api/mobile/dca/create", s.requireAuth(s.requireIdempotency("mobile.dca.create", s.handleDCACreate)))
