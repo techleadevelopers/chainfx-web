@@ -63,8 +63,10 @@ func (s *Server) handleResourcesReadWithAuthorize(authorize Authorize) http.Hand
 			return
 		}
 
+		apiKey := mcpAPIKey(r)
+		ctx := context.WithValue(r.Context(), mcpAPIKeyCtxKey{}, apiKey)
 		if !isPublicMCPResource(req.URI) && authorize != nil {
-			if mcpAPIKey(r) == "" {
+			if apiKey == "" {
 				writeResourceContent(w, req.URI, map[string]any{
 					"authRequired": true,
 					"status":       "unauthorized",
@@ -77,7 +79,7 @@ func (s *Server) handleResourcesReadWithAuthorize(authorize Authorize) http.Hand
 			}
 		}
 
-		content, err := s.readResource(r.Context(), req.URI)
+		content, err := s.readResource(ctx, req.URI)
 		if err != nil {
 			writeMCPError(w, http.StatusNotFound, err.Error())
 			return
@@ -161,7 +163,7 @@ func (s *Server) readResource(ctx context.Context, uri string) (any, error) {
 	case uri == "chainfx://webhooks/events":
 		return webhooks.AllEvents(), nil
 	case uri == "chainfx://webhooks/subscriptions":
-		return s.db.ListWebhookSubscriptions(ctx)
+		return s.db.ListWebhookSubscriptionsByAgent(ctx, fullMCPSecretHash(mcpAPIKeyFromCtx(ctx)))
 	case strings.HasPrefix(uri, "chainfx://orders/"):
 		id := strings.TrimPrefix(uri, "chainfx://orders/")
 		return s.toolGetOrderStatus(ctx, map[string]any{"orderId": id})
