@@ -54,6 +54,7 @@ func sanitizeUser(u *models.User) map[string]any {
 		"kyc_status":         u.KYCStatus,
 		"biometry_enabled":   u.BiometryEnabled,
 		"two_factor_enabled": u.TwoFactorEnabled,
+		"loyalty_points":     mobileLoyaltyPointsForUser(u.ID),
 		"created_at":         u.CreatedAt,
 	}
 	if cpf := mobileUserCPF(u); cpf != "" {
