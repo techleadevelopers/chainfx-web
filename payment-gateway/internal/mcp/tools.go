@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -75,7 +76,7 @@ func (s *Server) tools() []Tool {
 		{
 			Name:        "getPurchase",
 			Description: "Consulta status de uma purchase do marketplace/capability exchange.",
-			InputSchema: schema(map[string]string{"purchaseId": "string obrigatorio"}),
+			InputSchema: schema(map[string]string{"purchaseId": "string obrigatorio", "agentWallet": "string obrigatorio para escopo de propriedade"}),
 		},
 		{
 			Name:        "executeCapability",
@@ -918,7 +919,17 @@ func (s *Server) toolGetPurchase(ctx context.Context, args map[string]any) (any,
 	if id == "" {
 		return nil, fmt.Errorf("purchaseId e obrigatorio")
 	}
-	purchase, err := s.db.GetMarketplacePurchase(ctx, id)
+	wallet := strings.ToLower(strings.TrimSpace(firstNonEmptyMCP(
+		stringArg(args, "agentWallet"),
+		stringArg(args, "agent_wallet"),
+		stringArg(args, "payerWallet"),
+		stringArg(args, "payer_wallet"),
+		stringArg(args, "wallet"),
+	)))
+	if wallet == "" {
+		return nil, fmt.Errorf("agentWallet ou payerWallet e obrigatorio para consultar purchase")
+	}
+	purchase, err := s.db.GetMarketplacePurchaseForWallet(ctx, id, wallet)
 	if err != nil {
 		return nil, err
 	}
@@ -1439,17 +1450,24 @@ func capabilityFallbackOutput(event *database.MarketplaceCapabilityExecution, ca
 
 func (s *Server) toolGetUsage(ctx context.Context, args map[string]any) (any, error) {
 	if grantID := strings.TrimSpace(stringArg(args, "grantId")); grantID != "" {
+		wallet := strings.ToLower(strings.TrimSpace(firstNonEmptyMCP(stringArg(args, "agentWallet"), stringArg(args, "agent_wallet"), stringArg(args, "payerWallet"), stringArg(args, "payer_wallet"), stringArg(args, "wallet"))))
+		if wallet == "" {
+			return nil, fmt.Errorf("agentWallet ou payerWallet e obrigatorio para consultar grant")
+		}
 		grant, err := s.db.GetAccessGrant(ctx, grantID)
 		if err != nil {
 			return nil, err
 		}
-		if grant == nil {
+		if grant == nil || !strings.EqualFold(grant.BuyerWallet, wallet) {
 			return nil, fmt.Errorf("grant nao encontrado: %s", grantID)
 		}
 		return grant, nil
 	}
 	if purchaseID := strings.TrimSpace(stringArg(args, "purchaseId")); purchaseID != "" {
-		return s.toolGetPurchase(ctx, map[string]any{"purchaseId": purchaseID})
+		return s.toolGetPurchase(ctx, map[string]any{
+			"purchaseId":  purchaseID,
+			"agentWallet": firstNonEmptyMCP(stringArg(args, "agentWallet"), stringArg(args, "agent_wallet"), stringArg(args, "payerWallet"), stringArg(args, "payer_wallet"), stringArg(args, "wallet")),
+		})
 	}
 	return nil, fmt.Errorf("grantId ou purchaseId e obrigatorio")
 }
@@ -1516,7 +1534,10 @@ func (s *Server) toolTrade(args map[string]any) (any, error) {
 
 func (s *Server) toolSettlementStatus(ctx context.Context, args map[string]any) (any, error) {
 	if purchaseID := strings.TrimSpace(stringArg(args, "purchaseId")); purchaseID != "" {
-		return s.toolGetPurchase(ctx, map[string]any{"purchaseId": purchaseID})
+		return s.toolGetPurchase(ctx, map[string]any{
+			"purchaseId":  purchaseID,
+			"agentWallet": firstNonEmptyMCP(stringArg(args, "agentWallet"), stringArg(args, "agent_wallet"), stringArg(args, "payerWallet"), stringArg(args, "payer_wallet"), stringArg(args, "wallet")),
+		})
 	}
 	if tradeID := strings.TrimSpace(stringArg(args, "tradeIntentId")); tradeID != "" {
 		intent, err := s.db.GetAgentTradeIntent(ctx, tradeID)
@@ -1534,23 +1555,42 @@ func (s *Server) toolSettlementStatus(ctx context.Context, args map[string]any) 
 func (s *Server) toolGetOrderStatus(ctx context.Context, args map[string]any) (any, error) {
 	orderID, _ := args["orderId"].(string)
 	orderID = strings.TrimSpace(orderID)
+	accessToken := strings.TrimSpace(firstNonEmptyMCP(stringArg(args, "accessToken"), stringArg(args, "access_token"), stringArg(args, "token")))
 	if orderID == "" {
 		return nil, fmt.Errorf("orderId é obrigatório")
+	}
+	if accessToken == "" {
+		return nil, fmt.Errorf("accessToken e obrigatorio para consultar ordem")
 	}
 	side, _ := args["side"].(string)
 	side = strings.ToLower(strings.TrimSpace(side))
 
 	if side == "" || side == "buy" {
 		if buy, err := s.db.GetBuyOrder(ctx, orderID); err == nil && buy != nil {
+			if !mcpAccessTokenMatches(buy.AccessToken, accessToken) {
+				return nil, fmt.Errorf("ordem nao encontrada: %s", orderID)
+			}
 			return buy, nil
 		}
 	}
 	if side == "" || side == "sell" {
 		if order, err := s.db.GetOrder(ctx, orderID); err == nil && order != nil {
+			if !mcpAccessTokenMatches(order.AccessToken, accessToken) {
+				return nil, fmt.Errorf("ordem nao encontrada: %s", orderID)
+			}
 			return order, nil
 		}
 	}
 	return nil, fmt.Errorf("ordem não encontrada: %s", orderID)
+}
+
+func mcpAccessTokenMatches(stored, provided string) bool {
+	stored = strings.TrimSpace(stored)
+	provided = strings.TrimSpace(provided)
+	if stored == "" || provided == "" || len(stored) != len(provided) {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(stored), []byte(provided)) == 1
 }
 
 func (s *Server) toolMarketAnalysis(ctx context.Context) (any, error) {
@@ -1885,7 +1925,7 @@ func (s *Server) toolCreateM2MPaymentIntent(ctx context.Context, args map[string
 	feeUSDT := feeUSDTTokens.Float64()
 	requiredUSDT := requiredUSDTTokens.Float64()
 
-	_, decision, policyErr := s.db.ValidateAgentPaymentPolicy(ctx, agentWallet, "USDT", fmt.Sprintf("%.6f", requiredUSDT))
+	_, decision, policyErr := s.db.ValidateAgentPaymentPolicy(ctx, agentWallet, "USDT", requiredUSDTTokens.String())
 	if policyErr != nil {
 		return nil, policyErr
 	}
