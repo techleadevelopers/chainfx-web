@@ -1206,6 +1206,18 @@ func (db *DB) GetMarketplacePurchase(ctx context.Context, id string) (*Marketpla
 	return p, err
 }
 
+func (db *DB) GetMarketplacePurchaseForWallet(ctx context.Context, id, wallet string) (*MarketplacePurchase, error) {
+	wallet = strings.ToLower(strings.TrimSpace(wallet))
+	if wallet == "" {
+		return nil, nil
+	}
+	p, err := scanMarketplacePurchase(db.SQL.QueryRowContext(ctx, marketplacePurchaseSelect()+` WHERE id = $1 AND (lower(agent_wallet) = $2 OR lower(payer_wallet) = $2)`, id, wallet))
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return p, err
+}
+
 func (db *DB) GetMarketplacePurchaseByIdempotency(ctx context.Context, key string) (*MarketplacePurchase, error) {
 	p, err := scanMarketplacePurchase(db.SQL.QueryRowContext(ctx, marketplacePurchaseSelect()+` WHERE idempotency_key = $1`, key))
 	if err == sql.ErrNoRows {
