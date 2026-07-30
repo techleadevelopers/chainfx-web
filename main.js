@@ -833,7 +833,10 @@ const getSellNetworkMeta = (network = state.sellNetwork) => {
 const getSellNetworkForAsset = (asset) => {
   const code = String(asset || 'USDT').toUpperCase();
   if (code === 'BTC') return 'BITCOIN';
-  if (code === 'ETH') return 'ETHEREUM';
+  if (code === 'ETH') {
+    const network = normalizeSellNetwork(state.sellNetwork);
+    return network === 'BSC' ? 'BSC' : 'ETHEREUM';
+  }
   return normalizeSellNetwork(state.sellNetwork) || 'BSC';
 };
 
@@ -869,8 +872,9 @@ const updateSellDepositWallet = () => {
     state.sellNetwork = 'BITCOIN';
     priceState.sellNetwork = 'BITCOIN';
   } else if (asset === 'ETH') {
-    state.sellNetwork = 'ETHEREUM';
-    priceState.sellNetwork = 'ETHEREUM';
+    const current = normalizeSellNetwork(state.sellNetwork);
+    state.sellNetwork = current === 'BSC' ? 'BSC' : 'ETHEREUM';
+    priceState.sellNetwork = state.sellNetwork;
   } else {
     // USDT: use BSC/POLYGON selection, filter out BTC/ETH networks
     const evmNetworks = normalizeSellNetworks(priceState.sellNetworks).filter(n => n !== 'BITCOIN' && n !== 'ETHEREUM');
@@ -1870,6 +1874,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateSellDepositWallet();
   }
 
+  function setDefaultSellNetworkForAsset(asset) {
+    const code = String(asset || 'USDT').toUpperCase();
+    if (code === 'BTC') {
+      state.sellNetwork = 'BITCOIN';
+    } else if (code === 'ETH') {
+      state.sellNetwork = 'ETHEREUM';
+    } else {
+      const evmNetworks = normalizeSellNetworks(priceState.sellNetworks).filter(n => n !== 'BITCOIN' && n !== 'ETHEREUM');
+      const current = normalizeSellNetwork(state.sellNetwork);
+      state.sellNetwork = evmNetworks.includes(current) ? current : (evmNetworks[0] || 'BSC');
+    }
+    priceState.sellNetwork = state.sellNetwork;
+  }
+
   // Render the sell asset selector chips (USDT / BTC / ETH)
   function renderSellAssetSelector() {
     const container = document.getElementById('sellAssetOptions');
@@ -1888,6 +1906,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const asset = btn.dataset.sellAsset;
         if (asset === state.payCurrency) return;
         state.payCurrency = asset;
+        setDefaultSellNetworkForAsset(asset);
         setSelectorButton(payCurrencyBtn, SELL_PAY_OPTIONS.find(o => o.code === asset) || SELL_PAY_OPTIONS[0]);
         renderSellAssetSelector();
         renderSellNetworkOptions(asset);
@@ -2265,7 +2284,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function setPayCurrency(option) {
+    const previousPayCurrency = state.payCurrency;
     state.payCurrency = option.code;
+    if (state.action === 'sell' && previousPayCurrency !== state.payCurrency) {
+      setDefaultSellNetworkForAsset(state.payCurrency);
+      renderSellNetworkOptions(state.payCurrency);
+    }
     if (state.action === 'buy') clearLastBuyQuote();
     setSelectorButton(payCurrencyBtn, option);
     updateRateLabel();
@@ -2790,13 +2814,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       const orderInfoTitle = document.getElementById('orderInfoTitle');
       const orderNoticeEl = document.getElementById('orderNotice');
       const createOrderBtnEl = document.getElementById('createOrderBtn');
-      const assetNetworkLabel = asset === 'BTC' ? 'Bitcoin / BTC' : asset === 'ETH' ? 'Ethereum / ETH' : `BSC / USDT (BEP20)`;
-      if (orderInfoTitle) orderInfoTitle.textContent = `Ordem ${assetNetworkLabel}`;
-      if (orderNoticeEl) orderNoticeEl.textContent = asset === 'BTC'
-        ? 'Rede Bitcoin nativa. Envie BTC para o endereço acima.'
+      const selectedMeta = getSellNetworkMeta(selectedNetwork);
+      const assetNetworkLabel = asset === 'BTC'
+        ? 'Bitcoin / BTC'
         : asset === 'ETH'
-        ? 'Rede Ethereum (ERC20). Envie ETH para o endereço acima.'
-        : 'Rede BSC / USDT (BEP20). Envie também 0.003-0.01 BNB para fee do sweep.';
+        ? `${selectedMeta.shortLabel} / ETH (${selectedNetwork === 'BSC' ? 'BEP20' : 'ERC20'})`
+        : `${selectedMeta.shortLabel} / USDT (${selectedNetwork === 'BSC' ? 'BEP20' : selectedMeta.shortLabel})`;
+      if (orderInfoTitle) orderInfoTitle.textContent = `Ordem ${assetNetworkLabel}`;
+      if (orderNoticeEl) {
+        if (asset === 'BTC') {
+          orderNoticeEl.textContent = 'Rede Bitcoin nativa. Envie BTC para o endereco acima.';
+        } else if (asset === 'ETH') {
+          orderNoticeEl.textContent = `${selectedMeta.displayLabel}. Envie ETH para o endereco acima.`;
+        } else {
+          orderNoticeEl.textContent = `${selectedMeta.displayLabel}. Envie USDT para o endereco acima.${selectedNetwork === 'BSC' ? ' Envie tambem 0.003-0.01 BNB para fee do sweep.' : ''}`;
+        }
+      }
       if (createOrderBtnEl) createOrderBtnEl.textContent = `Criar ordem ${asset}`;
 
       const resp = await fetch(`${API_BASE}/api/order`, {
