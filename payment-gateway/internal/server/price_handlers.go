@@ -20,6 +20,7 @@ func (s *Server) handlePrice(w http.ResponseWriter, r *http.Request) {
 		"sellNetworks":  s.supportedSellNetworks(),
 		"eurusd":       s.workers.PriceWorker.GetPrice("EURUSD"),
 		"btcusdt":      s.workers.PriceWorker.GetPrice("BTCUSDT"),
+		"ethusdt":      s.workers.PriceWorker.GetPrice("ETHUSDT"),
 		"bnbusdt":      s.workers.PriceWorker.GetPrice("BNBUSDT"),
 		"solusdt":      s.workers.PriceWorker.GetPrice("SOLUSDT"),
 		"linkusdt":     s.workers.PriceWorker.GetPrice("LINKUSDT"),
