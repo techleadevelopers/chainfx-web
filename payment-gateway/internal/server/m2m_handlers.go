@@ -152,7 +152,7 @@ func (s *Server) handleM2MCreateIntent(w http.ResponseWriter, r *http.Request) {
 	feeUSDT := feeUSDTTokens.Float64()
 	requiredUSDT := requiredUSDTTokens.Float64()
 
-	_, decision, policyErr := s.db.ValidateAgentPaymentPolicy(r.Context(), req.AgentWallet, "USDT", fmt.Sprintf("%.6f", requiredUSDT))
+	_, decision, policyErr := s.db.ValidateAgentPaymentPolicy(r.Context(), req.AgentWallet, "USDT", requiredUSDTTokens.String())
 	if policyErr != nil {
 		writeError(w, policyErr)
 		return
