@@ -5,9 +5,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
+
+	"payment-gateway/internal/money"
 )
 
 type AgentPolicy struct {
@@ -317,22 +318,22 @@ func jsonListContains(raw json.RawMessage, value string) bool {
 }
 
 func limitExceeded(amount, limit string) bool {
-	amountValue, _ := strconv.ParseFloat(strings.TrimSpace(amount), 64)
-	limitValue, _ := strconv.ParseFloat(strings.TrimSpace(limit), 64)
-	return limitValue > 0 && amountValue > limitValue
+	amountValue, amountErr := money.ParseToken(amount)
+	limitValue, limitErr := money.ParseToken(limit)
+	return amountErr == nil && limitErr == nil && limitValue > 0 && amountValue > limitValue
 }
 
 func (db *DB) enforceAgentSpendLimits(ctx context.Context, wallet, amount string, policy *AgentPolicy) AgentPolicyDecision {
-	amountValue, _ := strconv.ParseFloat(strings.TrimSpace(amount), 64)
-	if amountValue <= 0 || policy == nil {
+	amountValue, amountErr := money.ParseToken(amount)
+	if amountErr != nil || amountValue <= 0 || policy == nil {
 		return AgentPolicyDecision{Allowed: true}
 	}
-	dailyLimit, _ := strconv.ParseFloat(strings.TrimSpace(policy.DailyLimitUSDT), 64)
-	monthlyLimit, _ := strconv.ParseFloat(strings.TrimSpace(policy.MonthlyLimitUSDT), 64)
+	dailyLimit, _ := money.ParseToken(policy.DailyLimitUSDT)
+	monthlyLimit, _ := money.ParseToken(policy.MonthlyLimitUSDT)
 	if dailyLimit <= 0 && monthlyLimit <= 0 {
 		return AgentPolicyDecision{Allowed: true}
 	}
-	daily, monthly, err := db.AgentPolicySpendUSDT(ctx, wallet)
+	daily, monthly, err := db.AgentPolicySpendUSDTUnits(ctx, wallet)
 	if err != nil {
 		return AgentPolicyDecision{Allowed: false, Code: "AGENT_POLICY_SPEND_UNAVAILABLE", Message: "Agent spend could not be verified."}
 	}
@@ -343,6 +344,47 @@ func (db *DB) enforceAgentSpendLimits(ctx context.Context, wallet, amount string
 		return AgentPolicyDecision{Allowed: false, Code: "MONTHLY_LIMIT_EXCEEDED", Message: "Payment exceeds the agent monthly spend policy."}
 	}
 	return AgentPolicyDecision{Allowed: true}
+}
+
+func (db *DB) AgentPolicySpendUSDTUnits(ctx context.Context, wallet string) (daily money.TokenUnits, monthly money.TokenUnits, err error) {
+	wallet = strings.ToLower(strings.TrimSpace(wallet))
+	if wallet == "" {
+		return 0, 0, nil
+	}
+	const q = `
+WITH spend AS (
+  SELECT gross_amount::numeric AS amount, created_at
+    FROM marketplace_purchases
+   WHERE lower(agent_wallet) = lower($1)
+     AND status NOT IN ('expired','payment_invalid','grant_failed')
+  UNION ALL
+  SELECT pay_amount::numeric AS amount, created_at
+    FROM agent_trade_intents
+   WHERE lower(agent_wallet) = lower($1)
+     AND status NOT IN ('expired','failed')
+  UNION ALL
+  SELECT required_usdt::numeric AS amount, created_at
+    FROM agent_payment_intents
+   WHERE lower(agent_wallet) = lower($1)
+     AND status NOT IN ('expired','failed')
+)
+SELECT
+  COALESCE(SUM(amount) FILTER (WHERE created_at >= date_trunc('day', now() AT TIME ZONE 'UTC')), 0)::text,
+  COALESCE(SUM(amount) FILTER (WHERE created_at >= date_trunc('month', now() AT TIME ZONE 'UTC')), 0)::text
+FROM spend`
+	var dailyRaw, monthlyRaw string
+	if err = db.SQL.QueryRowContext(ctx, q, wallet).Scan(&dailyRaw, &monthlyRaw); err != nil {
+		return 0, 0, err
+	}
+	daily, err = money.ParseToken(dailyRaw)
+	if err != nil {
+		return 0, 0, err
+	}
+	monthly, err = money.ParseToken(monthlyRaw)
+	if err != nil {
+		return 0, 0, err
+	}
+	return daily, monthly, nil
 }
 
 func (db *DB) AgentPolicySpendUSDT(ctx context.Context, wallet string) (daily float64, monthly float64, err error) {
