@@ -641,16 +641,14 @@ func (s *Server) handleMobileGetOrder(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, buy)
 		return
 	}
-	resp, err := forwardToInternal(r, "GET", s.internalBase(r)+"/api/order/"+id, nil, s.internalAPIKey())
-	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]any{"error": err.Error()})
+	if sell, err := mobileDB(s.db).GetSellOrderByUser(r.Context(), id, uid); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		return
+	} else if sell != nil {
+		writeJSON(w, http.StatusOK, sell)
 		return
 	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(resp.StatusCode)
-	w.Write(body)
+	writeJSON(w, http.StatusNotFound, map[string]any{"error": "ordem nao encontrada"})
 }
 
 // handleMobileListOrders — GET /api/mobile/orders
