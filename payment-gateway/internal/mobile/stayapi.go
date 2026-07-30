@@ -32,7 +32,10 @@ func (e stayAPIError) Error() string {
 
 type stayHotelProduct struct {
 	ID           string         `json:"id"`
+	ProductID    string         `json:"product_id"`
 	Provider     string         `json:"provider"`
+	OrderType    string         `json:"order_type"`
+	ProductKind  string         `json:"product_kind"`
 	Title        string         `json:"title"`
 	Brand        string         `json:"brand"`
 	Location     string         `json:"location"`
@@ -170,6 +173,60 @@ func (s *Server) handleTravelHotels(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"items": hotels, "provider": "stayapi", "configured": true})
 }
 
+func (s *Server) handleTravelQuote(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ProductID string `json:"product_id"`
+		HotelID   string `json:"hotel_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "payload invalido"})
+		return
+	}
+	productID := firstNonEmptyStr(strings.TrimSpace(req.ProductID), strings.TrimSpace(req.HotelID))
+	if productID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "product_id obrigatorio"})
+		return
+	}
+	if !strings.HasPrefix(productID, "stayapi_") {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "produto de viagem invalido", "code": "INVALID_TRAVEL_PRODUCT", "product_id": productID})
+		return
+	}
+	writeJSON(w, http.StatusNotImplemented, stayAPITravelBookingUnavailablePayload(productID))
+}
+
+func (s *Server) handleTravelOrder(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ProductID string `json:"product_id"`
+		HotelID   string `json:"hotel_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "payload invalido"})
+		return
+	}
+	productID := firstNonEmptyStr(strings.TrimSpace(req.ProductID), strings.TrimSpace(req.HotelID))
+	if productID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "product_id obrigatorio"})
+		return
+	}
+	if !strings.HasPrefix(productID, "stayapi_") {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "produto de viagem invalido", "code": "INVALID_TRAVEL_PRODUCT", "product_id": productID})
+		return
+	}
+	writeJSON(w, http.StatusNotImplemented, stayAPITravelBookingUnavailablePayload(productID))
+}
+
+func stayAPITravelBookingUnavailablePayload(productID string) map[string]any {
+	return map[string]any{
+		"error":        "booking StayAPI ainda sem endpoint de compra habilitado",
+		"code":         "TRAVEL_BOOKING_NOT_IMPLEMENTED",
+		"provider":     "stayapi",
+		"product_id":   productID,
+		"order_type":   "travel",
+		"product_type": "hotel",
+		"product_kind": "hotel",
+	}
+}
+
 func normalizeStayHotels(decoded map[string]any, q stayHotelQuery) []stayHotelProduct {
 	items := stayHotelItems(decoded)
 	out := make([]stayHotelProduct, 0, len(items))
@@ -261,9 +318,13 @@ func stayHotelFromMap(item map[string]any, q stayHotelQuery, index int) stayHote
 		stayFirstString(item["thumbnail"]),
 		stayFirstString(item["image_url"]),
 	)
+	productID := "stayapi_" + id
 	return stayHotelProduct{
-		ID:           "stayapi_" + id,
+		ID:           productID,
+		ProductID:    productID,
 		Provider:     "stayapi",
+		OrderType:    "travel",
+		ProductKind:  "hotel",
 		Title:        name,
 		Brand:        "Hotel Booking",
 		Location:     location,
