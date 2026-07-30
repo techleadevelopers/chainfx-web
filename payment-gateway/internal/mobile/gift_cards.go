@@ -554,20 +554,24 @@ func (s *Server) purchaseGiftCardViaProvider(r *http.Request, quote mobileGiftCa
 }
 
 func giftCardProductPayload(product mobileGiftCardProduct) map[string]any {
+	productKind := giftCardProductKind(product.ProductType)
 	return map[string]any{
 		"id": product.CatalogID, "provider_product_id": product.ID, "product_id": product.ProductID,
 		"provider": product.ProviderSlug, "brand": product.Brand, "title": product.Title,
 		"subtitle": product.Subtitle, "description": product.Description, "category": product.Category,
 		"currency": product.Currency, "face_value_minor": product.FaceValueMinor, "price_brl": brlMinorString(product.PriceBRLMinor),
-		"discount_bps": product.DiscountBps, "product_type": product.ProductType, "delivery_mode": product.DeliveryMode,
+		"discount_bps": product.DiscountBps, "product_type": productKind, "product_kind": productKind, "order_type": giftCardOrderType(productKind),
+		"catalog_id": product.CatalogID, "provider_product_row_id": product.ID, "delivery_mode": product.DeliveryMode,
 		"image_url": product.ImageURL, "badge": product.Badge, "offer_text": product.OfferText,
 		"requires_kyc": product.RequiresKYC,
 	}
 }
 
 func giftCardQuotePayload(quote mobileGiftCardQuote, fundingMethod string) map[string]any {
+	productKind := giftCardProductKind(quote.Product.ProductType)
 	return map[string]any{
 		"quote_id": quote.QuoteID, "product": giftCardProductPayload(quote.Product), "quantity": quote.Quantity,
+		"quote_type": "commerce", "order_type": giftCardOrderType(productKind), "product_type": productKind, "product_kind": productKind, "provider": quote.Product.ProviderSlug,
 		"amount_brl": brlMinorString(quote.AmountBRLMinor), "fee_brl": brlMinorString(quote.FeeBRLMinor), "total_brl": brlMinorString(quote.TotalBRLMinor),
 		"usdt_rate": minorString(quote.USDTRateMicro, usdtMicroScale), "total_usdt": usdtMicroString(quote.RequiredUSDTMicro), "required_usdt": usdtMicroString(quote.RequiredUSDTMicro),
 		"available_usdt": usdtMicroString(quote.AvailableUSDTMicro), "locked_usdt": usdtMicroString(quote.LockedUSDTMicro),
@@ -581,8 +585,10 @@ func giftCardQuotePayload(quote mobileGiftCardQuote, fundingMethod string) map[s
 }
 
 func giftCardOrderCreatedPayload(orderID string, quote mobileGiftCardQuote, provider giftCardProviderResult, fundingMethod string) map[string]any {
+	productKind := giftCardProductKind(quote.Product.ProductType)
 	return map[string]any{
-		"order_id": orderID, "status": provider.Status, "provider_status": provider.ProviderStatus,
+		"id": orderID, "order_id": orderID, "order_type": giftCardOrderType(productKind), "product_type": productKind, "product_kind": productKind,
+		"provider": quote.Product.ProviderSlug, "status": provider.Status, "provider_status": provider.ProviderStatus,
 		"provider_reference": provider.ProviderReference,
 		"email_status":       provider.EmailStatus, "error_message": provider.ErrorMessage,
 		"product": giftCardProductPayload(quote.Product), "quantity": quote.Quantity,
@@ -647,13 +653,35 @@ func scanGiftCardOrderPayload(scanner giftCardOrderScanner) (map[string]any, err
 		return nil, err
 	}
 	return map[string]any{
-		"order_id": id, "product_id": productID, "brand": brand, "title": title, "product_type": productType,
+		"id": id, "order_id": id, "order_type": giftCardOrderType(productType), "product_id": productID,
+		"brand": brand, "title": title, "product_type": giftCardProductKind(productType), "product_kind": giftCardProductKind(productType),
 		"quantity": quantity, "amount_brl": amountBRL, "fee_brl": feeBRL, "usdt_rate": usdtRate,
 		"required_usdt": usdtMicroString(requiredUSDTMicro),
 		"status":        status, "provider_status": providerStatus, "provider_reference": providerReference,
 		"redemption_code": maskGiftCardSecret(redemptionCode), "redemption_pin": maskGiftCardSecret(redemptionPIN), "redemption_url": maskGiftCardSecret(redemptionURL),
 		"email_status": emailStatus, "error_message": errorMessage, "created_at": createdAt, "updated_at": updatedAt,
 	}, nil
+}
+
+func giftCardProductKind(productType string) string {
+	kind := strings.TrimSpace(strings.ToLower(productType))
+	if kind == "" {
+		return "gift_card"
+	}
+	return kind
+}
+
+func giftCardOrderType(productType string) string {
+	switch giftCardProductKind(productType) {
+	case "phone_refill", "mobile_topup", "topup":
+		return "mobile_topup"
+	case "esim":
+		return "esim"
+	case "hotel", "travel":
+		return "travel"
+	default:
+		return "gift_card"
+	}
 }
 
 func minInt(a, b int) int {
