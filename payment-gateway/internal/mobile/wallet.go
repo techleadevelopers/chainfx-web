@@ -11,7 +11,9 @@ import (
 	"sync"
 	"time"
 
+	bitcoinrail "payment-gateway/internal/bitcoin"
 	rpcpool "payment-gateway/internal/rpc"
+	solanarail "payment-gateway/internal/solana"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -21,6 +23,7 @@ import (
 // Reduz chamadas RPC de cada request para uma por walletAddr a cada 30 segundos.
 
 const walletBalanceCacheTTL = 30 * time.Second
+const nativeWalletBalanceCacheTTL = 30 * time.Second
 
 type walletBalanceCacheEntry struct {
 	bscUSDT      float64
@@ -173,7 +176,7 @@ func (s *Server) handleWalletBalance(w http.ResponseWriter, r *http.Request) {
 	// Errors are silently ignored so a BTC node outage never breaks EVM balance display.
 	var btcValueBRL float64
 	if s.btcSvc != nil {
-		if btcBal, btcErr := s.btcSvc.GetBalance(r.Context(), uid); btcErr == nil {
+		if btcBal, btcErr := s.cachedMobileBTCBalance(r.Context(), uid); btcErr == nil {
 			btcPrice := mobileAssetPriceBRL(s.PriceCache(), "BTC")
 			availableBTC := float64(btcBal.AvailableSats) / 1e8
 			confirmedBTC := float64(btcBal.ConfirmedSats) / 1e8
@@ -198,7 +201,7 @@ func (s *Server) handleWalletBalance(w http.ResponseWriter, r *http.Request) {
 
 	var solValueBRL float64
 	if s.solSvc != nil {
-		if solBal, solErr := s.solSvc.GetBalance(r.Context(), uid); solErr == nil {
+		if solBal, solErr := s.cachedMobileSOLBalance(r.Context(), uid); solErr == nil {
 			solPrice := mobileAssetPriceBRL(s.PriceCache(), "SOL")
 			amountSOL := float64(solBal.Lamports) / 1e9
 			solValueBRL = amountSOL * solPrice
@@ -225,6 +228,34 @@ func (s *Server) handleWalletBalance(w http.ResponseWriter, r *http.Request) {
 		"available_usdt": internalUSDT,
 		"funding_source": "mobile_internal_usdt_ledger",
 	})
+}
+
+func (s *Server) cachedMobileBTCBalance(ctx context.Context, uid string) (bitcoinrail.Balance, error) {
+	cacheKey := "wallet_balance:btc:" + uid
+	if cached, ok := s.getMobileCache(cacheKey); ok {
+		if balance, ok := cached.(bitcoinrail.Balance); ok {
+			return balance, nil
+		}
+	}
+	balance, err := s.btcSvc.GetBalance(ctx, uid)
+	if err == nil {
+		s.setMobileCache(cacheKey, balance, nativeWalletBalanceCacheTTL)
+	}
+	return balance, err
+}
+
+func (s *Server) cachedMobileSOLBalance(ctx context.Context, uid string) (solanarail.Balance, error) {
+	cacheKey := "wallet_balance:sol:" + uid
+	if cached, ok := s.getMobileCache(cacheKey); ok {
+		if balance, ok := cached.(solanarail.Balance); ok {
+			return balance, nil
+		}
+	}
+	balance, err := s.solSvc.GetBalance(ctx, uid)
+	if err == nil {
+		s.setMobileCache(cacheKey, balance, nativeWalletBalanceCacheTTL)
+	}
+	return balance, err
 }
 
 // mobileOnchainWalletBalancesAll fetches BSC + Polygon balances concurrently.
