@@ -45,6 +45,10 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "asset de sell nao suportado"})
 		return
 	}
+	if !sellAssetNetworkAllowed(asset, network) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "rede invalida para asset de sell", "asset": asset, "network": network})
+		return
+	}
 	if !s.sellNetworkEnabled(network) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "rede de sell nao suportada ou nao configurada", "network": network, "supportedNetworks": s.supportedSellNetworks()})
 		return
@@ -81,24 +85,31 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	marketRate := rate
-	amountUSDT := req.AmountUSDT
-	if amountUSDT <= 0 {
-		amountUSDT = req.CryptoAmount
+	sourceAmount := req.AmountUSDT
+	if sourceAmount <= 0 {
+		sourceAmount = req.CryptoAmount
 	}
-	if amountUSDT <= 0 && req.AmountBRL > 0 {
-		amountUSDT = req.AmountBRL / s.sellRate(marketRate)
-	}
-	if amountUSDT <= 0 {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "amountUSDT deve ser maior que zero"})
+	if sourceAmount <= 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "cryptoAmount deve ser maior que zero"})
 		return
 	}
-	rate, payout, spread := s.sellQuote(amountUSDT, marketRate)
+	quoteAmountUSDT := sourceAmount
+	if asset != "USDT" {
+		if req.AmountBRL <= 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "amountBRL deve ser maior que zero para sell BTC/ETH"})
+			return
+		}
+		quoteAmountUSDT = req.AmountBRL / marketRate
+	} else if quoteAmountUSDT <= 0 && req.AmountBRL > 0 {
+		quoteAmountUSDT = req.AmountBRL / s.sellRate(marketRate)
+	}
+	rate, payout, spread := s.sellQuote(quoteAmountUSDT, marketRate)
 	fee := spread
 	totalBRL := payout
 	order, err := s.db.CreateOrder(ctx, database.OrderInput{
 		Status:            string(models.StatusAguardandoDeposito),
 		AmountBRL:         totalBRL,
-		AmountUSDT:        amountUSDT,
+		AmountUSDT:        sourceAmount,
 		FeeBRL:            fee,
 		PayoutBRL:         payout,
 		Address:           depositAddress,
@@ -127,7 +138,7 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		SourceNetwork:      network,
 		DestinationNetwork: "PIX",
 		SourceChainID:      transactions.ChainID(network),
-		SourceAmount:       amountUSDT,
+		SourceAmount:       sourceAmount,
 		DestinationAmount:  payout,
 		ExchangeRate:       rate,
 		FeeAmount:          fee,
@@ -146,7 +157,7 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 	})
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"id": order.ID, "orderId": order.ID, "accessToken": order.AccessToken, "status": order.Status, "address": depositAddress, "depositAddress": depositAddress,
-		"amountBRL": totalBRL, "subtotalBRL": payout, "amountUSDT": amountUSDT, "btcAmount": amountUSDT, "feeBRL": fee, "spreadBRL": spread, "totalBRL": totalBRL, "payoutBRL": payout,
+		"amountBRL": totalBRL, "subtotalBRL": payout, "amountUSDT": sourceAmount, "btcAmount": sourceAmount, "cryptoAmount": sourceAmount, "feeBRL": fee, "spreadBRL": spread, "totalBRL": totalBRL, "payoutBRL": payout,
 		"rate": rate, "marketRate": roundRate(marketRate), "network": network, "sellPolicy": s.sellPolicy(marketRate, rate),
 		"tradeIntent":        contract.Trade,
 		"settlementContract": contract.Settlement,
@@ -154,6 +165,21 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		"statusUrl":          fmt.Sprintf("/api/order/%s?accessToken=%s", order.ID, order.AccessToken),
 		"streamUrl":          fmt.Sprintf("/api/order/%s/stream?accessToken=%s", order.ID, order.AccessToken),
 	})
+}
+
+func sellAssetNetworkAllowed(asset, network string) bool {
+	switch strings.ToUpper(strings.TrimSpace(asset)) {
+	case "BTC":
+		return normalizeSellNetwork(network) == "BITCOIN"
+	case "ETH":
+		network = normalizeSellNetwork(network)
+		return network == "ETHEREUM" || network == "BSC"
+	case "USDT", "BNB":
+		network = normalizeSellNetwork(network)
+		return network == "BSC" || network == "POLYGON"
+	default:
+		return false
+	}
 }
 
 func (s *Server) handleGetOrder(w http.ResponseWriter, r *http.Request) {
