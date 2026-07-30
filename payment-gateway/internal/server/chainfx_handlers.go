@@ -28,10 +28,11 @@ func (s *Server) handleChainFXRates(w http.ResponseWriter, r *http.Request) {
 			"USDT_USD":      s.workers.PriceWorker.GetPrice("USD"),
 			"USDT_EUR":      s.workers.PriceWorker.GetPrice("EUR"),
 			"BTC_USDT":      s.workers.PriceWorker.GetPrice("BTCUSDT"),
+			"ETH_USDT":      s.workers.PriceWorker.GetPrice("ETHUSDT"),
 			"EUR_USD":       s.workers.PriceWorker.GetPrice("EURUSD"),
 		},
-		"supportedAssets": []string{"USDT"},
-		"roadmapAssets":   []string{"EURUSDT", "BTC"},
+		"supportedAssets": []string{"USDT", "BTC", "ETH"},
+		"roadmapAssets":   []string{"EURUSDT"},
 		"supportedFiat":   []string{"BRL", "USD"},
 		"rails": map[string][]string{
 			"buy":  {"pix", "credit_card"},
