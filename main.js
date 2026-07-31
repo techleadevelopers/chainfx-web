@@ -2478,13 +2478,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function sellStatusMessage(status) {
     const normalized = String(status || '').toLowerCase();
+    const asset = String(state.payCurrency || 'USDT').toUpperCase();
     if (normalized.includes('aguardando_validacao')) return 'Deposito recebido. Aguardando validacao.';
-    if (normalized.includes('aguardando_deposito')) return 'Aguardando deposito USDT.';
+    if (normalized.includes('aguardando_deposito')) return `Aguardando deposito ${asset}.`;
     if (normalized === 'pago' || normalized.includes('processando_payout')) return 'PIX em processamento.';
     if (normalized.includes('concluida') || normalized.includes('concluido')) return 'PIX enviado.';
     if (normalized.includes('erro')) return 'Falha no payout PIX.';
     if (normalized.includes('expirada')) return 'Ordem expirada.';
-    return status ? `Status: ${status}` : 'Aguardando deposito USDT.';
+    return status ? `Status: ${status}` : `Aguardando deposito ${asset}.`;
   }
 
   function isSellDepositIdentifiedStatus(status) {
@@ -2513,7 +2514,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (tx) updatePaymentTxHash(tx);
     const depositAmount = data.depositAmount || data.deposit_amount;
     if (depositAmount && paymentBtcAmountEl) {
-      paymentBtcAmountEl.textContent = `${Number(depositAmount).toFixed(6)} USDT`;
+      const asset = String(data.asset || state.payCurrency || 'USDT').toUpperCase();
+      const precision = asset === 'BTC' ? 8 : 6;
+      paymentBtcAmountEl.textContent = `${Number(depositAmount).toFixed(precision)} ${asset}`;
     }
     const normalized = String(status).toLowerCase();
     if (normalized.includes('concluida') || normalized.includes('concluido')) {
@@ -2584,11 +2587,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       return null;
     }
     if (state.action === 'buy') clearLastBuyQuote();
+    const sellAsset = String(state.payCurrency || 'USDT').toUpperCase();
+    const sellNetwork = getSellNetworkForAsset(sellAsset);
 
     const payload = {
       mode: state.action,
-      asset: state.action === 'buy' ? selectedBuyPair.asset : 'USDT',
-      network: state.action === 'buy' ? selectedBuyPair.network : normalizeSellNetwork(state.sellNetwork),
+      asset: state.action === 'buy' ? selectedBuyPair.asset : sellAsset,
+      network: state.action === 'buy' ? selectedBuyPair.network : sellNetwork,
       amountFiat: state.action === 'sell' ? amount : amount,
       amountBRL: state.action === 'buy' ? convertFiatToBrl(amount, state.payCurrency) : 0,
       fiatCurrency: state.action === 'buy' ? state.payCurrency : 'BRL',
@@ -2611,7 +2616,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       state.totalPayAmount = Number(data.totalFiat || data.amountFiat || amount) || amount;
       if (data.rate) {
         if (state.action === 'sell') {
-          priceState.rates.SELLUSDTBRL = Number(data.rate) || priceState.rates.SELLUSDTBRL;
+          if (sellAsset === 'BTC') {
+            priceState.rates.BTCBRL = Number(data.rate) || priceState.rates.BTCBRL;
+            LIQUIDITY_POOLS.BTC.price = priceState.rates.BTCBRL || LIQUIDITY_POOLS.BTC.price;
+          } else {
+            priceState.rates.SELLUSDTBRL = Number(data.rate) || priceState.rates.SELLUSDTBRL;
+          }
         } else {
           state.exchangeRate = Number(data.rate) || state.exchangeRate;
           LIQUIDITY_POOLS[selectedBuyPair.asset] = LIQUIDITY_POOLS[selectedBuyPair.asset] || { reserve: 0, price: 0 };
@@ -3188,7 +3198,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (isSellPendingDeposit) {
               const data = await refreshSellStatus().catch(() => null);
               if (!isSellDepositIdentifiedStatus(data?.status)) {
-                  showUxMessage('Aguardando deposito USDT.', 'warning');
+                  showUxMessage(`Aguardando deposito ${String(state.payCurrency || 'USDT').toUpperCase()}.`, 'warning');
               }
               return;
           }
