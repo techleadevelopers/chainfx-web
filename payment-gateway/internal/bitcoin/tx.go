@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -232,6 +233,154 @@ func computeTxid(inputs []TxInput, outputs []TxOutput, nVersion, nSequence, nLoc
 		reversed[i] = hash[31-i]
 	}
 	return hex.EncodeToString(reversed)
+}
+
+// TxIDFromRawSignedHex calcula o txid de uma transação Bitcoin raw assinada.
+// O txid usa a serialização sem witness; esta função suporta o formato SegWit
+// gerado por BuildAndSignTx e transações não-SegWit simples.
+func TxIDFromRawSignedHex(rawHex string) (string, error) {
+	raw, err := hex.DecodeString(rawHex)
+	if err != nil {
+		return "", fmt.Errorf("tx: raw hex inválido: %w", err)
+	}
+	r := bytes.NewReader(raw)
+	var stripped bytes.Buffer
+
+	version := make([]byte, 4)
+	if _, err := io.ReadFull(r, version); err != nil {
+		return "", fmt.Errorf("tx: raw curto")
+	}
+	stripped.Write(version)
+
+	segwit := false
+	first, err := r.ReadByte()
+	if err != nil {
+		return "", fmt.Errorf("tx: sem vin")
+	}
+	if first == 0x00 {
+		flag, err := r.ReadByte()
+		if err != nil {
+			return "", fmt.Errorf("tx: segwit flag ausente")
+		}
+		if flag != 0x01 {
+			return "", fmt.Errorf("tx: segwit flag inválido")
+		}
+		segwit = true
+		first, err = r.ReadByte()
+		if err != nil {
+			return "", fmt.Errorf("tx: vin ausente")
+		}
+	}
+	vinCount, vinPrefix, err := readVarintWithFirst(r, first)
+	if err != nil {
+		return "", err
+	}
+	stripped.Write(vinPrefix)
+	for i := uint64(0); i < vinCount; i++ {
+		if err := copyN(&stripped, r, 36); err != nil {
+			return "", err
+		}
+		scriptLen, scriptPrefix, err := readVarint(r)
+		if err != nil {
+			return "", err
+		}
+		stripped.Write(scriptPrefix)
+		if err := copyN(&stripped, r, int64(scriptLen)); err != nil {
+			return "", err
+		}
+		if err := copyN(&stripped, r, 4); err != nil {
+			return "", err
+		}
+	}
+	voutCount, voutPrefix, err := readVarint(r)
+	if err != nil {
+		return "", err
+	}
+	stripped.Write(voutPrefix)
+	for i := uint64(0); i < voutCount; i++ {
+		if err := copyN(&stripped, r, 8); err != nil {
+			return "", err
+		}
+		scriptLen, scriptPrefix, err := readVarint(r)
+		if err != nil {
+			return "", err
+		}
+		stripped.Write(scriptPrefix)
+		if err := copyN(&stripped, r, int64(scriptLen)); err != nil {
+			return "", err
+		}
+	}
+	if segwit {
+		for i := uint64(0); i < vinCount; i++ {
+			items, _, err := readVarint(r)
+			if err != nil {
+				return "", err
+			}
+			for j := uint64(0); j < items; j++ {
+				itemLen, _, err := readVarint(r)
+				if err != nil {
+					return "", err
+				}
+				if _, err := r.Seek(int64(itemLen), io.SeekCurrent); err != nil {
+					return "", err
+				}
+			}
+		}
+	}
+	if err := copyN(&stripped, r, 4); err != nil {
+		return "", err
+	}
+	hash := dSHA256(stripped.Bytes())
+	reversed := make([]byte, 32)
+	for i := 0; i < 32; i++ {
+		reversed[i] = hash[31-i]
+	}
+	return hex.EncodeToString(reversed), nil
+}
+
+func copyN(dst *bytes.Buffer, src *bytes.Reader, n int64) error {
+	if n < 0 || int64(src.Len()) < n {
+		return fmt.Errorf("tx: raw truncado")
+	}
+	buf := make([]byte, int(n))
+	if _, err := io.ReadFull(src, buf); err != nil {
+		return err
+	}
+	dst.Write(buf)
+	return nil
+}
+
+func readVarint(r *bytes.Reader) (uint64, []byte, error) {
+	first, err := r.ReadByte()
+	if err != nil {
+		return 0, nil, err
+	}
+	return readVarintWithFirst(r, first)
+}
+
+func readVarintWithFirst(r *bytes.Reader, first byte) (uint64, []byte, error) {
+	switch first {
+	case 0xfd:
+		b := make([]byte, 2)
+		if _, err := io.ReadFull(r, b); err != nil {
+			return 0, nil, err
+		}
+		return uint64(binary.LittleEndian.Uint16(b)), append([]byte{first}, b...), nil
+	case 0xfe:
+		b := make([]byte, 4)
+		if _, err := io.ReadFull(r, b); err != nil {
+			return 0, nil, err
+		}
+		return uint64(binary.LittleEndian.Uint32(b)), append([]byte{first}, b...), nil
+	case 0xff:
+		b := make([]byte, 8)
+		if _, err := io.ReadFull(r, b); err != nil {
+			return 0, nil, err
+		}
+		return binary.LittleEndian.Uint64(b), append([]byte{first}, b...), nil
+	default:
+		return uint64(first), []byte{first}, nil
+	}
 }
 
 // derEncodeSignature codifica (r, s) no formato DER ASN.1.
