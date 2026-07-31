@@ -1,6 +1,7 @@
 package mobile
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -92,7 +93,7 @@ func TestMobileCORSAllowsPrivateLANDevOriginInProduction(t *testing.T) {
 		t.Fatal("mobile preflight should not delegate to existing handler")
 	}))
 	req := httptest.NewRequest(http.MethodOptions, "/api/mobile/order/buy/quote", nil)
-	req.Header.Set("Origin", "http://192.168.250.53:8081")
+	req.Header.Set("Origin", "http://192.168.212.53:8081")
 	req.Header.Set("Access-Control-Request-Method", "POST")
 	req.Header.Set("Access-Control-Request-Headers", "Authorization, Content-Type")
 	rec := httptest.NewRecorder()
@@ -102,7 +103,7 @@ func TestMobileCORSAllowsPrivateLANDevOriginInProduction(t *testing.T) {
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("expected 204, got %d", rec.Code)
 	}
-	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "http://192.168.250.53:8081" {
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "http://192.168.212.53:8081" {
 		t.Fatalf("expected private LAN origin, got %q", got)
 	}
 }
@@ -144,5 +145,29 @@ func TestMobileCORSRejectsWildcardUnknownOriginInProduction(t *testing.T) {
 	}
 	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "" {
 		t.Fatalf("expected no CORS origin for unknown host in production, got %q", got)
+	}
+}
+
+func TestMobileIdempotencyRequestHashBindsPayloadAndRestoresBody(t *testing.T) {
+	reqA := httptest.NewRequest(http.MethodPost, "/api/mobile/wallet/transfer", strings.NewReader(`{"amount":10,"asset":"USDT"}`))
+	reqB := httptest.NewRequest(http.MethodPost, "/api/mobile/wallet/transfer", strings.NewReader(`{"amount":11,"asset":"USDT"}`))
+
+	hashA, err := mobileIdempotencyRequestHash(reqA, "mobile.wallet.transfer")
+	if err != nil {
+		t.Fatalf("hash A failed: %v", err)
+	}
+	hashB, err := mobileIdempotencyRequestHash(reqB, "mobile.wallet.transfer")
+	if err != nil {
+		t.Fatalf("hash B failed: %v", err)
+	}
+	if hashA == hashB {
+		t.Fatal("different payloads must not share an idempotency request hash")
+	}
+	body, err := io.ReadAll(reqA.Body)
+	if err != nil {
+		t.Fatalf("read restored body: %v", err)
+	}
+	if string(body) != `{"amount":10,"asset":"USDT"}` {
+		t.Fatalf("request body was not restored, got %q", string(body))
 	}
 }
