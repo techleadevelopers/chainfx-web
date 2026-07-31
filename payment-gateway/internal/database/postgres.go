@@ -79,6 +79,11 @@ type BTCSellFundingInput struct {
 	BTCNetwork      string
 	ExpectedSats    int64
 	QuoteID         string
+	// SellSource distinguishes between "internal" (BTC already in ChainFX
+	// custodial balance, no on-chain deposit required) and "external" (user
+	// sends BTC from their own wallet to the returned deposit address).
+	// Defaults to "external" when empty.
+	SellSource string
 }
 
 type BTCSellFundingMatch struct {
@@ -898,12 +903,16 @@ func (db *DB) CreateBTCSellFunding(ctx context.Context, in BTCSellFundingInput) 
 	if network == "" {
 		network = "testnet"
 	}
+	sellSource := strings.TrimSpace(in.SellSource)
+	if sellSource != "internal" {
+		sellSource = "external"
+	}
 	_, err := db.SQL.ExecContext(ctx, `
 INSERT INTO btc_sell_fundings
-  (order_id, user_id, wallet_address_id, btc_address, btc_network, expected_sats, quote_id, status)
-VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, NULLIF($7,''), 'awaiting_deposit')
+  (order_id, user_id, wallet_address_id, btc_address, btc_network, expected_sats, quote_id, sell_source, status)
+VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, NULLIF($7,''), $8, 'awaiting_deposit')
 ON CONFLICT (order_id) DO NOTHING`,
-		in.OrderID, in.UserID, in.WalletAddressID, in.BTCAddress, network, in.ExpectedSats, in.QuoteID)
+		in.OrderID, in.UserID, in.WalletAddressID, in.BTCAddress, network, in.ExpectedSats, in.QuoteID, sellSource)
 	if err != nil {
 		return fmt.Errorf("CreateBTCSellFunding: %w", err)
 	}
