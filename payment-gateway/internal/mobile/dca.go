@@ -1,23 +1,33 @@
 package mobile
 
 import (
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"payment-gateway/internal/models"
+	"payment-gateway/internal/money"
 )
 
 // handleDCACreate — POST /api/mobile/dca/create
 func (s *Server) handleDCACreate(w http.ResponseWriter, r *http.Request) {
 	uid := userIDFromCtx(r)
 	var req struct {
-		TokenSymbol string  `json:"token_symbol"`
-		Network     string  `json:"network"`
-		AmountBRL   float64 `json:"amount_brl"`
-		Frequency   string  `json:"frequency"` // daily | weekly | monthly
+		TokenSymbol string          `json:"token_symbol"`
+		Network     string          `json:"network"`
+		AmountBRL   json.RawMessage `json:"amount_brl"`
+		Frequency   string          `json:"frequency"` // daily | weekly | monthly
 	}
-	if err := decodeJSON(r, &req); err != nil || req.AmountBRL <= 0 || req.TokenSymbol == "" || req.Frequency == "" {
+	if err := decodeJSON(r, &req); err != nil || len(req.AmountBRL) == 0 || req.TokenSymbol == "" || req.Frequency == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "token_symbol, amount_brl e frequency obrigatórios"})
+		return
+	}
+	amountText, amountMinor, err := parseDCABRLJSON(req.AmountBRL)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "amount_brl invalido"})
 		return
 	}
 	freq := models.DCAFrequency(req.Frequency)
@@ -54,17 +64,17 @@ func (s *Server) handleDCACreate(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "token_symbol invalido ou inativo"})
 		return
 	}
-	minBRL := 0.0
+	minBRL := money.MoneyMinor(0)
 	if s != nil && s.cfg != nil {
-		minBRL = float64(s.cfg.OrderMinBrl)
+		minBRL = money.MoneyFromFloat(s.cfg.OrderMinBrl)
 	}
-	if minBRL > 0 && req.AmountBRL < minBRL {
+	if minBRL > 0 && amountMinor < minBRL {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "amount_brl abaixo do mínimo"})
 		return
 	}
-	strategy, err := mobileDB(s.db).CreateDCA(r.Context(), uid, tokenSymbol, network, req.AmountBRL, freq)
+	strategy, err := mobileDB(s.db).CreateDCA(r.Context(), uid, tokenSymbol, network, amountText, freq)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	writeJSON(w, http.StatusCreated, strategy)
@@ -75,7 +85,7 @@ func (s *Server) handleDCAList(w http.ResponseWriter, r *http.Request) {
 	uid := userIDFromCtx(r)
 	list, err := mobileDB(s.db).ListDCA(r.Context(), uid)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	strategies, summary := s.enrichDCAList(list)
@@ -87,7 +97,7 @@ func (s *Server) handleDCADashboard(w http.ResponseWriter, r *http.Request) {
 	uid := userIDFromCtx(r)
 	list, err := mobileDB(s.db).ListDCA(r.Context(), uid)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	strategies, summary := s.enrichDCAList(list)
@@ -105,18 +115,31 @@ func (s *Server) handleDCAUpdate(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var req struct {
 		Active    *bool                `json:"active"`
-		AmountBRL *float64             `json:"amount_brl"`
+		AmountBRL *json.RawMessage     `json:"amount_brl"`
 		Frequency *models.DCAFrequency `json:"frequency"`
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "payload inválido"})
 		return
 	}
-	if err := mobileDB(s.db).UpdateDCA(r.Context(), id, uid, req.Active, req.AmountBRL, req.Frequency); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+	var amountText *string
+	if req.AmountBRL != nil {
+		parsed, _, err := parseDCABRLJSON(*req.AmountBRL)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "amount_brl invalido"})
+			return
+		}
+		amountText = &parsed
+	}
+	if err := mobileDB(s.db).UpdateDCA(r.Context(), id, uid, req.Active, amountText, req.Frequency); err != nil {
+		writeJSON(w, http.StatusBadRequest, mobileProductError("INVALID_AMOUNT", "Requisicao invalida."))
 		return
 	}
-	strategy, _ := mobileDB(s.db).GetDCAByUser(r.Context(), id, uid)
+	strategy, err := mobileDB(s.db).GetDCAByUser(r.Context(), id, uid)
+	if err != nil || strategy == nil {
+		writeJSON(w, http.StatusNotFound, map[string]any{"error": "estrategia nao encontrada"})
+		return
+	}
 	writeJSON(w, http.StatusOK, strategy)
 }
 
@@ -125,7 +148,11 @@ func (s *Server) handleDCADelete(w http.ResponseWriter, r *http.Request) {
 	uid := userIDFromCtx(r)
 	id := r.PathValue("id")
 	if err := mobileDB(s.db).DeleteDCA(r.Context(), id, uid); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, map[string]any{"error": "estrategia nao encontrada"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
@@ -143,6 +170,7 @@ func (s *Server) handleDCAStatus(w http.ResponseWriter, r *http.Request) {
 	price := mobileAssetPriceBRL(s.PriceCache(), strategy.TokenSymbol)
 	currentValue := strategy.TotalTokens * price
 	pnl := currentValue - strategy.TotalInvested
+	history, _ := mobileDB(s.db).ListDCAExecutionsByUser(r.Context(), strategy.ID, uid, 50)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"id":                strategy.ID,
 		"token_symbol":      strategy.TokenSymbol,
@@ -156,6 +184,7 @@ func (s *Server) handleDCAStatus(w http.ResponseWriter, r *http.Request) {
 		"pnl_brl":           pnl,
 		"roi":               dcaROI(pnl, strategy.TotalInvested),
 		"chart_points":      dcaChartPoints(strategy.TotalInvested, currentValue),
+		"executions":        history,
 	})
 }
 
@@ -222,4 +251,26 @@ func dcaChartPoints(invested, currentValue float64) []float64 {
 		points = append(points, invested+(currentValue-invested)*t)
 	}
 	return points
+}
+
+func parseDCABRLJSON(raw json.RawMessage) (string, money.MoneyMinor, error) {
+	text := strings.TrimSpace(string(raw))
+	if text == "" || text == "null" {
+		return "", 0, fmt.Errorf("amount_brl obrigatorio")
+	}
+	if text[0] == '"' {
+		var decoded string
+		if err := json.Unmarshal(raw, &decoded); err != nil {
+			return "", 0, err
+		}
+		text = strings.TrimSpace(decoded)
+	}
+	if parts := strings.SplitN(text, ".", 2); len(parts) == 2 && len(strings.TrimSpace(parts[1])) > 2 {
+		return "", 0, fmt.Errorf("amount_brl invalido")
+	}
+	amount, err := money.ParseMoney(text)
+	if err != nil || amount <= 0 {
+		return "", 0, fmt.Errorf("amount_brl invalido")
+	}
+	return amount.String(), amount, nil
 }
