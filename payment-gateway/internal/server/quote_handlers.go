@@ -54,13 +54,21 @@ func (s *Server) handleQuote(w http.ResponseWriter, r *http.Request) {
 	}
 	mode = strings.ToLower(strings.TrimSpace(mode))
 	asset = strings.ToUpper(strings.TrimSpace(asset))
-	network = normalizeBuyDeliveryNetwork(defaultString(network, s.deliveryNetwork()))
+	if mode == "sell" {
+		network = normalizeSellNetwork(defaultString(network, "BSC"))
+	} else {
+		network = normalizeBuyDeliveryNetwork(defaultString(network, s.deliveryNetwork()))
+	}
 	if mode != "buy" && mode != "sell" {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "modo invalido"})
 		return
 	}
-	if mode == "sell" && asset != "USDT" {
+	if mode == "sell" && asset != "USDT" && asset != "BTC" {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "asset nao suportado para venda nesta fase"})
+		return
+	}
+	if mode == "sell" && !sellAssetNetworkAllowed(asset, network) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "rede invalida para asset de sell", "asset": asset, "network": network})
 		return
 	}
 	if mode == "buy" && !s.buyLiquidityPairSupported(asset, network) {
@@ -86,14 +94,16 @@ func (s *Server) handleQuote(w http.ResponseWriter, r *http.Request) {
 	marketRate := s.workers.PriceWorker.GetPrice(fiatCurrency)
 	if mode == "buy" {
 		marketRate = s.buyAssetMarketRate(fiatCurrency, asset)
+	} else if asset == "BTC" {
+		marketRate = s.buyAssetMarketRate("BRL", "BTC")
 	}
 	if marketRate <= 0 {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "cotacao ainda nao carregada"})
 		return
 	}
 	if mode == "sell" {
-		amountUSDT := amountFiat
-		rate, payoutBRL, spreadBRL := s.sellQuote(amountUSDT, marketRate)
+		cryptoAmount := amountFiat
+		rate, payoutBRL, spreadBRL := s.sellQuoteForAsset(asset, cryptoAmount, marketRate)
 		if payoutBRL < s.cfg.OrderMinBrl || payoutBRL > s.cfg.OrderMaxBrl {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"error": fmt.Sprintf("payout fora dos limites (%.2f - %.2f BRL)", s.cfg.OrderMinBrl, s.cfg.OrderMaxBrl)})
 			return
@@ -106,7 +116,7 @@ func (s *Server) handleQuote(w http.ResponseWriter, r *http.Request) {
 			FiatCurrency:  "BRL",
 			PaymentMethod: paymentMethod,
 			AmountFiat:    amountFiat,
-			CryptoAmount:  amountUSDT,
+			CryptoAmount:  cryptoAmount,
 			Rate:          rate,
 			MarketRate:    marketRate,
 			FeeFiat:       spreadBRL,
@@ -134,7 +144,7 @@ func (s *Server) handleQuote(w http.ResponseWriter, r *http.Request) {
 			"sellPolicy":        s.sellPolicy(marketRate, rate),
 			"rate":              rate,
 			"marketRate":        roundRate(marketRate),
-			"cryptoAmount":      amountUSDT,
+			"cryptoAmount":      cryptoAmount,
 			"rateLockExpiresAt": expiresAt,
 		})
 		return
