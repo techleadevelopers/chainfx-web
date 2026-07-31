@@ -126,8 +126,9 @@ func (b *EventBus) publishOne(ch chan Event, event Event) bool {
 func isCriticalMoneyEvent(eventType string) bool {
 	switch eventType {
 	case "buy.paid", "buy.sent", "buy.failed",
+		"swap.completed", "swap.failed",
 		"payout.requested", "payout.settled", "payout.manual_required",
-		"onchain.detected", "m2m.deposit.confirmed", "m2m.settlement.done", "m2m.settlement.failed",
+		"onchain.detected", "btc.deposit.detected", "btc.deposit.confirmed", "m2m.deposit.confirmed", "m2m.settlement.done", "m2m.settlement.failed",
 		"nfc.capture.completed", "nfc.authorization.reversed", "nfc.authorization.expired",
 		"nfc.settlement.manual_required", "nfc.settlement.submitted", "nfc.settlement.submission_unknown", "nfc.settlement.confirmed", "nfc.settlement.failed",
 		"mobile.payout.requested", "sweep.sent":
