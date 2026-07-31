@@ -43,6 +43,21 @@ type MarketingCampaign struct {
 	Unsubscribe string
 }
 
+type TransactionDetail struct {
+	Label    string
+	Value    string
+	CopyHint bool
+}
+
+type TransactionReceipt struct {
+	Brand   Brand
+	Title   string
+	Intro   string
+	CTA     string
+	CTAURL  string
+	Details []TransactionDetail
+}
+
 type detailRow struct {
 	Label    string
 	Value    string
@@ -96,19 +111,39 @@ func BuildMarketingMessage(to string, c MarketingCampaign) Message {
 	return Message{To: to, Subject: subject, TextBody: textBody, HTMLBody: htmlBody}
 }
 
+func BuildTransactionMessage(to, subject string, r TransactionReceipt) Message {
+	rows := make([]detailRow, 0, len(r.Details))
+	for _, item := range r.Details {
+		if strings.TrimSpace(item.Label) == "" || strings.TrimSpace(item.Value) == "" {
+			continue
+		}
+		rows = append(rows, detailRow{Label: item.Label, Value: item.Value, CopyHint: item.CopyHint})
+	}
+	title := fallback(r.Title, subject)
+	intro := fallback(r.Intro, "Transacao concluida com sucesso na ChainFX.")
+	cta := fallback(r.CTA, "Abrir ChainFX")
+	ctaURL := fallback(r.CTAURL, r.Brand.SiteURL)
+	return Message{
+		To:       to,
+		Subject:  subject,
+		TextBody: textReceipt(title, intro, rows),
+		HTMLBody: shell(r.Brand, title, intro, cta, ctaURL, rows, ""),
+	}
+}
+
 func shell(brand Brand, title, intro, cta, ctaURL string, rows []detailRow, unsubscribe string) string {
 	var detail strings.Builder
 	if len(rows) > 0 {
-		detail.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e5ea;border-radius:10px;border-collapse:separate;border-spacing:0;margin:22px 0 0;background:#ffffff;table-layout:fixed;overflow:hidden;">`)
+		detail.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid rgba(255,255,255,.10);border-radius:10px;border-collapse:separate;border-spacing:0;margin:22px 0 0;background:#171717;table-layout:fixed;overflow:hidden;">`)
 		for _, row := range rows {
 			value := compactValue(row.Value)
 			copyHint := ""
 			if row.CopyHint {
-				copyHint = `<span style="display:inline-block;margin-left:6px;font-size:10px;line-height:1;color:#9aa0a6;border:1px solid #d8dbe2;border-radius:4px;padding:2px 4px;vertical-align:1px;">copy</span>`
+				copyHint = `<span style="display:inline-block;margin-left:6px;font-size:10px;line-height:1;color:#777c7f;border:1px solid rgba(255,255,255,.12);border-radius:4px;padding:2px 4px;vertical-align:1px;">copy</span>`
 			}
 			detail.WriteString(`<tr>`)
-			detail.WriteString(`<td style="width:34%;padding:11px 14px;border-bottom:1px solid #edf0f3;color:#70757d;font-size:13px;line-height:1.35;vertical-align:top;white-space:nowrap;">` + html.EscapeString(row.Label) + `:</td>`)
-			detail.WriteString(`<td style="width:66%;padding:11px 14px;border-bottom:1px solid #edf0f3;color:#202124;font-size:13px;line-height:1.35;font-weight:750;text-align:right;vertical-align:top;word-break:break-word;overflow-wrap:anywhere;max-width:0;">` + html.EscapeString(value) + copyHint + `</td>`)
+			detail.WriteString(`<td style="width:34%;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.07);color:#777c7f;font-size:13px;line-height:1.35;vertical-align:top;white-space:nowrap;">` + html.EscapeString(row.Label) + `:</td>`)
+			detail.WriteString(`<td style="width:66%;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.07);color:#f4f4f5;font-size:13px;line-height:1.35;font-weight:750;text-align:right;vertical-align:top;word-break:break-word;overflow-wrap:anywhere;max-width:0;">` + html.EscapeString(value) + copyHint + `</td>`)
 			detail.WriteString(`</tr>`)
 		}
 		detail.WriteString(`</table>`)
@@ -121,22 +156,22 @@ func shell(brand Brand, title, intro, cta, ctaURL string, rows []detailRow, unsu
 	if brand.SupportEmail != "" {
 		support = `Reply to this email or contact ` + html.EscapeString(brand.SupportEmail) + `.`
 	}
-	return `<!doctype html><html><body style="margin:0;background:#f4f5f7;font-family:'Aptos','Segoe UI',Inter,Roboto,Arial,sans-serif;color:#202124;-webkit-font-smoothing:antialiased;">
+	return `<!doctype html><html><body style="margin:0;background:#111111;font-family:'Aptos','Segoe UI',Inter,Roboto,Arial,sans-serif;color:#f4f4f5;-webkit-font-smoothing:antialiased;">
 <div style="max-width:520px;margin:28px auto;padding:0 14px;">
-  <div style="background:#fff;border:1px solid #dedfe3;border-radius:16px;overflow:hidden;">
+  <div style="background:#202020;border:1px solid rgba(255,255,255,.08);border-radius:16px;overflow:hidden;">
     <div style="padding:34px 30px 30px;">
-      <h1 style="font-size:26px;line-height:1.18;margin:0 0 16px;font-weight:850;color:#202124;letter-spacing:0;">` + html.EscapeString(title) + `</h1>
-      <p style="font-size:15px;line-height:1.55;color:#686c74;margin:0;white-space:pre-line;">` + html.EscapeString(compactParagraph(intro)) + `</p>
+      <h1 style="font-size:26px;line-height:1.18;margin:0 0 16px;font-weight:850;color:#f4f4f5;letter-spacing:0;">` + html.EscapeString(title) + `</h1>
+      <p style="font-size:15px;line-height:1.55;color:#a1a1aa;margin:0;white-space:pre-line;">` + html.EscapeString(compactParagraph(intro)) + `</p>
       ` + detail.String() + `
       <div style="text-align:center;margin-top:24px;">
-        <a href="` + html.EscapeString(ctaURL) + `" style="display:inline-block;background:#202124;color:#fff;text-decoration:none;border-radius:999px;padding:13px 30px;font-weight:800;font-size:14px;">` + html.EscapeString(cta) + `</a>
+        <a href="` + html.EscapeString(ctaURL) + `" style="display:inline-block;background:#f4f4f5;color:#111111;text-decoration:none;border-radius:999px;padding:13px 30px;font-weight:800;font-size:14px;">` + html.EscapeString(cta) + `</a>
       </div>
-      <p style="font-size:12px;line-height:1.55;color:#8a8d94;margin:24px 0 0;">` + support + `</p>
+      <p style="font-size:12px;line-height:1.55;color:#777c7f;margin:24px 0 0;">` + support + `</p>
     </div>
-    <div style="background:#f7f7f9;border-top:1px solid #e4e5e8;padding:28px 30px;">
+    <div style="background:#171717;border-top:1px solid rgba(255,255,255,.08);padding:28px 30px;">
       <img src="` + html.EscapeString(brand.LogoURL) + `" alt="` + html.EscapeString(brand.Name) + `" style="height:38px;max-width:175px;display:block;margin-bottom:22px;">
-      <p style="font-size:12px;color:#8a8d94;margin:0 0 13px;">Help &middot; Terms &middot; Privacy` + unsub + `</p>
-      <p style="font-size:11px;color:#8a8d94;margin:0;">&copy; ` + fmt.Sprint(brand.Year) + ` ` + html.EscapeString(brand.Name) + ` &middot; ` + html.EscapeString(brand.Address) + `</p>
+      <p style="font-size:12px;color:#777c7f;margin:0 0 13px;">Help &middot; Terms &middot; Privacy` + unsub + `</p>
+      <p style="font-size:11px;color:#777c7f;margin:0;">&copy; ` + fmt.Sprint(brand.Year) + ` ` + html.EscapeString(brand.Name) + ` &middot; ` + html.EscapeString(brand.Address) + `</p>
     </div>
   </div>
 </div>
