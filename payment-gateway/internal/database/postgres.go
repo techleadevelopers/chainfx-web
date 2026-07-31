@@ -25,6 +25,31 @@ type DB struct {
 	cfg     *config.Config
 }
 
+type SellPayoutExecution struct {
+	ID                     string
+	OrderID                string
+	Provider               string
+	ProviderIDempotencyKey string
+	ProviderIDEnvio        string
+	AmountBRLMinor         int64
+	RecipientReference     string
+	Status                 string
+	AttemptCount           int
+	SubmitStartedAt        *time.Time
+	SubmitCompletedAt      *time.Time
+	SubmitOutcome          string
+	FirstAmbiguousAt       *time.Time
+	LastReconciledAt       *time.Time
+	ConsecutiveNotFound    int
+	NextAttemptAt          time.Time
+	ProviderReference      string
+	ProviderE2EID          string
+	LastError              string
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
+	CompletedAt            *time.Time
+}
+
 type OrderInput struct {
 	ID                string
 	AccessToken       string
@@ -44,6 +69,34 @@ type OrderInput struct {
 	PixPhone          string
 	Email             string
 	DerivationIndex   *int
+}
+
+type BTCSellFundingInput struct {
+	OrderID         string
+	UserID          string
+	WalletAddressID string
+	BTCAddress      string
+	BTCNetwork      string
+	ExpectedSats    int64
+	QuoteID         string
+}
+
+type BTCSellFundingMatch struct {
+	OrderID       string
+	Status        string
+	ExpectedSats  int64
+	ReceivedSats  int64
+	Confirmations int
+	DepositKey    string
+	Ready         bool
+	Reason        string
+}
+
+type BTCWalletAddressLookup struct {
+	ID      string
+	UserID  string
+	Address string
+	Network string
 }
 
 type BuyOrder struct {
@@ -144,32 +197,37 @@ type LiquidityExecutionRecord struct {
 }
 
 type AdminTransaction struct {
-	Source            string    `json:"source"`
-	ID                string    `json:"id"`
-	Status            string    `json:"status"`
-	AmountBRL         float64   `json:"amountBRL"`
-	AmountFiat        float64   `json:"amountFiat"`
-	FiatCurrency      string    `json:"fiatCurrency"`
-	PaymentMethod     string    `json:"paymentMethod"`
-	FeeBRL            float64   `json:"feeBRL"`
-	PayoutBRL         float64   `json:"payoutBRL"`
-	CryptoAmount      float64   `json:"cryptoAmount"`
-	Asset             string    `json:"asset"`
-	Address           string    `json:"address"`
-	Network           string    `json:"network"`
-	RateLocked        float64   `json:"rateLocked"`
-	ProviderPaymentID *string   `json:"providerPaymentId,omitempty"`
-	TxHash            *string   `json:"txHash,omitempty"`
-	DepositTx         *string   `json:"depositTx,omitempty"`
-	DepositAmount     *float64  `json:"depositAmount,omitempty"`
-	PixKey            string    `json:"pixKey,omitempty"`
-	PixCpf            string    `json:"pixCpf,omitempty"`
-	PixPhone          string    `json:"pixPhone,omitempty"`
-	Email             string    `json:"email,omitempty"`
-	Error             *string   `json:"error,omitempty"`
-	RequestID         *string   `json:"requestId,omitempty"`
-	CreatedAt         time.Time `json:"createdAt"`
-	UpdatedAt         time.Time `json:"updatedAt"`
+	Source            string     `json:"source"`
+	ID                string     `json:"id"`
+	Status            string     `json:"status"`
+	Product           string     `json:"product,omitempty"`
+	ProductType       string     `json:"productType,omitempty"`
+	AmountBRL         float64    `json:"amountBRL"`
+	AmountFiat        float64    `json:"amountFiat"`
+	FiatCurrency      string     `json:"fiatCurrency"`
+	PaymentMethod     string     `json:"paymentMethod"`
+	FundingMethod     string     `json:"fundingMethod,omitempty"`
+	FeeBRL            float64    `json:"feeBRL"`
+	PayoutBRL         float64    `json:"payoutBRL"`
+	CryptoAmount      float64    `json:"cryptoAmount"`
+	Asset             string     `json:"asset"`
+	Address           string     `json:"address"`
+	Network           string     `json:"network"`
+	RateLocked        float64    `json:"rateLocked"`
+	ProviderPaymentID *string    `json:"providerPaymentId,omitempty"`
+	TxHash            *string    `json:"txHash,omitempty"`
+	DepositTx         *string    `json:"depositTx,omitempty"`
+	DepositAmount     *float64   `json:"depositAmount,omitempty"`
+	PixCode           string     `json:"pixCode,omitempty"`
+	PixExpiresAt      *time.Time `json:"pixExpiresAt,omitempty"`
+	PixKey            string     `json:"pixKey,omitempty"`
+	PixCpf            string     `json:"pixCpf,omitempty"`
+	PixPhone          string     `json:"pixPhone,omitempty"`
+	Email             string     `json:"email,omitempty"`
+	Error             *string    `json:"error,omitempty"`
+	RequestID         *string    `json:"requestId,omitempty"`
+	CreatedAt         time.Time  `json:"createdAt"`
+	UpdatedAt         time.Time  `json:"updatedAt"`
 }
 
 type AdminUser struct {
@@ -320,6 +378,307 @@ func (db *DB) ClaimOrderForPayout(ctx context.Context, orderID string) (bool, er
 	return true, nil
 }
 
+func (db *DB) EnsureSellPayoutExecution(ctx context.Context, orderID, provider, providerIDEnvio string, amountBRLMinor int64, recipientReference string) (*SellPayoutExecution, error) {
+	provider = strings.TrimSpace(provider)
+	if provider == "" {
+		provider = "efi"
+	}
+	providerIDEnvio = strings.TrimSpace(providerIDEnvio)
+	providerIDKey := "sell-payout-" + providerIDEnvio
+	tx, err := db.SQL.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `
+                INSERT INTO sell_payout_executions
+                  (order_id, provider, provider_idempotency_key, provider_id_envio,
+                   amount_brl_minor, recipient_reference, status, submit_outcome)
+                VALUES ($1,$2,$3,$4,$5,$6,'pending','not_submitted')
+                ON CONFLICT (order_id) DO NOTHING`,
+		orderID, provider, providerIDKey, providerIDEnvio, amountBRLMinor, recipientReference); err != nil {
+		return nil, err
+	}
+	exec, err := scanSellPayoutExecution(tx.QueryRowContext(ctx, sellPayoutExecutionSelectSQL()+` WHERE order_id=$1 FOR UPDATE`, orderID))
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return exec, nil
+}
+
+func (db *DB) GetSellPayoutExecutionByOrder(ctx context.Context, orderID string) (*SellPayoutExecution, error) {
+	exec, err := scanSellPayoutExecution(db.SQL.QueryRowContext(ctx, sellPayoutExecutionSelectSQL()+` WHERE order_id=$1`, orderID))
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return exec, err
+}
+
+func (db *DB) ListDueSellPayoutExecutions(ctx context.Context, limit int) ([]SellPayoutExecution, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	tx, err := db.SQL.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	rows, err := tx.QueryContext(ctx, `
+                WITH due AS (
+                  SELECT id, next_attempt_at AS due_next_attempt_at, created_at AS due_created_at
+                    FROM sell_payout_executions
+                   WHERE status IN ('pending','submit_started','submitted','provider_pending','provider_unknown')
+                     AND next_attempt_at <= now()
+                   ORDER BY next_attempt_at ASC, created_at ASC, id ASC
+                   LIMIT $1
+                   FOR UPDATE SKIP LOCKED
+                ),
+                leased AS (
+                  UPDATE sell_payout_executions e
+                     SET next_attempt_at = now() + interval '30 seconds',
+                         updated_at = now()
+                    FROM due
+                   WHERE e.id = due.id
+                   RETURNING e.id
+                )
+                SELECT e.id::text, e.order_id::text, e.provider, e.provider_idempotency_key, e.provider_id_envio,
+                       e.amount_brl_minor, e.recipient_reference, e.status, e.attempt_count,
+                       e.submit_started_at, e.submit_completed_at, e.submit_outcome,
+                       e.first_ambiguous_at, e.last_reconciled_at, e.consecutive_not_found,
+                       e.next_attempt_at, COALESCE(e.provider_reference,''), COALESCE(e.provider_e2e_id,''),
+                       COALESCE(e.last_error,''), e.created_at, e.updated_at, e.completed_at
+                  FROM leased
+                  JOIN due ON due.id = leased.id
+                  JOIN sell_payout_executions e ON e.id = leased.id
+                 ORDER BY due_next_attempt_at ASC, due_created_at ASC, id ASC`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []SellPayoutExecution
+	for rows.Next() {
+		exec, err := scanSellPayoutExecution(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *exec)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (db *DB) MarkSellPayoutSubmitStarted(ctx context.Context, executionID string) error {
+	_, err := db.SQL.ExecContext(ctx, `
+                UPDATE sell_payout_executions
+                   SET status = 'submit_started',
+                       attempt_count = attempt_count + 1,
+                       submit_started_at = COALESCE(submit_started_at, now()),
+                       submit_outcome = 'started',
+                       updated_at = now()
+                 WHERE id = $1
+                   AND status IN ('pending','submit_started')`, executionID)
+	return err
+}
+
+func (db *DB) MarkSellPayoutSubmitted(ctx context.Context, executionID, providerReference, providerE2EID, providerStatus string) error {
+	_, err := db.SQL.ExecContext(ctx, `
+                UPDATE sell_payout_executions
+                   SET status = 'provider_pending',
+                       submit_completed_at = now(),
+                       submit_outcome = 'confirmed',
+                       provider_reference = COALESCE(NULLIF($2,''), provider_reference),
+                       provider_e2e_id = COALESCE(NULLIF($3,''), provider_e2e_id),
+                       last_error = NULLIF($4,''),
+                       consecutive_not_found = 0,
+                       next_attempt_at = now() + interval '30 seconds',
+                       updated_at = now()
+                 WHERE id = $1
+                   AND status NOT IN ('completed','failed','manual_review')`, executionID, providerReference, providerE2EID, providerStatus)
+	return err
+}
+
+func (db *DB) MarkSellPayoutProviderUnknown(ctx context.Context, executionID, errMsg string) error {
+	_, err := db.SQL.ExecContext(ctx, `
+                UPDATE sell_payout_executions
+                   SET status = 'provider_unknown',
+                       submit_outcome = 'ambiguous',
+                       first_ambiguous_at = COALESCE(first_ambiguous_at, now()),
+                       last_error = NULLIF($2,''),
+                       next_attempt_at = now() + interval '30 seconds',
+                       updated_at = now()
+                 WHERE id = $1
+                   AND status NOT IN ('completed','failed','manual_review')`, executionID, errMsg)
+	return err
+}
+
+func (db *DB) MarkSellPayoutFailed(ctx context.Context, executionID, orderID, errMsg string, manual bool) error {
+	status := "failed"
+	orderStatus := "erro"
+	if manual {
+		status = "manual_review"
+		orderStatus = string(models.StatusIncidenteValidacao)
+	}
+	tx, err := db.SQL.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `
+                UPDATE sell_payout_executions
+                   SET status = $2,
+                       submit_outcome = CASE WHEN submit_outcome = 'not_submitted' THEN submit_outcome ELSE 'rejected' END,
+                       last_error = NULLIF($3,''),
+                       updated_at = now()
+                 WHERE id = $1
+                   AND status NOT IN ('completed')`, executionID, status, errMsg); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
+                UPDATE orders
+                   SET status = $2,
+                       error = COALESCE(NULLIF($3,''), error),
+                       updated_at = now()
+                 WHERE id = $1
+                   AND status <> 'concluida'`, orderID, orderStatus, errMsg); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return db.AddEvent(ctx, orderID, "order."+orderStatus, map[string]any{"error": errMsg, "payout_execution_id": executionID})
+}
+
+func (db *DB) MarkSellPayoutReconcileNotFound(ctx context.Context, executionID, errMsg string, retryAfter time.Duration, minAttempts int, grace time.Duration) error {
+	if retryAfter <= 0 {
+		retryAfter = 30 * time.Second
+	}
+	tx, err := db.SQL.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	exec, err := scanSellPayoutExecution(tx.QueryRowContext(ctx, sellPayoutExecutionSelectSQL()+` WHERE id=$1 FOR UPDATE`, executionID))
+	if err != nil {
+		return err
+	}
+	nextStatus := exec.Status
+	nextErr := errMsg
+	if exec.FirstAmbiguousAt != nil && time.Since(*exec.FirstAmbiguousAt) >= grace && exec.ConsecutiveNotFound+1 >= minAttempts {
+		nextStatus = "manual_review"
+		nextErr = "sell payout provider lookup inconclusive after ambiguous grace: " + errMsg
+	}
+	if _, err := tx.ExecContext(ctx, `
+                UPDATE sell_payout_executions
+                   SET status = $2,
+                       last_error = NULLIF($3,''),
+                       consecutive_not_found = consecutive_not_found + 1,
+                       last_reconciled_at = now(),
+                       next_attempt_at = now() + make_interval(secs => $4),
+                       updated_at = now()
+                 WHERE id = $1
+                   AND status NOT IN ('completed','failed')`,
+		executionID, nextStatus, nextErr, int(retryAfter.Seconds())); err != nil {
+		return err
+	}
+	if nextStatus == "manual_review" {
+		if _, err := tx.ExecContext(ctx, `
+                        UPDATE orders
+                           SET status = 'incidente_validacao',
+                               error = COALESCE(NULLIF($2,''), error),
+                               updated_at = now()
+                         WHERE id = $1
+                           AND status <> 'concluida'`, exec.OrderID, nextErr); err != nil {
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	if nextStatus == "manual_review" {
+		return db.AddEvent(ctx, exec.OrderID, "order.incidente_validacao", map[string]any{"error": nextErr, "payout_execution_id": executionID})
+	}
+	return nil
+}
+
+func (db *DB) ApplySellPayoutProviderEvent(ctx context.Context, providerIDEnvio, providerReference, providerE2EID, providerStatus string, payload map[string]any) (bool, *SellPayoutExecution, error) {
+	tx, err := db.SQL.BeginTx(ctx, nil)
+	if err != nil {
+		return false, nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	exec, err := scanSellPayoutExecution(tx.QueryRowContext(ctx, sellPayoutExecutionSelectSQL()+` WHERE provider_id_envio=$1 FOR UPDATE`, providerIDEnvio))
+	if err != nil {
+		return false, nil, err
+	}
+	terminalBefore := exec.Status == "completed" || exec.Status == "failed" || exec.Status == "manual_review"
+	nextStatus, terminalOK, terminalFail := sellPayoutStatusFromProvider(providerStatus)
+	if terminalBefore && exec.Status == "completed" {
+		return true, exec, tx.Commit()
+	}
+	if _, err := tx.ExecContext(ctx, `
+                UPDATE sell_payout_executions
+                   SET status = $2,
+                       provider_reference = COALESCE(NULLIF($3,''), provider_reference),
+                       provider_e2e_id = COALESCE(NULLIF($4,''), provider_e2e_id),
+                       submit_completed_at = CASE WHEN $5 THEN COALESCE(submit_completed_at, now()) ELSE submit_completed_at END,
+                       completed_at = CASE WHEN $5 THEN COALESCE(completed_at, now()) ELSE completed_at END,
+                       submit_outcome = CASE WHEN $5 THEN 'confirmed' WHEN $6 THEN 'rejected' ELSE submit_outcome END,
+                       last_error = CASE WHEN $6 THEN NULLIF($7,'') ELSE NULL END,
+                       consecutive_not_found = 0,
+                       last_reconciled_at = now(),
+                       next_attempt_at = now() + interval '30 seconds',
+                       updated_at = now()
+                 WHERE id = $1
+                   AND status NOT IN ('completed')`,
+		exec.ID, nextStatus, firstNonEmpty(providerReference, providerIDEnvio), providerE2EID, terminalOK, terminalFail, providerStatus); err != nil {
+		return false, nil, err
+	}
+	if terminalOK {
+		if _, err := tx.ExecContext(ctx, `
+                        UPDATE orders
+                           SET status = 'concluida',
+                               tx_hash = COALESCE(NULLIF($2,''), tx_hash),
+                               updated_at = now()
+                         WHERE id = $1
+                           AND status IN ('processando_payout','pago')`, exec.OrderID, firstNonEmpty(providerE2EID, providerReference, providerIDEnvio)); err != nil {
+			return false, nil, err
+		}
+	}
+	if terminalFail {
+		if _, err := tx.ExecContext(ctx, `
+                        UPDATE orders
+                           SET status = 'incidente_validacao',
+                               error = COALESCE(NULLIF($2,''), error),
+                               updated_at = now()
+                         WHERE id = $1
+                           AND status <> 'concluida'`, exec.OrderID, "sell payout rejected by provider: "+providerStatus); err != nil {
+			return false, nil, err
+		}
+	}
+	updated, err := scanSellPayoutExecution(tx.QueryRowContext(ctx, sellPayoutExecutionSelectSQL()+` WHERE id=$1`, exec.ID))
+	if err != nil {
+		return false, nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return false, nil, err
+	}
+	if terminalOK {
+		_ = db.AddEvent(ctx, exec.OrderID, "order.concluida", map[string]any{"payout_execution_id": exec.ID, "provider_status": providerStatus, "provider_payload": payload})
+	}
+	if terminalFail {
+		_ = db.AddEvent(ctx, exec.OrderID, "order.incidente_validacao", map[string]any{"payout_execution_id": exec.ID, "provider_status": providerStatus, "provider_payload": payload})
+	}
+	return terminalBefore, updated, nil
+}
+
 // ClaimOrderForManualPayout atomically moves a confirmed sell deposit into the
 // admin PIX queue. It prevents duplicated worker events from creating multiple
 // manual payout tasks for the same order.
@@ -343,25 +702,61 @@ func (db *DB) MarkManualPixPaid(ctx context.Context, orderID, providerID, adminE
 	if strings.TrimSpace(providerID) == "" {
 		providerID = "pix-manual-" + orderID
 	}
-	var claimed string
-	err := db.SQL.QueryRowContext(ctx, `
-                UPDATE orders
-                   SET status = 'concluida',
-                       tx_hash = COALESCE(NULLIF($2,''), tx_hash),
-                       updated_at = now()
+	tx, err := db.SQL.BeginTx(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var currentStatus string
+	var depositTx sql.NullString
+	var payoutBRL float64
+	err = tx.QueryRowContext(ctx, `
+                SELECT status, deposit_tx, COALESCE(payout_brl, 0)::float8
+                  FROM orders
                  WHERE id = $1
-                   AND status IN ('aguardando_pix_manual','pago','processando_payout')
-                RETURNING id`, orderID, providerID).Scan(&claimed)
+                 FOR UPDATE`, orderID).Scan(&currentStatus, &depositTx, &payoutBRL)
 	if err == sql.ErrNoRows {
 		return false, nil
 	}
 	if err != nil {
 		return false, err
 	}
+	if currentStatus == string(models.StatusConcluida) {
+		if err := tx.Commit(); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	if currentStatus != string(models.StatusAguardandoPixManual) || !depositTx.Valid || strings.TrimSpace(depositTx.String) == "" {
+		return false, tx.Commit()
+	}
+	confirmedAt := time.Now().UTC()
+	var claimed string
+	err = tx.QueryRowContext(ctx, `
+                UPDATE orders
+                   SET status = 'concluida',
+                       tx_hash = COALESCE(NULLIF($2,''), tx_hash),
+                       updated_at = now()
+                 WHERE id = $1
+                   AND status = 'aguardando_pix_manual'
+                RETURNING id`, orderID, providerID).Scan(&claimed)
+	if err == sql.ErrNoRows {
+		return false, tx.Commit()
+	}
+	if err != nil {
+		return false, err
+	}
+	if err := tx.Commit(); err != nil {
+		return false, err
+	}
 	return true, db.AddEvent(ctx, orderID, "order.pix_manual_paid", map[string]any{
-		"providerId": providerID,
-		"adminEmail": adminEmail,
-		"note":       note,
+		"providerId":      providerID,
+		"adminEmail":      adminEmail,
+		"note":            note,
+		"payoutMethod":    "manual_pix",
+		"payoutAmountBRL": payoutBRL,
+		"confirmedBy":     adminEmail,
+		"confirmedAt":     confirmedAt.Format(time.RFC3339Nano),
 	})
 }
 
@@ -373,7 +768,11 @@ func (db *DB) ClaimBuyOrderForSend(ctx context.Context, orderID string) (bool, e
 	err := db.SQL.QueryRowContext(ctx, `
                 UPDATE buy_orders
                    SET status = 'enviando', updated_at = now()
-                 WHERE id = $1 AND status IN ('pago_fiat', 'pago_pix')
+                 WHERE id = $1
+                   AND (
+                        status IN ('pago_fiat', 'pago_pix')
+                        OR (status = 'enviando' AND updated_at < now() - interval '60 seconds')
+                   )
                 RETURNING id`, orderID).Scan(&claimed)
 	if err == sql.ErrNoRows {
 		return false, nil
@@ -462,6 +861,326 @@ func (db *DB) UpdateOrderStatus(ctx context.Context, id, status string, extra ma
 		return err
 	}
 	return db.AddEvent(ctx, id, "order."+status, extra)
+}
+
+// ConfirmSellDepositForPayout atomically accepts a sell funding event only while
+// the economic rate lock is still valid. The boundary is strict: expires_at <=
+// NOW() is expired and must not move to payout.
+func (db *DB) ConfirmSellDepositForPayout(ctx context.Context, id, txHash string, depositAmount float64, extra map[string]any) (bool, error) {
+	res, err := db.SQL.ExecContext(ctx, `
+                UPDATE orders
+                   SET status = 'pago',
+                       deposit_tx = COALESCE(NULLIF($2,''), deposit_tx),
+                       deposit_amount = COALESCE($3, deposit_amount),
+                       updated_at = now()
+                 WHERE id = $1
+                   AND status IN ('aguardando_deposito','aguardando_validacao')
+                   AND rate_lock_expires_at > now()`,
+		id, txHash, depositAmount)
+	if err != nil {
+		return false, err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	if rows == 0 {
+		return false, nil
+	}
+	return true, db.AddEvent(ctx, id, "order.pago", extra)
+}
+
+func (db *DB) CreateBTCSellFunding(ctx context.Context, in BTCSellFundingInput) error {
+	if strings.TrimSpace(in.OrderID) == "" || strings.TrimSpace(in.UserID) == "" || strings.TrimSpace(in.BTCAddress) == "" || in.ExpectedSats <= 0 {
+		return fmt.Errorf("CreateBTCSellFunding: dados obrigatorios ausentes")
+	}
+	network := strings.ToLower(strings.TrimSpace(in.BTCNetwork))
+	if network == "" {
+		network = "testnet"
+	}
+	_, err := db.SQL.ExecContext(ctx, `
+INSERT INTO btc_sell_fundings
+  (order_id, user_id, wallet_address_id, btc_address, btc_network, expected_sats, quote_id, status)
+VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, NULLIF($7,''), 'awaiting_deposit')
+ON CONFLICT (order_id) DO NOTHING`,
+		in.OrderID, in.UserID, in.WalletAddressID, in.BTCAddress, network, in.ExpectedSats, in.QuoteID)
+	if err != nil {
+		return fmt.Errorf("CreateBTCSellFunding: %w", err)
+	}
+	return nil
+}
+
+func (db *DB) FindBTCWalletAddressByAddress(ctx context.Context, network, address string) (*BTCWalletAddressLookup, error) {
+	network = strings.ToLower(strings.TrimSpace(network))
+	address = strings.TrimSpace(address)
+	if network == "" || address == "" {
+		return nil, nil
+	}
+	var out BTCWalletAddressLookup
+	err := db.SQL.QueryRowContext(ctx, `
+SELECT id, user_id::text, address, network
+  FROM btc_wallet_addresses
+ WHERE network=$1
+   AND address=$2
+   AND status='active'
+ LIMIT 1`, network, address).Scan(&out.ID, &out.UserID, &out.Address, &out.Network)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (db *DB) ActiveBTCSellFundingOrderForQuote(ctx context.Context, quoteID, userID string) (string, error) {
+	quoteID = strings.TrimSpace(quoteID)
+	userID = strings.TrimSpace(userID)
+	if quoteID == "" || userID == "" {
+		return "", nil
+	}
+	var orderID string
+	err := db.SQL.QueryRowContext(ctx, `
+SELECT order_id::text
+  FROM btc_sell_fundings
+ WHERE quote_id=$1 AND user_id=$2::uuid
+ ORDER BY created_at DESC
+ LIMIT 1`, quoteID, userID).Scan(&orderID)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return orderID, err
+}
+
+func (db *DB) ApplyBTCSellFundingEvent(ctx context.Context, btcNetwork, userID, address, txid string, vout uint32, amountSats int64, confirmations, minConfirmations int) (*BTCSellFundingMatch, error) {
+	btcNetwork = strings.ToLower(strings.TrimSpace(btcNetwork))
+	userID = strings.TrimSpace(userID)
+	address = strings.TrimSpace(address)
+	txid = strings.TrimSpace(txid)
+	if btcNetwork == "" || userID == "" || address == "" || txid == "" || amountSats <= 0 {
+		return nil, fmt.Errorf("ApplyBTCSellFundingEvent: evento BTC incompleto")
+	}
+	depositKey := fmt.Sprintf("%s:%d", txid, vout)
+	tx, err := db.SQL.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var exactMatches int
+	if err := tx.QueryRowContext(ctx, `
+SELECT count(*)
+  FROM btc_sell_fundings
+ WHERE btc_network=$1
+   AND user_id=$2::uuid
+   AND btc_address=$3
+   AND expected_sats=$4
+   AND status IN ('awaiting_deposit','detected','pending_confirmations')`,
+		btcNetwork, userID, address, amountSats).Scan(&exactMatches); err != nil {
+		return nil, err
+	}
+	if exactMatches > 1 {
+		if err := tx.Commit(); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+
+	var match BTCSellFundingMatch
+	var orderStatus string
+	if exactMatches == 1 {
+		err = tx.QueryRowContext(ctx, `
+SELECT f.order_id::text, f.status, f.expected_sats, o.status
+  FROM btc_sell_fundings f
+  JOIN orders o ON o.id = f.order_id
+ WHERE f.btc_network=$1
+   AND f.user_id=$2::uuid
+   AND f.btc_address=$3
+   AND f.expected_sats=$4
+   AND f.status IN ('awaiting_deposit','detected','pending_confirmations')
+ ORDER BY f.created_at ASC
+ LIMIT 1
+ FOR UPDATE OF f, o`,
+			btcNetwork, userID, address, amountSats).Scan(&match.OrderID, &match.Status, &match.ExpectedSats, &orderStatus)
+	} else {
+		var activeMatches int
+		if err := tx.QueryRowContext(ctx, `
+SELECT count(*)
+  FROM btc_sell_fundings
+ WHERE btc_network=$1
+   AND user_id=$2::uuid
+   AND btc_address=$3
+   AND status IN ('awaiting_deposit','detected','pending_confirmations')`,
+			btcNetwork, userID, address).Scan(&activeMatches); err != nil {
+			return nil, err
+		}
+		if activeMatches != 1 {
+			if err := tx.Commit(); err != nil {
+				return nil, err
+			}
+			return nil, nil
+		}
+		err = tx.QueryRowContext(ctx, `
+SELECT f.order_id::text, f.status, f.expected_sats, o.status
+  FROM btc_sell_fundings f
+  JOIN orders o ON o.id = f.order_id
+ WHERE f.btc_network=$1
+   AND f.user_id=$2::uuid
+   AND f.btc_address=$3
+   AND f.status IN ('awaiting_deposit','detected','pending_confirmations')
+ ORDER BY f.created_at ASC
+ LIMIT 1
+ FOR UPDATE OF f, o`,
+			btcNetwork, userID, address).Scan(&match.OrderID, &match.Status, &match.ExpectedSats, &orderStatus)
+	}
+	if err == sql.ErrNoRows {
+		if err := tx.Commit(); err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	match.ReceivedSats = amountSats
+	match.Confirmations = confirmations
+	match.DepositKey = depositKey
+
+	if amountSats != match.ExpectedSats {
+		reason := "btc funding amount diverge do snapshot"
+		nextStatus := "manual_review"
+		if amountSats < match.ExpectedSats {
+			reason = "btc underpayment"
+		} else if amountSats > match.ExpectedSats {
+			reason = "btc overpayment"
+		}
+		_, err = tx.ExecContext(ctx, `
+UPDATE btc_sell_fundings
+   SET txid=$2, vout=$3, received_sats=$4, confirmations=$5, status=$6, error=$7,
+       detected_at=COALESCE(detected_at, now()), updated_at=now()
+ WHERE order_id=$1::uuid`, match.OrderID, txid, int(vout), amountSats, confirmations, nextStatus, reason)
+		if err != nil {
+			return nil, err
+		}
+		_, err = tx.ExecContext(ctx, `
+UPDATE orders
+   SET status='aguardando_validacao',
+       deposit_tx=COALESCE(NULLIF($2,''), deposit_tx),
+       deposit_amount=COALESCE($3, deposit_amount),
+       error=COALESCE(NULLIF($4,''), error),
+       updated_at=now()
+ WHERE id=$1::uuid
+   AND status IN ('aguardando_deposito','aguardando_validacao')`,
+			match.OrderID, depositKey, float64(amountSats)/100000000, reason)
+		if err != nil {
+			return nil, err
+		}
+		match.Status = nextStatus
+		match.Reason = reason
+		if err := tx.Commit(); err != nil {
+			return nil, err
+		}
+		_ = db.AddEvent(ctx, match.OrderID, "order.btc_funding_manual_review", map[string]any{
+			"txid": txid, "vout": vout, "amountSats": amountSats, "expectedSats": match.ExpectedSats, "reason": reason,
+		})
+		return &match, nil
+	}
+
+	if confirmations < minConfirmations {
+		_, err = tx.ExecContext(ctx, `
+UPDATE btc_sell_fundings
+   SET txid=$2, vout=$3, received_sats=$4, confirmations=$5, status='pending_confirmations',
+       detected_at=COALESCE(detected_at, now()), updated_at=now()
+ WHERE order_id=$1::uuid`, match.OrderID, txid, int(vout), amountSats, confirmations)
+		if err != nil {
+			return nil, err
+		}
+		match.Status = "pending_confirmations"
+		match.Reason = "below_min_confirmations"
+		if err := tx.Commit(); err != nil {
+			return nil, err
+		}
+		_ = db.AddEvent(ctx, match.OrderID, "order.btc_funding_pending_confirmations", map[string]any{
+			"txid": txid, "vout": vout, "amountSats": amountSats, "confirmations": confirmations, "minConfirmations": minConfirmations,
+		})
+		return &match, nil
+	}
+
+	var rateExpired bool
+	if err := tx.QueryRowContext(ctx, `
+SELECT rate_lock_expires_at <= now()
+  FROM orders
+ WHERE id=$1::uuid
+ FOR UPDATE`, match.OrderID).Scan(&rateExpired); err != nil {
+		return nil, err
+	}
+	if rateExpired {
+		reason := "funding recebido apos expiracao do rate lock; payout manual-ready bloqueado"
+		if _, err := tx.ExecContext(ctx, `
+UPDATE btc_sell_fundings
+   SET txid=$2, vout=$3, received_sats=$4, confirmations=$5, status='manual_review',
+       error=$6, detected_at=COALESCE(detected_at, now()), updated_at=now()
+ WHERE order_id=$1::uuid`,
+			match.OrderID, txid, int(vout), amountSats, confirmations, reason); err != nil {
+			return nil, err
+		}
+		if _, err := tx.ExecContext(ctx, `
+UPDATE orders
+   SET status='incidente_validacao',
+       deposit_tx=COALESCE(NULLIF($2,''), deposit_tx),
+       deposit_amount=COALESCE($3, deposit_amount),
+       error=COALESCE(NULLIF($4,''), error),
+       updated_at=now()
+ WHERE id=$1::uuid
+   AND status IN ('aguardando_deposito','aguardando_validacao','expirada','incidente_validacao')`,
+			match.OrderID, depositKey, float64(amountSats)/100000000, reason); err != nil {
+			return nil, err
+		}
+		match.Status = "manual_review"
+		match.Reason = "funding_expired_quote"
+		if err := tx.Commit(); err != nil {
+			return nil, err
+		}
+		_ = db.AddEvent(ctx, match.OrderID, "order.btc_funding_expired_quote", map[string]any{
+			"txid": txid, "vout": vout, "amountSats": amountSats, "confirmations": confirmations, "reason": reason,
+		})
+		return &match, nil
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+UPDATE btc_sell_fundings
+   SET txid=$2, vout=$3, received_sats=$4, confirmations=$5, status='confirmed',
+       detected_at=COALESCE(detected_at, now()), confirmed_at=COALESCE(confirmed_at, now()), updated_at=now()
+ WHERE order_id=$1::uuid`, match.OrderID, txid, int(vout), amountSats, confirmations); err != nil {
+		return nil, err
+	}
+	match.Status = "confirmed"
+	match.Ready = true
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return &match, nil
+}
+
+func (db *DB) RecordExpiredSellFunding(ctx context.Context, id, txHash string, depositAmount float64, extra map[string]any) error {
+	errMsg, _ := extra["error"].(string)
+	if strings.TrimSpace(errMsg) == "" {
+		errMsg = "funding recebido apos expiracao do rate lock; payout automatico bloqueado"
+	}
+	_, err := db.SQL.ExecContext(ctx, `
+                UPDATE orders
+                   SET status = 'incidente_validacao',
+                       deposit_tx = COALESCE(NULLIF($2,''), deposit_tx),
+                       deposit_amount = COALESCE($3, deposit_amount),
+                       error = COALESCE(NULLIF($4,''), error),
+                       updated_at = now()
+                 WHERE id = $1
+                   AND status IN ('aguardando_deposito','aguardando_validacao','expirada','incidente_validacao')`,
+		id, txHash, depositAmount, errMsg)
+	if err != nil {
+		return err
+	}
+	return db.AddEvent(ctx, id, "order.funding_expired_quote", extra)
 }
 
 func (db *DB) HasPendingOrderForAddress(ctx context.Context, address string) (bool, error) {
@@ -1077,19 +1796,24 @@ func (db *DB) ListAdminTransactions(ctx context.Context, limit int) ([]AdminTran
 	if limit <= 0 || limit > 500 {
 		limit = 200
 	}
-	rows, err := db.SQL.QueryContext(ctx, `
-                SELECT source, id::text, status, amount_brl::float8, amount_fiat::float8,
-                       fiat_currency, payment_method, fee_brl::float8, payout_brl::float8,
+	query := `
+                SELECT source, id, status, product, product_type,
+                       amount_brl::float8, amount_fiat::float8,
+                       fiat_currency, payment_method, funding_method,
+                       fee_brl::float8, payout_brl::float8,
                        crypto_amount::float8, asset, address, network, rate_locked::float8,
                        provider_payment_id, tx_hash, deposit_tx, deposit_amount,
-                       pix_cpf_enc, pix_phone_enc, email_enc, error, request_id,
+                       pix_code, pix_expires_at, pix_cpf_enc, pix_phone_enc, email_enc, error, request_id,
                        created_at, updated_at
                 FROM (
-                        SELECT 'buy' AS source, id, status,
+                        SELECT 'buy' AS source, bo.id::text AS id, status,
+                               'BUY crypto'::text AS product,
+                               'buy'::text AS product_type,
                                amount_brl,
                                COALESCE(amount_fiat, amount_brl) AS amount_fiat,
                                COALESCE(fiat_currency, 'BRL') AS fiat_currency,
                                COALESCE(payment_method, 'pix') AS payment_method,
+                               COALESCE(payment_method, 'pix') AS funding_method,
                                COALESCE(fee_brl, 0) AS fee_brl,
                                COALESCE(payout_brl, 0) AS payout_brl,
                                crypto_amount,
@@ -1101,6 +1825,8 @@ func (db *DB) ListAdminTransactions(ctx context.Context, limit int) ([]AdminTran
                                tx_hash_out AS tx_hash,
                                NULL::text AS deposit_tx,
                                NULL::numeric AS deposit_amount,
+                               ''::text AS pix_code,
+                               NULL::timestamptz AS pix_expires_at,
                                NULL::text AS pix_cpf_enc,
                                NULL::text AS pix_phone_enc,
                                bop.email_enc,
@@ -1111,11 +1837,14 @@ func (db *DB) ListAdminTransactions(ctx context.Context, limit int) ([]AdminTran
                         FROM buy_orders bo
                         LEFT JOIN buy_order_private bop ON bop.buy_order_id = bo.id
                         UNION ALL
-                        SELECT 'sell' AS source, id, status,
+                        SELECT 'sell' AS source, o.id::text AS id, status,
+                               'SELL Pix payout'::text AS product,
+                               'sell'::text AS product_type,
                                amount_brl,
                                amount_brl AS amount_fiat,
                                'BRL' AS fiat_currency,
                                'pix' AS payment_method,
+                               'onchain'::text AS funding_method,
                                COALESCE(fee_brl, 0) AS fee_brl,
                                COALESCE(payout_brl, 0) AS payout_brl,
                                btc_amount AS crypto_amount,
@@ -1127,6 +1856,8 @@ func (db *DB) ListAdminTransactions(ctx context.Context, limit int) ([]AdminTran
                                tx_hash,
                                deposit_tx,
                                deposit_amount,
+                               ''::text AS pix_code,
+                               NULL::timestamptz AS pix_expires_at,
                                op.pix_cpf_enc,
                                op.pix_phone_enc,
                                op.email_enc,
@@ -1136,9 +1867,49 @@ func (db *DB) ListAdminTransactions(ctx context.Context, limit int) ([]AdminTran
                                COALESCE(o.updated_at, o.created_at) AS updated_at
                         FROM orders o
                         LEFT JOIN order_private op ON op.order_id = o.id
+`
+	if ok, err := db.adminCommerceReady(ctx); err != nil {
+		return nil, err
+	} else if ok {
+		query += `
+                        UNION ALL
+                        SELECT 'commerce' AS source, o.id::text AS id, o.status,
+                               COALESCE(pp.title, o.product_id)::text AS product,
+                               COALESCE(pp.product_type, 'gift_card')::text AS product_type,
+                               o.amount_brl,
+                               o.amount_brl AS amount_fiat,
+                               'BRL'::text AS fiat_currency,
+                               'commerce'::text AS payment_method,
+                               COALESCE(o.funding_method, 'internal_usdt') AS funding_method,
+                               COALESCE(o.fee_brl, 0) AS fee_brl,
+                               0::numeric AS payout_brl,
+                               (o.required_usdt_micro::float8 / 1000000.0)::numeric AS crypto_amount,
+                               CASE WHEN COALESCE(o.funding_method, '') = 'pix' THEN 'BRL' ELSE 'USDT' END AS asset,
+                               o.wallet_address AS address,
+                               'BSC'::text AS network,
+                               o.usdt_rate AS rate_locked,
+                               NULLIF(o.provider_reference, '') AS provider_payment_id,
+                               NULL::text AS tx_hash,
+                               NULL::text AS deposit_tx,
+                               NULL::numeric AS deposit_amount,
+                               COALESCE(o.pix_code, '') AS pix_code,
+                               o.pix_expires_at,
+                               NULL::text AS pix_cpf_enc,
+                               NULL::text AS pix_phone_enc,
+                               NULL::text AS email_enc,
+                               NULLIF(o.error_message, '') AS error,
+                               o.idempotency_key AS request_id,
+                               o.created_at,
+                               COALESCE(o.updated_at, o.created_at) AS updated_at
+                        FROM mobile_gift_card_orders o
+                        LEFT JOIN gift_card_provider_products pp ON pp.product_id = o.product_id
+`
+	}
+	query += `
                 ) txs
                 ORDER BY created_at DESC
-                LIMIT $1`, limit)
+                LIMIT $1`
+	rows, err := db.SQL.QueryContext(ctx, query, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -1146,12 +1917,13 @@ func (db *DB) ListAdminTransactions(ctx context.Context, limit int) ([]AdminTran
 	var out []AdminTransaction
 	for rows.Next() {
 		var tx AdminTransaction
-		var providerPaymentID, txHash, depositTx, pixCpfEnc, pixPhoneEnc, emailEnc, errMsg, requestID sql.NullString
+		var providerPaymentID, txHash, depositTx, pixCode, pixCpfEnc, pixPhoneEnc, emailEnc, errMsg, requestID sql.NullString
 		var depositAmount sql.NullFloat64
-		if err := rows.Scan(&tx.Source, &tx.ID, &tx.Status, &tx.AmountBRL, &tx.AmountFiat,
-			&tx.FiatCurrency, &tx.PaymentMethod, &tx.FeeBRL, &tx.PayoutBRL,
+		var pixExpiresAt sql.NullTime
+		if err := rows.Scan(&tx.Source, &tx.ID, &tx.Status, &tx.Product, &tx.ProductType, &tx.AmountBRL, &tx.AmountFiat,
+			&tx.FiatCurrency, &tx.PaymentMethod, &tx.FundingMethod, &tx.FeeBRL, &tx.PayoutBRL,
 			&tx.CryptoAmount, &tx.Asset, &tx.Address, &tx.Network, &tx.RateLocked,
-			&providerPaymentID, &txHash, &depositTx, &depositAmount, &pixCpfEnc, &pixPhoneEnc, &emailEnc, &errMsg, &requestID,
+			&providerPaymentID, &txHash, &depositTx, &depositAmount, &pixCode, &pixExpiresAt, &pixCpfEnc, &pixPhoneEnc, &emailEnc, &errMsg, &requestID,
 			&tx.CreatedAt, &tx.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -1166,6 +1938,12 @@ func (db *DB) ListAdminTransactions(ctx context.Context, limit int) ([]AdminTran
 		}
 		if depositAmount.Valid {
 			tx.DepositAmount = &depositAmount.Float64
+		}
+		if pixCode.Valid {
+			tx.PixCode = pixCode.String
+		}
+		if pixExpiresAt.Valid {
+			tx.PixExpiresAt = &pixExpiresAt.Time
 		}
 		if db.privacy != nil {
 			if pixCpfEnc.Valid && pixCpfEnc.String != "" {
@@ -1197,6 +1975,35 @@ func (db *DB) ListAdminTransactions(ctx context.Context, limit int) ([]AdminTran
 		out = append(out, tx)
 	}
 	return out, rows.Err()
+}
+
+func (db *DB) adminCommerceReady(ctx context.Context) (bool, error) {
+	var ready bool
+	err := db.SQL.QueryRowContext(ctx, `
+                SELECT to_regclass('public.mobile_gift_card_orders') IS NOT NULL
+                   AND to_regclass('public.gift_card_provider_products') IS NOT NULL
+                   AND EXISTS (
+                         SELECT 1
+                           FROM information_schema.columns
+                          WHERE table_schema = 'public'
+                            AND table_name = 'mobile_gift_card_orders'
+                            AND column_name = 'funding_method'
+                   )
+                   AND EXISTS (
+                         SELECT 1
+                           FROM information_schema.columns
+                          WHERE table_schema = 'public'
+                            AND table_name = 'mobile_gift_card_orders'
+                            AND column_name = 'pix_code'
+                   )
+                   AND EXISTS (
+                         SELECT 1
+                           FROM information_schema.columns
+                          WHERE table_schema = 'public'
+                            AND table_name = 'mobile_gift_card_orders'
+                            AND column_name = 'pix_expires_at'
+                   )`).Scan(&ready)
+	return ready, err
 }
 
 func (db *DB) EnsureBootstrapAdmin(ctx context.Context) error {
@@ -1471,6 +2278,60 @@ func (db *DB) scanOrder(row scanner) (*models.Order, error) {
 	return &o, nil
 }
 
+func sellPayoutExecutionSelectSQL() string {
+	return `SELECT id::text, order_id::text, provider, provider_idempotency_key, provider_id_envio,
+                       amount_brl_minor, recipient_reference, status, attempt_count,
+                       submit_started_at, submit_completed_at, submit_outcome,
+                       first_ambiguous_at, last_reconciled_at, consecutive_not_found,
+                       next_attempt_at, COALESCE(provider_reference,''), COALESCE(provider_e2e_id,''),
+                       COALESCE(last_error,''), created_at, updated_at, completed_at
+                  FROM sell_payout_executions`
+}
+
+func scanSellPayoutExecution(row interface {
+	Scan(dest ...any) error
+}) (*SellPayoutExecution, error) {
+	var exec SellPayoutExecution
+	var submitStarted, submitCompleted, firstAmbiguous, lastReconciled, completed sql.NullTime
+	if err := row.Scan(
+		&exec.ID, &exec.OrderID, &exec.Provider, &exec.ProviderIDempotencyKey, &exec.ProviderIDEnvio,
+		&exec.AmountBRLMinor, &exec.RecipientReference, &exec.Status, &exec.AttemptCount,
+		&submitStarted, &submitCompleted, &exec.SubmitOutcome,
+		&firstAmbiguous, &lastReconciled, &exec.ConsecutiveNotFound,
+		&exec.NextAttemptAt, &exec.ProviderReference, &exec.ProviderE2EID,
+		&exec.LastError, &exec.CreatedAt, &exec.UpdatedAt, &completed,
+	); err != nil {
+		return nil, err
+	}
+	if submitStarted.Valid {
+		exec.SubmitStartedAt = &submitStarted.Time
+	}
+	if submitCompleted.Valid {
+		exec.SubmitCompletedAt = &submitCompleted.Time
+	}
+	if firstAmbiguous.Valid {
+		exec.FirstAmbiguousAt = &firstAmbiguous.Time
+	}
+	if lastReconciled.Valid {
+		exec.LastReconciledAt = &lastReconciled.Time
+	}
+	if completed.Valid {
+		exec.CompletedAt = &completed.Time
+	}
+	return &exec, nil
+}
+
+func sellPayoutStatusFromProvider(status string) (next string, completed bool, failed bool) {
+	switch strings.ToUpper(strings.TrimSpace(status)) {
+	case "REALIZADO", "CONCLUIDA", "CONCLUÍDA", "COMPLETED", "CONFIRMED", "SETTLED", "SUCCESS", "SUCCEEDED":
+		return "completed", true, false
+	case "REJEITADO", "REJECTED", "FAILED", "CANCELLED", "CANCELED", "DENIED", "DEVOLVIDO":
+		return "failed", false, true
+	default:
+		return "provider_pending", false, false
+	}
+}
+
 func nullableString(value string) any {
 	if value == "" {
 		return nil
@@ -1574,6 +2435,36 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS pix_phone_hash TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id);
 CREATE INDEX IF NOT EXISTS idx_orders_user_created ON orders(user_id, created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_deposit_tx_unique ON orders (deposit_tx) WHERE deposit_tx IS NOT NULL AND deposit_tx <> '';
+
+CREATE TABLE IF NOT EXISTS btc_sell_fundings (
+  order_id UUID PRIMARY KEY REFERENCES orders(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id),
+  wallet_address_id TEXT NOT NULL,
+  btc_address TEXT NOT NULL,
+  btc_network TEXT NOT NULL CHECK (btc_network IN ('mainnet','testnet','signet','regtest')),
+  expected_sats BIGINT NOT NULL CHECK (expected_sats > 0),
+  received_sats BIGINT,
+  txid TEXT,
+  vout INTEGER,
+  confirmations INTEGER NOT NULL DEFAULT 0,
+  quote_id TEXT,
+  status TEXT NOT NULL DEFAULT 'awaiting_deposit'
+    CHECK (status IN ('awaiting_deposit','detected','pending_confirmations','confirmed','manual_review','expired','orphaned')),
+  error TEXT,
+  detected_at TIMESTAMPTZ,
+  confirmed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_btc_sell_fundings_lookup
+  ON btc_sell_fundings(btc_network, user_id, btc_address, status, created_at);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_btc_sell_fundings_txid_vout
+  ON btc_sell_fundings(btc_network, txid, vout)
+  WHERE txid IS NOT NULL AND txid <> '' AND vout IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_btc_sell_fundings_quote
+  ON btc_sell_fundings(quote_id)
+  WHERE quote_id IS NOT NULL AND quote_id <> '';
 
 CREATE TABLE IF NOT EXISTS order_events (
   id UUID PRIMARY KEY,
@@ -2767,10 +3658,38 @@ CREATE TABLE IF NOT EXISTS auto_sweeper_runs (
   balance_usdt NUMERIC(20,8) NOT NULL DEFAULT 0,
   swept_usdt NUMERIC(20,8) NOT NULL DEFAULT 0,
   tx_hash TEXT,
-  status TEXT NOT NULL DEFAULT 'ok' CHECK (status IN ('ok','skipped','error')),
+  status TEXT NOT NULL DEFAULT 'ok' CHECK (status IN ('ok','skipped','error','broadcast','broadcast_unknown','confirmed','manual_review','signed')),
+  operation_id TEXT NOT NULL DEFAULT '',
+  chain_id BIGINT NOT NULL DEFAULT 0,
+  token_contract TEXT NOT NULL DEFAULT '',
+  amount_raw TEXT NOT NULL DEFAULT '',
+  signer_status TEXT NOT NULL DEFAULT '',
+  nonce BIGINT NOT NULL DEFAULT 0,
   error_msg TEXT,
   ran_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE auto_sweeper_runs ADD COLUMN IF NOT EXISTS operation_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE auto_sweeper_runs ADD COLUMN IF NOT EXISTS chain_id BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE auto_sweeper_runs ADD COLUMN IF NOT EXISTS token_contract TEXT NOT NULL DEFAULT '';
+ALTER TABLE auto_sweeper_runs ADD COLUMN IF NOT EXISTS amount_raw TEXT NOT NULL DEFAULT '';
+ALTER TABLE auto_sweeper_runs ADD COLUMN IF NOT EXISTS signer_status TEXT NOT NULL DEFAULT '';
+ALTER TABLE auto_sweeper_runs ADD COLUMN IF NOT EXISTS nonce BIGINT NOT NULL DEFAULT 0;
+DO $$
+DECLARE c record;
+BEGIN
+  FOR c IN
+    SELECT conname
+    FROM pg_constraint
+    WHERE conrelid = 'auto_sweeper_runs'::regclass
+      AND contype = 'c'
+      AND pg_get_constraintdef(oid) ILIKE '%status%'
+  LOOP
+    EXECUTE format('ALTER TABLE auto_sweeper_runs DROP CONSTRAINT IF EXISTS %I', c.conname);
+  END LOOP;
+  ALTER TABLE auto_sweeper_runs
+    ADD CONSTRAINT auto_sweeper_runs_status_check
+    CHECK (status IN ('ok','skipped','error','broadcast','broadcast_unknown','confirmed','manual_review','signed'));
+END $$;
 CREATE INDEX IF NOT EXISTS idx_auto_sweeper_runs_ran_at ON auto_sweeper_runs(ran_at DESC);
 CREATE INDEX IF NOT EXISTS idx_auto_sweeper_runs_status_ran_at ON auto_sweeper_runs(status, ran_at DESC);
 CREATE INDEX IF NOT EXISTS idx_auto_sweeper_runs_hot_wallet ON auto_sweeper_runs(LOWER(hot_wallet), ran_at DESC);
@@ -2897,6 +3816,14 @@ CREATE TABLE IF NOT EXISTS merchant_settlements (
   claimed_by TEXT,
   error_message TEXT,
   submitted_at TIMESTAMPTZ,
+  submit_started_at TIMESTAMPTZ,
+  submit_completed_at TIMESTAMPTZ,
+  submit_outcome TEXT NOT NULL DEFAULT 'not_submitted',
+  reconciliation_attempt_count INT NOT NULL DEFAULT 0,
+  first_ambiguous_at TIMESTAMPTZ,
+  last_reconciled_at TIMESTAMPTZ,
+  consecutive_not_found INT NOT NULL DEFAULT 0,
+  manual_review_reason TEXT,
   confirmed_at TIMESTAMPTZ,
   failed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -2912,9 +3839,23 @@ ALTER TABLE merchant_settlements ADD COLUMN IF NOT EXISTS provider_e2e_id TEXT;
 ALTER TABLE merchant_settlements ADD COLUMN IF NOT EXISTS provider_id_envio TEXT;
 ALTER TABLE merchant_settlements ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ;
 ALTER TABLE merchant_settlements ADD COLUMN IF NOT EXISTS claimed_by TEXT;
+ALTER TABLE merchant_settlements ADD COLUMN IF NOT EXISTS submit_started_at TIMESTAMPTZ;
+ALTER TABLE merchant_settlements ADD COLUMN IF NOT EXISTS submit_completed_at TIMESTAMPTZ;
+ALTER TABLE merchant_settlements ADD COLUMN IF NOT EXISTS submit_outcome TEXT NOT NULL DEFAULT 'not_submitted';
+ALTER TABLE merchant_settlements ADD COLUMN IF NOT EXISTS reconciliation_attempt_count INT NOT NULL DEFAULT 0;
+ALTER TABLE merchant_settlements ADD COLUMN IF NOT EXISTS first_ambiguous_at TIMESTAMPTZ;
+ALTER TABLE merchant_settlements ADD COLUMN IF NOT EXISTS last_reconciled_at TIMESTAMPTZ;
+ALTER TABLE merchant_settlements ADD COLUMN IF NOT EXISTS consecutive_not_found INT NOT NULL DEFAULT 0;
+ALTER TABLE merchant_settlements ADD COLUMN IF NOT EXISTS manual_review_reason TEXT;
 ALTER TABLE merchant_settlements DROP CONSTRAINT IF EXISTS merchant_settlements_status_check;
 ALTER TABLE merchant_settlements ADD CONSTRAINT merchant_settlements_status_check
   CHECK (status IN ('MANUAL_REQUIRED','PENDING','PROCESSING','SUBMITTED','SUBMISSION_UNKNOWN','CONFIRMED','REJECTED','RETRYABLE','MANUAL_REVIEW','CANCELED'));
+ALTER TABLE merchant_settlements DROP CONSTRAINT IF EXISTS merchant_settlements_submit_outcome_check;
+ALTER TABLE merchant_settlements ADD CONSTRAINT merchant_settlements_submit_outcome_check
+  CHECK (submit_outcome IN ('not_submitted','started','confirmed','rejected','ambiguous'));
+CREATE INDEX IF NOT EXISTS idx_merchant_settlements_processing_stale
+  ON merchant_settlements(status, submit_started_at, next_retry_at)
+  WHERE status = 'PROCESSING';
 
 CREATE TABLE IF NOT EXISTS merchant_settlement_provider_events (
   id BIGSERIAL PRIMARY KEY,
