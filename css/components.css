@@ -406,9 +406,9 @@
 
 .sell-deposit-title {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 2px;
   color: var(--text-color);
-  font-size: 1rem;
+  font-size: 0.89rem;
   font-weight: 500;
 }
 
@@ -1543,7 +1543,6 @@
   gap: 7px;
   margin-top: 10px;
   padding: 11px 12px;
-  border: 1px solid rgba(209, 224, 242, 0.9);
   border-radius: 12px;
   background: rgba(248, 251, 255, 0.86);
   color: #1f2a44;
@@ -1573,6 +1572,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  margin-left: 0px;
   min-width: 0;
   color: #173b65;
   font-size: 0.78rem;
@@ -1806,10 +1806,105 @@
     color: #7b8794;
 }
 
+.sell-order-timer {
+    margin: 12px auto 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+/* remove a bolinha azul atual */
 .sell-order-timer-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #17a8d4;
-    box-shadow: 0 0 0 4px rgba(23, 168, 212, 0.10);
+    display: none;
+}
+
+/* círculo do cronômetro */
+.sell-order-timer > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+#sellNetworkLabel {
+    color: #1d63a9;
+    font-weight: 600;
+}
+
+.sell-final-summary {
+    margin-bottom: 14px;
+}
+
+.sell-final-summary p {
+    margin: 2px 0;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+.sell-final-summary strong {
+    color: #1d63a9;
+    font-weight: 600;
+}
+
+.sell-final-wallet-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    width: 100%;
+    height: 46px;
+    min-height: 46px;
+
+    margin-top: 8px;
+    padding: 0 40px 0 42px;
+
+    border: 1px solid rgba(209, 224, 242, 0.95);
+    border-radius: 11px;
+    background: rgba(248, 251, 255, 0.88);
+
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+
+.sell-final-wallet-icon {
+    position: absolute;
+    left: 7px;
+    top: 50%;
+    transform: translateY(-50%);
+
+    width: 38px;
+    height: 38px;
+
+    object-fit: contain;
+}
+
+#sellDepositWallet {
+    display: block;
+    flex: 1;
+
+    min-width: 0;
+    width: 0;
+
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+
+    color: #1d63a9;
+    font-family: inherit;
+    font-size: 0.90rem;
+    font-weight: 600;
+    line-height: 46px;
+}
+
+.sell-final-wallet-row .sell-wallet-copy-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
 }
