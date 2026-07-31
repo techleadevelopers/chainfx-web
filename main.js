@@ -96,7 +96,7 @@ const SELL_NETWORKS = {
   BITCOIN: {
     code: 'BITCOIN',
     shortLabel: 'BTC',
-    displayLabel: 'Rede Bitcoin / BTC',
+    displayLabel: 'BTC Nativa',
     icon: 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/btc.png'
   },
   ETHEREUM: {
@@ -892,6 +892,12 @@ const updateSellDepositWallet = () => {
   const walletEl = document.getElementById('sellDepositWallet');
   if (walletEl) walletEl.textContent = depositWallet;
 
+  const walletInput = document.getElementById('sellWalletAddress');
+
+if (walletInput) {
+  walletInput.value = depositWallet;
+}
+
   const iconEl = document.getElementById('sellDepositNetworkIcon');
   const labelEl = document.getElementById('sellDepositNetworkLabel');
   const selectEl = document.getElementById('sellNetwork');
@@ -1095,7 +1101,7 @@ const BUY_NETWORKS = {
   BITCOIN: {
     code: 'BITCOIN',
     shortLabel: 'BTC',
-    displayLabel: 'Rede Bitcoin / BTC',
+    displayLabel: 'BTC Nativa',
     icon: 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/btc.png'
   },
   POLYGON: SELL_NETWORKS.POLYGON,
@@ -1974,14 +1980,79 @@ document.addEventListener('DOMContentLoaded', async () => {
     const assetCode = String(asset || 'USDT').toUpperCase();
 
     if (assetCode === 'BTC') {
-      if (labelEl) labelEl.textContent = 'Rede para envio do BTC';
-      container.innerHTML = `<button class="sell-network-option active" type="button" data-network="BITCOIN" role="radio" aria-checked="true" disabled>
-        <img src="${SELL_NETWORKS.BITCOIN.icon}" alt="BTC" width="22" />
-        <span><strong>Bitcoin</strong><small>Rede nativa</small></span>
-      </button>`;
-      state.sellNetwork = 'BITCOIN';
-      priceState.sellNetwork = 'BITCOIN';
-    } else if (assetCode === 'ETH') {
+  if (labelEl) labelEl.textContent = 'Rede para envio';
+
+  state.sellNetwork = 'BITCOIN';
+  priceState.sellNetwork = 'BITCOIN';
+
+  const meta = SELL_NETWORKS.BITCOIN;
+
+  container.innerHTML = `
+    <div class="buy-network-dropdown sell-network-dropdown">
+
+      <button
+        class="buy-network-trigger sell-network-trigger"
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded="false"
+      >
+        <img src="${meta.icon}" alt="BTC" />
+
+        <span>
+          <strong>BTC</strong>
+          <small>Bitcoin / Rede nativa</small>
+        </span>
+
+        <svg class="buy-network-chevron" viewBox="0 0 24 24">
+          <path d="M7 10l5 5 5-5z"></path>
+        </svg>
+      </button>
+
+      <div class="buy-network-panel hidden" role="listbox">
+
+        <button
+          type="button"
+          class="buy-network-item active"
+          data-network="BITCOIN"
+          role="option"
+          aria-selected="true"
+        >
+          <img src="${meta.icon}" alt="BTC" />
+
+          <span>
+            <strong>BTC</strong>
+            <small>Bitcoin / Rede nativa</small>
+          </span>
+        </button>
+
+      </div>
+
+    </div>
+  `;
+
+  const dropdown =
+    container.querySelector('.sell-network-dropdown');
+
+  const trigger =
+    container.querySelector('.sell-network-trigger');
+
+  const panel =
+    container.querySelector('.buy-network-panel');
+
+  trigger?.addEventListener('click', () => {
+    const isOpen = !panel.classList.contains('hidden');
+
+    panel.classList.toggle('hidden', isOpen);
+    dropdown.classList.toggle('open', !isOpen);
+
+    trigger.setAttribute(
+      'aria-expanded',
+      isOpen ? 'false' : 'true'
+    );
+  });
+
+  return;
+} else if (assetCode === 'ETH') {
       if (labelEl) labelEl.textContent = 'Rede para envio do ETH';
       const ethNetworks = [
         { code: 'ETHEREUM', label: 'Ethereum', sub: 'ERC20', icon: SELL_NETWORKS.ETHEREUM.icon },
@@ -2637,15 +2708,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     if (state.action === 'buy') clearLastBuyQuote();
     const sellAsset = String(state.payCurrency || 'USDT').toUpperCase();
-    const sellNetwork = getSellNetworkForAsset(sellAsset);
+const sellNetwork = getSellNetworkForAsset(sellAsset);
 
-    const payload = {
-      mode: state.action,
-      asset: state.action === 'buy' ? selectedBuyPair.asset : sellAsset,
-      network: state.action === 'buy' ? selectedBuyPair.network : sellNetwork,
-      amountFiat: state.action === 'sell' ? amount : amount,
-      amountBRL: state.action === 'buy' ? convertFiatToBrl(amount, state.payCurrency) : 0,
-      fiatCurrency: state.action === 'buy' ? state.payCurrency : 'BRL',
+const sellRate = state.action === 'sell'
+  ? getSellAssetBrlPrice(sellAsset)
+  : 0;
+
+const payload = state.action === 'sell'
+  ? {
+      mode: 'sell',
+      asset: sellAsset,
+      network: sellNetwork,
+
+      // SIM: neste backend amountFiat = quantidade de crypto no SELL
+      amountFiat: amount,
+
+      // não envie o equivalente BRL aqui
+      amountBRL: 0,
+
+      fiatCurrency: 'BRL',
+      paymentMethod: 'pix'
+    }
+  : {
+      mode: 'buy',
+      asset: selectedBuyPair.asset,
+      network: selectedBuyPair.network,
+      amountFiat: amount,
+      amountBRL: convertFiatToBrl(amount, state.payCurrency),
+      fiatCurrency: state.payCurrency,
       paymentMethod: 'pix'
     };
 
@@ -2901,7 +2991,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           asset,
           network: selectedNetwork,
           pixCpf: cpf,
-          pixPhone: phone
+          pixPhone: phone,
+          surface: 'web'
         })
       });
 
@@ -3276,10 +3367,99 @@ document.addEventListener('DOMContentLoaded', async () => {
 
               case 2: // Wallet Input/Connect Step
                   if (state.action === 'sell') {
-                      const sellOrder = await createSellOrder();
-                      if (sellOrder) updateStep(5);
-                      return;
-                  }
+
+    const sellNetworkSection =
+        document.getElementById('sellNetworkSection');
+
+    const sellWalletStep =
+        document.getElementById('sellWalletStep');
+
+    const sellWalletAddress =
+        document.getElementById('sellWalletAddress');
+
+    const pixCpfGroup =
+        document.getElementById('pixCpf')?.closest('.wallet-input');
+
+    const pixPhoneGroup =
+        document.getElementById('pixPhone')?.closest('.wallet-input');
+
+
+    // Se REDE já está visível, estamos na tela FINAL do SELL
+    const depositStepVisible =
+        sellNetworkSection &&
+        !sellNetworkSection.classList.contains('hidden');
+
+
+    // ==================================================
+    // SEGUNDO CLIQUE -> Sell Now -> cria ordem
+    // ==================================================
+    if (depositStepVisible) {
+
+        const sellOrder = await createSellOrder();
+
+        if (sellOrder) {
+            updateStep(5);
+        }
+
+        return;
+    }
+
+
+    // ==================================================
+    // PRIMEIRO CLIQUE -> valida CPF + PIX
+    // e depois mostra REDE + WALLET
+    // ==================================================
+
+    const cpf =
+        document.getElementById('pixCpf')?.value?.trim() || '';
+
+    const pix =
+        document.getElementById('pixPhone')?.value?.trim() || '';
+
+    if (!cpf) {
+        showUxMessage('Informe seu CPF.', 'warning');
+        document.getElementById('pixCpf')?.focus();
+        return;
+    }
+
+    if (!pix) {
+        showUxMessage('Informe sua chave PIX.', 'warning');
+        document.getElementById('pixPhone')?.focus();
+        return;
+    }
+
+
+    // pega wallet da ChainFX
+    const asset =
+        String(state.payCurrency || 'USDT').toUpperCase();
+
+    const wallet =
+        getSellDepositWalletForAsset(asset);
+
+    if (sellWalletAddress) {
+        sellWalletAddress.value = wallet || '';
+    }
+
+
+    // esconde CPF + PIX
+    pixCpfGroup?.classList.add('hidden');
+    pixPhoneGroup?.classList.add('hidden');
+
+
+    // mostra Rede + Wallet
+    sellNetworkSection?.classList.remove('hidden');
+    sellWalletStep?.classList.remove('hidden');
+    
+    const sellOrderTimer =
+    document.getElementById('sellOrderTimer');
+
+sellOrderTimer?.classList.remove('hidden');
+
+    // botão vira final
+    continueBtn.textContent = 'Sell Now';
+
+    return;
+}
                   if (!state.selectedPaymentMethod) {
                       showUxMessage('payment_method_required', 'warning');
                       return;
