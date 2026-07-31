@@ -29,6 +29,7 @@ type BuySendWorker struct {
 	client              *http.Client
 	sem                 chan struct{}
 	router              *liquidity.Router
+	btcFundingRouter    *BTCFundingRouter // Treasury-first BTC routing; nil when not configured
 	hotWalletHasBalance func(context.Context, *database.BuyOrder, liquidity.Pair) (bool, error)
 }
 
@@ -42,6 +43,13 @@ func NewBuySendWorker(bus *EventBus, db *database.DB, cfg *config.Config) *BuySe
 		sem:    make(chan struct{}, 8),
 		router: newBuyLiquidityRouter(cfg, client),
 	}
+}
+
+// SetBTCFundingRouter wires the Treasury-first BTC funding router into the worker.
+// Called by WorkerManager after construction when BTC_TREASURY_ENABLED=true.
+// Safe to call with nil (disables treasury routing, falls back to existing BingX path).
+func (bw *BuySendWorker) SetBTCFundingRouter(r *BTCFundingRouter) {
+	bw.btcFundingRouter = r
 }
 
 func (bw *BuySendWorker) Start(ctx context.Context) {
@@ -127,6 +135,31 @@ func (bw *BuySendWorker) processBuyOnchainSend(event Event) {
 		return
 	}
 	if buy == nil {
+		return
+	}
+
+	// ── BTC Treasury routing (priority before BingX / EVM signer) ────────────
+	// Intercepta ordens BTC:BITCOIN ANTES de qualquer outra rota.
+	// A decisão de roteamento (treasury vs. BingX) é exclusivamente backend.
+	// O mobile nunca sabe qual rota foi usada — só vê o resultado final.
+	//
+	// Invariante: se btcFundingRouter.Route() retornar true, a ordem já foi
+	// tratada (enviado, pendente_confirmacao, ou broadcast_unknown com reconciliação
+	// agendada). NÃO tentar liquidity router nem EVM signer após isso.
+	if bw.btcFundingRouter != nil && bw.btcFundingRouter.Enabled() &&
+		strings.EqualFold(strings.TrimSpace(buy.Asset), "BTC") &&
+		strings.EqualFold(strings.TrimSpace(buy.Network), "BITCOIN") {
+		if handled := bw.btcFundingRouter.Route(ctx, buy); handled {
+			slog.Info("BUY BTC entregue pelo BTCFundingRouter", "buy_order_id", orderID, "duration_ms", time.Since(start).Milliseconds())
+			return
+		}
+		// Nenhuma fonte disponível — registrar e deixar cair para o erro abaixo
+		slog.Warn("BTCFundingRouter: nenhuma fonte disponível para BTC:BITCOIN", "buy_order_id", orderID)
+		_ = bw.db.UpdateBuyOrderStatus(ctx, orderID, "erro", map[string]any{
+			"error":   "BTCFundingRouter: treasury indisponível e BingX não configurado para BTC:BITCOIN",
+			"asset":   buy.Asset,
+			"network": buy.Network,
+		})
 		return
 	}
 
