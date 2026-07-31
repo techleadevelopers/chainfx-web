@@ -32,6 +32,7 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		Email        string  `json:"email"`
 		RateLocked   float64 `json:"rateLocked"`
 		QuoteID      string  `json:"quoteId"`
+		Surface      string `json:"surface"`
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "JSON inválido"})
@@ -60,21 +61,41 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 	var depositAddress string
 	var btcFunding *database.BTCSellFundingInput
 	if network == "BITCOIN" {
-		depositAddress = strings.TrimSpace(s.cfg.SellBTCWalletAddress)
-		if depositAddress == "" {
-			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "carteira BTC de deposito nao configurada"})
-			return
-		}
+	depositAddress = strings.TrimSpace(s.cfg.SellBTCWalletAddress)
+
+	if depositAddress == "" {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+			"error": "carteira BTC de deposito nao configurada",
+		})
+		return
+	}
+
+	// SELL WEB:
+	// usa a wallet BTC operacional da ChainFX.
+	// NÃO chama scanner.
+	// NÃO exige wallet cadastrada.
+	if strings.EqualFold(strings.TrimSpace(req.Surface), "web") {
+		btcFunding = nil
+	} else {
 		if s.workers == nil || s.workers.BTCSvc == nil {
-			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "scanner BTC nao esta habilitado"})
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+				"error": "scanner BTC nao esta habilitado",
+			})
 			return
 		}
+
 		btcNetwork := string(s.workers.BTCSvc.Config().Network)
-		walletAddress, err := s.db.FindBTCWalletAddressByAddress(ctx, btcNetwork, depositAddress)
+
+		walletAddress, err := s.db.FindBTCWalletAddressByAddress(
+			ctx,
+			btcNetwork,
+			depositAddress,
+		)
 		if err != nil {
 			writeError(w, err)
 			return
 		}
+
 		if walletAddress == nil {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]any{
 				"error":   "wallet BTC de SELL nao esta cadastrada no scanner",
@@ -83,6 +104,7 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
+
 		btcFunding = &database.BTCSellFundingInput{
 			UserID:          walletAddress.UserID,
 			WalletAddressID: walletAddress.ID,
@@ -90,7 +112,8 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 			BTCNetwork:      walletAddress.Network,
 			QuoteID:         req.QuoteID,
 		}
-	} else {
+	}
+} else {
 		depositAddress = strings.TrimSpace(firstNonEmpty(s.cfg.SellWalletAddress, req.Address))
 		if depositAddress == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "endereco EVM de deposito obrigatorio"})
