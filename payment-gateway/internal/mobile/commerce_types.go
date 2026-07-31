@@ -65,6 +65,7 @@ type commercePurchaseResult struct {
 	RedemptionPIN     string
 	RedemptionURL     string
 	ErrorMessage      string
+	CustomIdentifier  string
 }
 
 type commerceProvider interface {
