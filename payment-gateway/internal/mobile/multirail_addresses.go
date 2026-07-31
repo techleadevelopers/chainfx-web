@@ -22,7 +22,7 @@ func (s *Server) handleSolanaAddress(w http.ResponseWriter, r *http.Request) {
 	}
 	addr, err := svc.GetOrCreateAddress(r.Context(), userIDFromCtx(r))
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"code": "SOL_ADDRESS_ERROR", "message": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Nao foi possivel obter o endereco Solana agora."))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -51,7 +51,7 @@ func (s *Server) handleDerivedRailAddress(w http.ResponseWriter, r *http.Request
 	}
 	address, err := s.getOrCreateDerivedRailAddress(r.Context(), uid, network, table, derive(secret, uid))
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"code": "RAIL_ADDRESS_ERROR", "message": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Nao foi possivel obter o endereco da rede agora."))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
