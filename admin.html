@@ -2472,7 +2472,8 @@
           </button>
           <div class="nav-children">
             <button class="nav-child" data-section="operations" type="button">Workers</button>
-            <button class="nav-child" data-section="mobile-users" type="button">Mobile Users / KYC</button>
+            <button class="nav-child" data-section="mobile-ops" type="button">Mobile Operacional</button>
+            <button class="nav-child" data-section="mobile-users" type="button">KYC Mobile</button>
             <button class="nav-child" data-section="tests" type="button">Mobile Tests</button>
             <button class="nav-child" data-section="signer" type="button">Signer</button>
             <button class="nav-child" data-section="telemetry" type="button">Observability</button>
@@ -2481,6 +2482,20 @@
           </div>
         </section>
         <div class="nav-heading">Risk & Money</div>
+        <section class="nav-group" data-nav-group="web-finance">
+          <button class="nav-main" data-section="web-finance" type="button" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/><path d="m16 16 2 2 4-5"/></svg>
+            Financeiro Web
+            <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </section>
+        <section class="nav-group" data-nav-group="manual-payouts">
+          <button class="nav-main" data-section="manual-payouts" type="button" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"/><path d="M17 8H9.5a3.5 3.5 0 0 0 0 7H14a3 3 0 0 1 0 6H6"/><path d="m17 16 2 2 4-5"/></svg>
+            Payout Manual
+            <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+        </section>
         <section class="nav-group" data-nav-group="settlement">
           <button class="nav-main" data-section="settlement" type="button" aria-expanded="false">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h9"/><path d="m15 17 2 2 4-5"/></svg>
@@ -2706,69 +2721,73 @@
       </section>
 
       <section class="section active" id="overview">
-        <div class="ceo-grid">
-          <div class="panel ceo-block">
-            <h3>Financeiro</h3>
-            <div class="ceo-metrics">
-              <div class="ceo-metric"><label>Receita bruta</label><strong id="financeGross">R$ 0,00</strong><span>Volume total processado</span></div>
-              <div class="ceo-metric"><label>Receita liquida</label><strong id="financeNet">R$ 0,00</strong><span>Depois dos payouts</span></div>
-              <div class="ceo-metric"><label>Spread acumulado</label><strong id="financeSpread">R$ 0,00</strong><span>Spread/rate quando informado</span></div>
-              <div class="ceo-metric"><label>Fees acumuladas</label><strong id="financeFees">R$ 0,00</strong><span>Taxas da plataforma</span></div>
-              <div class="ceo-metric"><label>Network fees cobradas</label><strong id="financeNetworkFees">R$ 0,00</strong><span>Gas/onchain repassado</span></div>
-              <div class="ceo-metric"><label>Payouts realizados</label><strong id="financePayouts">R$ 0,00</strong><span>Liquidados para clientes</span></div>
-              <div class="ceo-metric"><label>Volume BUY</label><strong id="financeBuyVolume">R$ 0,00</strong><span id="financeBuyCount">0 ordens</span></div>
-              <div class="ceo-metric"><label>Volume SELL</label><strong id="financeSellVolume">R$ 0,00</strong><span id="financeSellCount">0 ordens</span></div>
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Centro de controle</h2>
+              <p>Aprovacoes, pagamentos manuais, KYC e ultimas compras para operar o dia sem misturar tudo no financeiro.</p>
+            </div>
+            <span class="badge info" id="overviewUpdatedAt">Aguardando dados</span>
+          </div>
+          <div class="grid kpis" style="margin-top:16px">
+            <div class="metric-box"><label>Payout manual SELL</label><strong id="overviewManualPayoutCount">0</strong><span id="overviewManualPayoutValue">R$ 0,00 aguardando</span></div>
+            <div class="metric-box"><label>KYC Mobile</label><strong id="overviewKycPending">0</strong><span>pendentes de aprovacao</span></div>
+            <div class="metric-box"><label>Mobile pendente</label><strong id="overviewMobilePending">0</strong><span>funding/provider/manual review</span></div>
+            <div class="metric-box"><label>Compras recentes</label><strong id="overviewRecentPurchases">0</strong><span>BUY web + mobile</span></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Acoes operacionais</h2>
+              <p>Itens que precisam de operador agora.</p>
+            </div>
+            <span class="badge" id="overviewActionStatus">Sem dados</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Prioridade</th>
+                  <th>Fila</th>
+                  <th>Quantidade</th>
+                  <th>Valor / risco</th>
+                  <th>Tela correta</th>
+                </tr>
+              </thead>
+              <tbody id="overviewActionsBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="overviewActionsEmpty">Nenhuma acao operacional carregada.</div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Ultimas compras</h2>
+              <p>Resumo curto para acompanhamento. O detalhe fica em Financeiro Web ou Mobile Operacional.</p>
             </div>
           </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Data</th><th>Origem</th><th>Produto</th><th>Status</th><th>Valor</th><th>Referencia</th></tr>
+              </thead>
+              <tbody id="overviewPurchasesBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="overviewPurchasesEmpty">Nenhuma compra carregada.</div>
+        </div>
 
-          <div class="panel ceo-block">
-            <h3>Treasury</h3>
-            <div class="ceo-metrics">
-              <div class="ceo-metric"><label>Saldo em USDT</label><strong id="treasuryUsdt">0.000000</strong><span>Saldo informado + liquidado</span></div>
-              <div class="ceo-metric"><label>Saldo em BRL</label><strong id="treasuryBrl">R$ 0,00</strong><span>Caixa local estimado</span></div>
-              <div class="ceo-metric"><label>Liquidez disponivel</label><strong id="treasuryLiquidity">R$ 0,00</strong><span>BRL + USDT convertido</span></div>
-              <div class="ceo-metric"><label>Reserva operacional</label><strong id="treasuryReserve">R$ 0,00</strong><span>Base minima configuravel</span></div>
-              <div class="ceo-metric"><label>Wallets monitoradas</label><strong id="treasuryWallets">0</strong><span>Carteiras unicas carregadas</span></div>
-              <div class="ceo-metric"><label>Status dos rails</label><strong id="treasuryRails">--</strong><span>Leitura de /readyz</span></div>
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Saude dos rails</h2>
+              <p>Snapshot tecnico do backend autenticado.</p>
             </div>
           </div>
-
-          <div class="panel ceo-block">
-            <h3>Marketplace</h3>
-            <div class="ceo-metrics">
-              <div class="ceo-metric"><label>Vendas por capability</label><strong id="marketCapabilitySales">0</strong><span>Eventos capability executados</span></div>
-              <div class="ceo-metric"><label>Top produtos</label><strong id="marketTopProducts">--</strong><span>Produto/capability principal</span></div>
-              <div class="ceo-metric"><label>Take rate acumulada</label><strong id="marketTakeRate">0,00%</strong><span>Fees sobre volume</span></div>
-              <div class="ceo-metric"><label>Receita por provider</label><strong id="marketProviderRevenue">R$ 0,00</strong><span>Provider dominante</span></div>
-            </div>
-          </div>
-
-          <div class="panel ceo-block">
-            <h3>Developers</h3>
-            <div class="ceo-metrics">
-              <div class="ceo-metric"><label>API Keys ativas</label><strong id="devApiKeys">0</strong><span>Sessoes/chaves detectadas</span></div>
-              <div class="ceo-metric"><label>Requests por minuto</label><strong id="devRpm">0</strong><span>Media da telemetria local</span></div>
-              <div class="ceo-metric"><label>Erros</label><strong id="devErrors">0</strong><span>Falhas de request/transacao</span></div>
-              <div class="ceo-metric"><label>Webhooks entregues</label><strong id="devWebhooks">0</strong><span>Eventos webhook delivered</span></div>
-              <div class="ceo-metric"><label>Quota consumida</label><strong id="devQuota">0</strong><span>Chamadas registradas</span></div>
-              <div class="ceo-metric"><label>Latencia media</label><strong id="devLatency">0 ms</strong><span>Requests administrativos</span></div>
-            </div>
-          </div>
-
-          <div class="panel ceo-block wide">
-            <h3>AI / MCP</h3>
-            <div class="ceo-metrics">
-              <div class="ceo-metric"><label>Agentes ativos</label><strong id="aiActiveAgents">0</strong><span>Agentes vistos nos eventos</span></div>
-              <div class="ceo-metric"><label>Tool calls</label><strong id="aiToolCalls">0</strong><span>Chamadas MCP/tools registradas</span></div>
-              <div class="ceo-metric"><label>Capabilities executadas</label><strong id="aiCapabilities">0</strong><span>Execucoes por capability</span></div>
-              <div class="ceo-metric"><label>Receita por agente</label><strong id="aiRevenuePerAgent">R$ 0,00</strong><span>Receita liquida / agentes</span></div>
-            </div>
-          </div>
-
-          <div class="panel ceo-block wide">
-            <h3>Saude dos rails</h3>
-            <pre class="pre" id="readyJson">{}</pre>
-          </div>
+          <pre class="pre" id="readyJson">{}</pre>
         </div>
       </section>
 
@@ -2930,14 +2949,15 @@
                   <th>Tipo</th>
                   <th>ID</th>
                   <th>Status</th>
-                  <th>Fiat</th>
+                  <th>Valor BRL</th>
                   <th>Cripto</th>
                   <th>Rede</th>
                   <th>Taxa</th>
-                  <th>Rail</th>
+                  <th>Produto / funding</th>
                   <th>Wallet / Deposito</th>
                   <th>PIX</th>
-                  <th>TX</th>
+                  <th>Funding tx / PIX ref</th>
+                  <th>Atualizado</th>
                   <th>Ação</th>
                 </tr>
               </thead>
@@ -2945,6 +2965,142 @@
             </table>
           </div>
           <div class="empty" id="transactionsEmpty">Nenhuma transacao carregada.</div>
+        </div>
+      </section>
+
+      <section class="section" id="web-finance">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Financeiro Web</h2>
+              <p>BUY e SELL do produto web. PIX de entrada em BUY fica aqui; payout ao cliente sai pela tela Payout Manual.</p>
+            </div>
+            <span class="badge info" id="webFinanceStatus">Aguardando dados</span>
+          </div>
+          <div class="grid kpis" style="margin-top:16px">
+            <div class="metric-box"><label>Volume BUY</label><strong id="webFinanceBuyVolume">R$ 0,00</strong><span id="webFinanceBuyCount">0 ordens</span></div>
+            <div class="metric-box"><label>Volume SELL</label><strong id="webFinanceSellVolume">R$ 0,00</strong><span id="webFinanceSellCount">0 ordens</span></div>
+            <div class="metric-box"><label>Payout pendente</label><strong id="webFinancePendingPayout">0</strong><span id="webFinancePendingPayoutValue">R$ 0,00</span></div>
+            <div class="metric-box"><label>Concluidas</label><strong id="webFinanceCompleted">0</strong><span>BUY/SELL liquidadas</span></div>
+          </div>
+          <div class="toolbar">
+            <div class="field">
+              <label for="webFinanceStatusFilter">Status</label>
+              <select id="webFinanceStatusFilter">
+                <option value="">Todos</option>
+                <option value="aguardando">Aguardando</option>
+                <option value="pago">Pago</option>
+                <option value="concluida">Concluida</option>
+                <option value="erro">Erro</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Fluxo</th>
+                  <th>ID</th>
+                  <th>Status</th>
+                  <th>Valor BRL</th>
+                  <th>Cripto</th>
+                  <th>Rede</th>
+                  <th>PIX / Wallet</th>
+                  <th>Referencia</th>
+                </tr>
+              </thead>
+              <tbody id="webFinanceBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="webFinanceEmpty">Nenhum BUY/SELL web carregado.</div>
+        </div>
+      </section>
+
+      <section class="section" id="manual-payouts">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Payout Manual SELL</h2>
+              <p>Cliente enviou cripto, funding foi confirmado, e o operador paga o PIX fora do provider. Depois marque como pago para o app/site mostrar concluido.</p>
+            </div>
+            <span class="badge warn" id="manualPayoutStatus">Fila manual</span>
+          </div>
+          <div class="grid kpis" style="margin-top:16px">
+            <div class="metric-box"><label>Aguardando PIX</label><strong id="manualPayoutReady">0</strong><span>pronto para pagar manual</span></div>
+            <div class="metric-box"><label>Valor a pagar</label><strong id="manualPayoutBRL">R$ 0,00</strong><span>somente aguardando_pix_manual</span></div>
+            <div class="metric-box"><label>Concluidas</label><strong id="manualPayoutCompleted">0</strong><span>idempotente no backend</span></div>
+            <div class="metric-box"><label>Bloqueadas</label><strong id="manualPayoutBlocked">0</strong><span>sem funding confirmado</span></div>
+          </div>
+          <div class="table-wrap" style="margin-top:16px">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Ordem SELL</th>
+                  <th>Status</th>
+                  <th>Valor PIX</th>
+                  <th>Chave PIX cliente</th>
+                  <th>Funding cripto</th>
+                  <th>Rede</th>
+                  <th>Atualizado</th>
+                  <th>Acao</th>
+                </tr>
+              </thead>
+              <tbody id="manualPayoutBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="manualPayoutEmpty">Nenhum payout manual carregado.</div>
+        </div>
+      </section>
+
+      <section class="section" id="mobile-ops">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Mobile Operacional</h2>
+              <p>Recarga, gift card, QR Pay, NFC e pagamentos do app. Funding USDT do usuario para a ChainFX entra aqui; payout manual SELL nao fica nesta tela.</p>
+            </div>
+            <span class="badge info" id="mobileOpsStatus">Aguardando dados</span>
+          </div>
+          <div class="grid kpis" style="margin-top:16px">
+            <div class="metric-box"><label>Pedidos mobile</label><strong id="mobileOpsOrders">0</strong><span>gift card, recarga, QR/NFC</span></div>
+            <div class="metric-box"><label>Funding pendente</label><strong id="mobileOpsFundingPending">0</strong><span>aguardando USDT onchain/PIX</span></div>
+            <div class="metric-box"><label>Entregues</label><strong id="mobileOpsCompleted">0</strong><span>provider/app concluido</span></div>
+            <div class="metric-box"><label>KYC pendente</label><strong id="mobileOpsKycPending">0</strong><span>revisar em KYC Mobile</span></div>
+          </div>
+          <div class="toolbar">
+            <div class="field">
+              <label for="mobileOpsStatusFilter">Status</label>
+              <select id="mobileOpsStatusFilter">
+                <option value="">Todos</option>
+                <option value="awaiting">Awaiting</option>
+                <option value="funding">Funding</option>
+                <option value="pending">Pending</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Produto</th>
+                  <th>ID</th>
+                  <th>Status</th>
+                  <th>Funding</th>
+                  <th>Valor</th>
+                  <th>Rede</th>
+                  <th>Usuario / wallet</th>
+                  <th>Provider / referencia</th>
+                </tr>
+              </thead>
+              <tbody id="mobileOpsBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="mobileOpsEmpty">Nenhum pedido mobile carregado.</div>
         </div>
       </section>
 
@@ -3988,6 +4144,8 @@
           if (event.key === 'Enter') loadOrderById();
         });
         $('statusFilter').addEventListener('change', renderTransactions);
+        if ($('webFinanceStatusFilter')) $('webFinanceStatusFilter').addEventListener('change', renderWebFinance);
+        if ($('mobileOpsStatusFilter')) $('mobileOpsStatusFilter').addEventListener('change', renderMobileOps);
         $('clearDataBtn').addEventListener('click', () => {
           state.transactions = [];
           state.events = [];
@@ -5436,11 +5594,14 @@
         return {
           id: input.id,
           type,
+          product: valueOrString(input.product || input.title || input.brand),
+          productType: valueOrString(input.product_type || input.productType || input.order_type || input.orderType),
           status: String(input.status || ''),
           createdAt: input.created_at || input.createdAt || input.created || new Date().toISOString(),
           updatedAt: input.updated_at || input.updatedAt || '',
           fiatCurrency: input.fiat_currency || input.fiatCurrency || 'BRL',
           paymentMethod: input.payment_method || input.paymentMethod || (type === 'buy' ? 'pix' : 'onchain'),
+          fundingMethod: valueOrString(input.funding_method || input.fundingMethod),
           amountFiat: fiat,
           amountBRL: brl,
           feeBRL: fee,
@@ -5452,6 +5613,8 @@
           txHash: valueOrString(input.tx_hash_out || input.txHashOut || input.tx_hash || input.txHash || input.deposit_tx || input.depositTx),
           depositTx: valueOrString(input.deposit_tx || input.depositTx),
           depositAmount: Number(input.deposit_amount ?? input.depositAmount ?? 0),
+          pixCode: valueOrString(input.pix_code || input.pixCode || input.pix_copia_e_cola || input.pixCopiaECola || input.pix_copy_paste || input.pixCopyPaste),
+          pixExpiresAt: input.pix_expires_at || input.pixExpiresAt || '',
           pixKey: valueOrString(input.pix_key || input.pixKey || input.pix_phone || input.pixPhone),
           pixCpf: valueOrString(input.pix_cpf || input.pixCpf),
           pixPhone: valueOrString(input.pix_phone || input.pixPhone),
@@ -5476,6 +5639,10 @@
 
       function renderAll() {
         renderKpis();
+        renderOverviewControl();
+        renderWebFinance();
+        renderManualPayouts();
+        renderMobileOps();
         renderTransactions();
         renderRecentSales();
         renderWallets();
@@ -5759,9 +5926,16 @@
       }
 
       async function confirmManualPix(orderId) {
-        const record = state.transactions.find((item) => item.id === orderId && item.type !== 'buy');
+        const record = state.transactions.find((item) => item.id === orderId && isSellRow(item));
+        if (!record) {
+          toast('Ordem SELL nao encontrada na fila carregada.');
+          return;
+        }
         const reference = window.prompt('Comprovante ou referência do PIX manual:', record?.providerPaymentId || '');
         if (reference === null) return;
+        const pixTarget = record.pixKey || record.pixPhone || '--';
+        const ok = window.confirm(`Confirmar PIX manual pago?\n\nOrdem: ${record.id}\nValor: ${money.format(record.payoutBRL || record.amountBRL || 0)}\nPix: ${pixTarget}\nFunding: ${record.depositTx || '--'}\n\nEssa acao conclui economicamente a SELL.`);
+        if (!ok) return;
         const response = await fetch(`${state.apiBase}/api/admin/sell/${encodeURIComponent(orderId)}/manual-pix-paid`, {
           method: 'POST',
           headers: adminHeaders({ contentType: true }),
@@ -5780,26 +5954,281 @@
         await tryFetchAdminCollections();
       }
 
+      function isBuyRow(row) {
+        return row.type === 'buy';
+      }
+
+      function isSellRow(row) {
+        return row.type === 'sell' || row.type === 'order';
+      }
+
+      function isCommerceRow(row) {
+        return row.type === 'commerce';
+      }
+
+      function normalizedStatus(row) {
+        return String(row.status || '').toLowerCase();
+      }
+
+      function isManualPayoutReady(row) {
+        return isSellRow(row) && normalizedStatus(row) === 'aguardando_pix_manual';
+      }
+
+      function isCompletedStatus(row) {
+        return /concluida|completed|delivered|confirmado|confirmed|pago/.test(normalizedStatus(row));
+      }
+
+      function isPendingStatus(row) {
+        return /aguardando|awaiting|pending|funding|processing|review|validacao/.test(normalizedStatus(row));
+      }
+
+      function displayProduct(row) {
+        if (isBuyRow(row)) return 'BUY crypto';
+        if (isSellRow(row)) return 'SELL Pix payout';
+        const raw = row.raw || {};
+        const kind = String(row.productType || raw.kind || raw.type || '').toLowerCase();
+        if (kind.includes('topup') || kind.includes('recarga')) return row.product || 'Recarga mobile';
+        if (kind.includes('qr') || kind.includes('nfc')) return row.product || 'QR/NFC Pay';
+        if (kind.includes('gift')) return row.product || 'Gift card';
+        return row.product || 'Mobile commerce';
+      }
+
+      function displayFunding(row) {
+        const expiry = row.pixExpiresAt ? ` vence ${formatDate(row.pixExpiresAt)}` : '';
+        if (isCommerceRow(row)) return `${row.fundingMethod || row.paymentMethod || 'mobile'}${expiry}`;
+        if (isBuyRow(row)) return row.pixCode ? `PIX entrada ${shorten(row.pixCode)}` : (row.providerPaymentId || 'PIX entrada');
+        return row.depositTx ? `USDT confirmado ${shorten(row.depositTx)}` : (row.fundingMethod || 'onchain funding');
+      }
+
+      function rowReference(row) {
+        if (isBuyRow(row)) return row.txHash || row.providerPaymentId || row.pixCode || '';
+        if (isCommerceRow(row)) return row.providerPaymentId || row.txHash || row.pixCode || '';
+        return row.depositTx || row.txHash || row.providerPaymentId || '';
+      }
+
+      function bindRowsToRawJson(selector, rows) {
+        document.querySelectorAll(selector).forEach((rowEl) => {
+          rowEl.addEventListener('click', () => {
+            const record = rows.find((item) => item.type + ':' + item.id === rowEl.dataset.key);
+            if (record && $('rawJson')) $('rawJson').textContent = JSON.stringify(record.raw || record, null, 2);
+          });
+        });
+      }
+
+      function bindManualPixButtons(scope) {
+        document.querySelectorAll(`${scope} [data-manual-pix]`).forEach((button) => {
+          button.addEventListener('click', async (event) => {
+            event.stopPropagation();
+            await confirmManualPix(button.dataset.manualPix);
+          });
+        });
+      }
+
+      function renderOverviewControl() {
+        const rows = state.transactions;
+        const manualReady = rows.filter(isManualPayoutReady);
+        const manualValue = manualReady.reduce((sum, row) => sum + Number(row.payoutBRL || row.amountBRL || 0), 0);
+        const kycRows = Array.isArray(state.kycRequests) ? state.kycRequests : [];
+        const kycPending = kycRows.filter((row) => ['pending', 'pending_processing', 'in_review'].includes(String(row.status || '').toLowerCase())).length;
+        const mobileRows = rows.filter(isCommerceRow);
+        const mobilePending = mobileRows.filter((row) => isPendingStatus(row) && !isCompletedStatus(row)).length;
+        const purchases = rows.filter((row) => isBuyRow(row) || isCommerceRow(row)).slice(0, 8);
+
+        setText('overviewManualPayoutCount', String(manualReady.length));
+        setText('overviewManualPayoutValue', `${money.format(manualValue)} aguardando`);
+        setText('overviewKycPending', String(kycPending));
+        setText('overviewMobilePending', String(mobilePending));
+        setText('overviewRecentPurchases', String(purchases.length));
+        setText('overviewUpdatedAt', `Atualizado ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`);
+
+        const actions = [
+          { priority: manualReady.length ? 'Alta' : 'OK', queue: 'Payout manual SELL', count: manualReady.length, value: money.format(manualValue), section: 'Payout Manual' },
+          { priority: kycPending ? 'Media' : 'OK', queue: 'KYC Mobile', count: kycPending, value: `${kycRows.length} solicitacoes`, section: 'KYC Mobile' },
+          { priority: mobilePending ? 'Media' : 'OK', queue: 'Mobile funding/provider', count: mobilePending, value: `${mobileRows.length} pedidos`, section: 'Mobile Operacional' }
+        ].filter((item) => item.count || rows.length || kycRows.length);
+
+        const body = $('overviewActionsBody');
+        if (body) {
+          body.innerHTML = actions.map((item) => `
+            <tr>
+              <td><span class="badge ${item.priority === 'Alta' ? 'warn' : item.priority === 'Media' ? 'info' : 'ok'}">${escapeHtml(item.priority)}</span></td>
+              <td>${escapeHtml(item.queue)}</td>
+              <td>${escapeHtml(String(item.count))}</td>
+              <td>${escapeHtml(item.value)}</td>
+              <td>${escapeHtml(item.section)}</td>
+            </tr>
+          `).join('');
+        }
+        if ($('overviewActionsEmpty')) $('overviewActionsEmpty').style.display = actions.length ? 'none' : 'block';
+        const needsAction = manualReady.length + kycPending + mobilePending;
+        setText('overviewActionStatus', needsAction ? `${needsAction} acao(oes)` : 'Sem pendencias');
+        if ($('overviewActionStatus')) $('overviewActionStatus').className = `badge ${needsAction ? 'warn' : 'ok'}`;
+
+        const purchasesBody = $('overviewPurchasesBody');
+        if (purchasesBody) {
+          purchasesBody.innerHTML = purchases.map((row) => `
+            <tr data-key="${escapeHtml(row.type + ':' + row.id)}">
+              <td>${formatDate(row.createdAt)}</td>
+              <td><span class="badge info">${isCommerceRow(row) ? 'MOBILE' : 'WEB'}</span></td>
+              <td>${escapeHtml(displayProduct(row))}</td>
+              <td><span class="badge ${badgeClass(row.status)}">${escapeHtml(row.status || '--')}</span></td>
+              <td>${money.format(row.amountBRL || row.amountFiat || 0)}</td>
+              <td><code>${escapeHtml(shorten(rowReference(row) || row.id))}</code></td>
+            </tr>
+          `).join('');
+        }
+        if ($('overviewPurchasesEmpty')) $('overviewPurchasesEmpty').style.display = purchases.length ? 'none' : 'block';
+        bindRowsToRawJson('#overviewPurchasesBody tr', purchases);
+      }
+
+      function renderWebFinance() {
+        const filter = $('webFinanceStatusFilter') ? $('webFinanceStatusFilter').value : '';
+        const allRows = state.transactions.filter((row) => isBuyRow(row) || isSellRow(row));
+        const rows = allRows.filter((row) => !filter || normalizedStatus(row).includes(filter));
+        const buyRows = allRows.filter(isBuyRow);
+        const sellRows = allRows.filter(isSellRow);
+        const pendingPayouts = allRows.filter(isManualPayoutReady);
+        setText('webFinanceBuyVolume', money.format(buyRows.reduce((sum, row) => sum + Number(row.amountBRL || 0), 0)));
+        setText('webFinanceBuyCount', `${buyRows.length} ordens`);
+        setText('webFinanceSellVolume', money.format(sellRows.reduce((sum, row) => sum + Number(row.amountBRL || 0), 0)));
+        setText('webFinanceSellCount', `${sellRows.length} ordens`);
+        setText('webFinancePendingPayout', String(pendingPayouts.length));
+        setText('webFinancePendingPayoutValue', money.format(pendingPayouts.reduce((sum, row) => sum + Number(row.payoutBRL || row.amountBRL || 0), 0)));
+        setText('webFinanceCompleted', String(allRows.filter(isCompletedStatus).length));
+        setText('webFinanceStatus', allRows.length ? `${allRows.length} ordens web` : 'Sem dados');
+
+        const body = $('webFinanceBody');
+        if (!body) return;
+        body.innerHTML = rows.map((row) => {
+          const flow = isBuyRow(row) ? 'BUY' : 'SELL';
+          const pixOrWallet = isBuyRow(row)
+            ? (row.pixCode ? `PIX ${shorten(row.pixCode)}` : row.providerPaymentId || '--')
+            : (row.pixKey || row.address || '--');
+          return `
+            <tr data-key="${escapeHtml(row.type + ':' + row.id)}">
+              <td>${formatDate(row.createdAt)}</td>
+              <td><span class="badge info">${flow}</span></td>
+              <td><code>${escapeHtml(row.id)}</code></td>
+              <td><span class="badge ${badgeClass(row.status)}">${escapeHtml(row.status || '--')}</span></td>
+              <td>${money.format(row.amountBRL || row.amountFiat || 0)}</td>
+              <td>${formatAmount(row.depositAmount || row.cryptoAmount)} ${escapeHtml(row.asset || 'USDT')}</td>
+              <td><span class="badge info">${escapeHtml(row.network || '--')}</span></td>
+              <td><code>${escapeHtml(shorten(pixOrWallet))}</code></td>
+              <td><code title="${escapeHtml(rowReference(row))}">${escapeHtml(shorten(rowReference(row) || '--'))}</code></td>
+            </tr>
+          `;
+        }).join('');
+        $('webFinanceEmpty').style.display = rows.length ? 'none' : 'block';
+        bindRowsToRawJson('#webFinanceBody tr', rows);
+      }
+
+      function renderManualPayouts() {
+        const rows = state.transactions.filter(isSellRow).filter((row) => {
+          const status = normalizedStatus(row);
+          return status === 'aguardando_pix_manual' || status === 'concluida' || status.includes('manual') || status.includes('payout');
+        });
+        const ready = rows.filter(isManualPayoutReady);
+        const blocked = state.transactions.filter(isSellRow).filter((row) => isPendingStatus(row) && !isManualPayoutReady(row) && !isCompletedStatus(row));
+        setText('manualPayoutReady', String(ready.length));
+        setText('manualPayoutBRL', money.format(ready.reduce((sum, row) => sum + Number(row.payoutBRL || row.amountBRL || 0), 0)));
+        setText('manualPayoutCompleted', String(rows.filter(isCompletedStatus).length));
+        setText('manualPayoutBlocked', String(blocked.length));
+        setText('manualPayoutStatus', ready.length ? `${ready.length} para pagar` : 'Fila manual');
+        if ($('manualPayoutStatus')) $('manualPayoutStatus').className = `badge ${ready.length ? 'warn' : 'ok'}`;
+
+        const body = $('manualPayoutBody');
+        if (!body) return;
+        body.innerHTML = rows.map((row) => {
+          const manualReady = isManualPayoutReady(row);
+          const pixTarget = row.pixKey || row.pixPhone || '--';
+          const funding = row.depositTx || row.txHash || row.providerPaymentId || '--';
+          return `
+            <tr data-key="${escapeHtml(row.type + ':' + row.id)}">
+              <td>${formatDate(row.createdAt)}</td>
+              <td><code>${escapeHtml(row.id)}</code></td>
+              <td><span class="badge ${badgeClass(row.status)}">${escapeHtml(row.status || '--')}</span></td>
+              <td>${money.format(row.payoutBRL || row.amountBRL || 0)}</td>
+              <td><code>${escapeHtml(shorten(pixTarget))}</code></td>
+              <td><code title="${escapeHtml(funding)}">${escapeHtml(shorten(funding))}</code></td>
+              <td><span class="badge info">${escapeHtml(row.network || '--')}</span></td>
+              <td>${formatDate(row.updatedAt || row.createdAt)}</td>
+              <td>${manualReady ? `<button class="btn primary" type="button" data-manual-pix="${escapeHtml(row.id)}">Marcar PIX pago</button>` : ''}</td>
+            </tr>
+          `;
+        }).join('');
+        $('manualPayoutEmpty').style.display = rows.length ? 'none' : 'block';
+        bindRowsToRawJson('#manualPayoutBody tr', rows);
+        bindManualPixButtons('#manualPayoutBody');
+      }
+
+      function renderMobileOps() {
+        const filter = $('mobileOpsStatusFilter') ? $('mobileOpsStatusFilter').value : '';
+        const allRows = state.transactions.filter(isCommerceRow);
+        const rows = allRows.filter((row) => !filter || normalizedStatus(row).includes(filter));
+        const kycRows = Array.isArray(state.kycRequests) ? state.kycRequests : [];
+        const kycPending = kycRows.filter((row) => ['pending', 'pending_processing', 'in_review'].includes(String(row.status || '').toLowerCase())).length;
+        const fundingPending = allRows.filter((row) => /awaiting|funding|pending/.test(normalizedStatus(row)) && !isCompletedStatus(row)).length;
+        setText('mobileOpsOrders', String(allRows.length));
+        setText('mobileOpsFundingPending', String(fundingPending));
+        setText('mobileOpsCompleted', String(allRows.filter(isCompletedStatus).length));
+        setText('mobileOpsKycPending', String(kycPending));
+        setText('mobileOpsStatus', allRows.length ? `${allRows.length} pedidos mobile` : 'Sem dados');
+
+        const body = $('mobileOpsBody');
+        if (!body) return;
+        body.innerHTML = rows.map((row) => {
+          const raw = row.raw || {};
+          const user = raw.email || raw.customer_email || raw.user_email || row.address || raw.user_id || '--';
+          const provider = row.providerPaymentId || raw.provider_order_id || raw.providerOrderId || row.pixCode || row.txHash || '--';
+          return `
+            <tr data-key="${escapeHtml(row.type + ':' + row.id)}">
+              <td>${formatDate(row.createdAt)}</td>
+              <td>${escapeHtml(displayProduct(row))}</td>
+              <td><code>${escapeHtml(row.id)}</code></td>
+              <td><span class="badge ${badgeClass(row.status)}">${escapeHtml(row.status || '--')}</span></td>
+              <td>${escapeHtml(displayFunding(row))}</td>
+              <td>${money.format(row.amountBRL || row.amountFiat || 0)}</td>
+              <td><span class="badge info">${escapeHtml(row.network || '--')}</span></td>
+              <td><code>${escapeHtml(shorten(user))}</code></td>
+              <td><code title="${escapeHtml(provider)}">${escapeHtml(shorten(provider))}</code></td>
+            </tr>
+          `;
+        }).join('');
+        $('mobileOpsEmpty').style.display = rows.length ? 'none' : 'block';
+        bindRowsToRawJson('#mobileOpsBody tr', rows);
+      }
+
       function renderTransactions() {
         const filter = $('statusFilter').value;
         const rows = state.transactions.filter((row) => !filter || row.status.includes(filter));
         $('transactionsBody').innerHTML = rows.map((row) => {
-          const manualReady = row.type !== 'buy' && row.status === 'aguardando_pix_manual';
-          const pixLabel = row.pixKey ? `${row.pixKey}${row.pixCpf ? ` / CPF ${row.pixCpf}` : ''}` : '--';
+          const isBuy = row.type === 'buy';
+          const isCommerce = row.type === 'commerce';
+          const manualReady = row.type !== 'buy' && !isCommerce && row.status === 'aguardando_pix_manual';
+          const pixLabel = isCommerce && row.pixCode
+            ? `PIX entrada ${shorten(row.pixCode)}`
+            : row.pixKey ? `${row.pixKey}${row.pixCpf ? ` / CPF ${row.pixCpf}` : ''}` : '--';
+          const payout = isBuy || isCommerce ? (row.amountFiat || row.amountBRL) : row.payoutBRL;
+          const fundingRef = isBuy ? (row.txHash || row.providerPaymentId || '') : isCommerce ? (row.providerPaymentId || row.pixCode || '') : (row.depositTx || row.txHash || row.providerPaymentId || '');
+          const product = row.product || (isCommerce ? 'Gift card' : isBuy ? 'BUY crypto' : 'SELL Pix payout');
+          const expiry = row.pixExpiresAt ? ` vence ${formatDate(row.pixExpiresAt)}` : '';
+          const funding = `${row.fundingMethod || row.paymentMethod || '--'}${expiry}`;
+          const typeLabel = isBuy ? 'BUY' : isCommerce ? (String(row.productType || '').includes('topup') ? 'TOPUP' : 'GIFT') : 'SELL';
           return `
             <tr data-key="${escapeHtml(row.type + ':' + row.id)}">
               <td>${formatDate(row.createdAt)}</td>
-              <td><span class="badge info">${row.type === 'buy' ? 'BUY' : 'SELL'}</span></td>
+              <td><span class="badge info">${escapeHtml(typeLabel)}</span></td>
               <td><code>${escapeHtml(row.id)}</code></td>
               <td><span class="badge ${badgeClass(row.status)}">${escapeHtml(row.status || '--')}</span></td>
-              <td>${escapeHtml(row.fiatCurrency)} ${formatAmount(row.amountFiat || row.amountBRL)}</td>
+              <td>${escapeHtml(row.fiatCurrency)} ${formatAmount(payout)}</td>
               <td>${formatAmount(row.depositAmount || row.cryptoAmount)} ${escapeHtml(row.asset)}</td>
               <td><span class="badge info">${escapeHtml(row.network || '--')}</span></td>
               <td>${money.format(row.feeBRL || 0)}</td>
-              <td>${escapeHtml(row.paymentMethod || '--')}</td>
+              <td>${escapeHtml(product)}<br><small>${escapeHtml(funding)}</small></td>
               <td><code>${escapeHtml(shorten(row.address))}</code></td>
               <td><code>${escapeHtml(shorten(pixLabel))}</code></td>
-              <td><code>${escapeHtml(shorten(row.txHash || row.providerPaymentId || ''))}</code></td>
+              <td><code title="${escapeHtml(fundingRef)}">${escapeHtml(shorten(fundingRef))}</code></td>
+              <td>${formatDate(row.updatedAt || row.createdAt)}</td>
               <td>${manualReady ? `<button class="btn primary" type="button" data-manual-pix="${escapeHtml(row.id)}">Marcar PIX pago</button>` : ''}</td>
             </tr>
           `;
@@ -5811,12 +6240,7 @@
             if (record) $('rawJson').textContent = JSON.stringify(record.raw || record, null, 2);
           });
         });
-        document.querySelectorAll('[data-manual-pix]').forEach((button) => {
-          button.addEventListener('click', async (event) => {
-            event.stopPropagation();
-            await confirmManualPix(button.dataset.manualPix);
-          });
-        });
+        bindManualPixButtons('#transactionsBody');
       }
 
       function renderSettlement() {
