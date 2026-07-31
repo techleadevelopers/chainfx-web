@@ -3,8 +3,10 @@ package mobile
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -89,5 +91,57 @@ func TestBitrefillProviderPurchaseRequiresLiveFlag(t *testing.T) {
 	}
 	if providerErr.Code != "live_purchases_disabled" {
 		t.Fatalf("unexpected code: %s", providerErr.Code)
+	}
+}
+
+func TestBitrefillPurchaseSendsCustomIdentifier(t *testing.T) {
+	t.Setenv("BITREFILL_API_KEY", "test-api-key")
+	t.Setenv("BITREFILL_LIVE_PURCHASES_ENABLED", "true")
+	var invoicePayload string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/products/test-gift-card-code":
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+				"id":       "test-gift-card-code",
+				"name":     "Test",
+				"currency": "BRL",
+				"packages": []map[string]any{{"package_id": "pkg10", "value": 10}},
+			}})
+		case "/invoices":
+			raw, _ := io.ReadAll(r.Body)
+			invoicePayload = string(raw)
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+				"id":     "inv_1",
+				"status": "payment_confirmed",
+				"orders": []map[string]any{{"id": "ord_1"}},
+			}})
+		case "/orders/ord_1":
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+				"id":              "ord_1",
+				"status":          "delivered",
+				"redemption_info": map[string]any{"code": "CODE"},
+			}})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	t.Setenv("BITREFILL_BASE_URL", server.URL)
+
+	result, err := newBitrefillProvider().Purchase(context.Background(), commercePurchaseRequest{
+		Product:          commerceProduct{ProviderProductID: "test-gift-card-code"},
+		Quantity:         1,
+		UnitPriceMinor:   1000,
+		CustomIdentifier: "giftcard:mgco_test",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Status != "delivered" || result.TransactionID != "ord_1" {
+		t.Fatalf("unexpected result: %+v", result)
+	}
+	if !strings.Contains(invoicePayload, `"custom_identifier":"giftcard:mgco_test"`) ||
+		!strings.Contains(invoicePayload, `"external_id":"giftcard:mgco_test"`) {
+		t.Fatalf("custom identifier missing from payload: %s", invoicePayload)
 	}
 }
