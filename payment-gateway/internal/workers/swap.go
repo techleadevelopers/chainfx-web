@@ -3,9 +3,8 @@ package workers
 // swap.go — Phase 5: Swap execution worker.
 //
 // SwapWorker listens for swap.created events and executes the crypto-to-crypto
-// exchange. In the current implementation swaps are simulated at the live
-// on-chain price (BRL bridge). A production integration would call a DEX
-// aggregator (1inch, Paraswap) or an internal liquidity pool.
+// exchange. PancakeSwap V2 executes real BSC ERC20 swaps when
+// MOBILE_SWAP_PANCAKE_ENABLED=true; otherwise mobile swap is unavailable.
 
 import (
 	"context"
@@ -63,7 +62,7 @@ func (w *SwapWorker) executeSwap(ctx context.Context, id string) {
 	var feeBPS int
 	err := w.db.SQL.QueryRowContext(ctx, `
 		SELECT id, user_id, from_asset, to_asset, from_amount, fee_bps, slippage_tolerance
-		FROM swaps WHERE id=$1 AND status='pending'`, id).Scan(
+		FROM swaps WHERE id=$1 AND status IN ('pending','execution_requested')`, id).Scan(
 		&id, &userID, &fromAsset, &toAsset, &fromAmount, &feeBPS, &slippage)
 	if err == sql.ErrNoRows {
 		return // already picked up or completed
@@ -72,63 +71,52 @@ func (w *SwapWorker) executeSwap(ctx context.Context, id string) {
 		slog.Error("SwapWorker: erro ao buscar swap", "id", id, "error", err)
 		return
 	}
-
-	// Mark executing
-	if _, err := w.db.SQL.ExecContext(ctx,
-		"UPDATE swaps SET status='executing', updated_at=NOW() WHERE id=$1", id); err != nil {
-		slog.Error("SwapWorker: erro ao marcar executing", "id", id, "error", err)
+	if w.cfg == nil || !w.cfg.MobileSwapPancakeEnabled {
+		w.markSwapRouteUnavailable(ctx, id)
 		return
 	}
 
-	// Calculate rate using live prices
-	fromBRL := priceInBRL(w.pw, fromAsset)
-	toBRL := priceInBRL(w.pw, toAsset)
-
-	if fromBRL <= 0 || toBRL <= 0 {
-		errMsg := "cotação indisponível para " + fromAsset + "/" + toAsset
-		w.failSwap(ctx, id, errMsg)
+	if w.cfg != nil && w.cfg.MobileSwapPancakeEnabled {
+		if _, err := w.db.SQL.ExecContext(ctx,
+			"UPDATE swaps SET status='signing', updated_at=NOW() WHERE id=$1 AND status='execution_requested'", id); err != nil {
+			slog.Error("SwapWorker: erro ao marcar signing", "id", id, "error", err)
+			return
+		}
+		result, err := w.executePancakeSwap(ctx, id, userID, fromAsset, toAsset, fromAmount, slippage, feeBPS)
+		if err != nil {
+			w.failSwap(ctx, id, "PancakeSwap: "+err.Error())
+			return
+		}
+		if _, err := w.db.SQL.ExecContext(ctx, `
+			UPDATE swaps SET status='completed', to_amount=$1, rate=$2,
+			                 tx_hash=$3, confirmed_at=NOW(), updated_at=NOW()
+			WHERE id=$4`, result.ToAmount, result.Rate, result.TxHash, id); err != nil {
+			slog.Error("SwapWorker: erro ao completar swap Pancake", "id", id, "error", err)
+			return
+		}
+		slog.Info("SwapWorker: swap Pancake concluido",
+			"id", id, "from", fromAsset, "to", toAsset,
+			"from_amount", fromAmount, "to_amount", result.ToAmount, "rate", result.Rate, "tx_hash", result.TxHash)
+		w.bus.Publish(Event{
+			Type: "swap.completed",
+			Payload: map[string]any{
+				"swap_id":     id,
+				"user_id":     userID,
+				"from_asset":  fromAsset,
+				"to_asset":    toAsset,
+				"from_amount": fromAmount,
+				"to_amount":   result.ToAmount,
+				"rate":        result.Rate,
+				"tx_hash":     result.TxHash,
+				"provider":    "pancakeswap_v2",
+				"network":     "BSC",
+			},
+		})
 		return
 	}
 
-	rate := fromBRL / toBRL
-	fee := fromAmount * float64(feeBPS) / 10_000
-	netFrom := fromAmount - fee
-	toAmount := netFrom * rate
-	minReceived := toAmount * (1 - slippage)
+	w.markSwapRouteUnavailable(ctx, id)
 
-	if toAmount < minReceived {
-		w.failSwap(ctx, id, "slippage excedido")
-		return
-	}
-
-	// Simulate on-chain execution (in prod: call DEX/aggregator here)
-	time.Sleep(200 * time.Millisecond)
-	fakeTxHash := "0xswap_" + id[:8]
-
-	if _, err := w.db.SQL.ExecContext(ctx, `
-		UPDATE swaps SET status='completed', to_amount=$1, rate=$2,
-		                 tx_hash=$3, updated_at=NOW()
-		WHERE id=$4`, toAmount, rate, fakeTxHash, id); err != nil {
-		slog.Error("SwapWorker: erro ao completar swap", "id", id, "error", err)
-		return
-	}
-
-	slog.Info("SwapWorker: swap concluído",
-		"id", id, "from", fromAsset, "to", toAsset,
-		"from_amount", fromAmount, "to_amount", toAmount, "rate", rate)
-
-	w.bus.Publish(Event{
-		Type: "swap.completed",
-		Payload: map[string]any{
-			"swap_id":     id,
-			"user_id":     userID,
-			"from_asset":  fromAsset,
-			"to_asset":    toAsset,
-			"from_amount": fromAmount,
-			"to_amount":   toAmount,
-			"rate":        rate,
-		},
-	})
 }
 
 func (w *SwapWorker) failSwap(ctx context.Context, id, reason string) {
@@ -149,9 +137,19 @@ func (w *SwapWorker) failSwap(ctx context.Context, id, reason string) {
 	})
 }
 
+func (w *SwapWorker) markSwapRouteUnavailable(ctx context.Context, id string) {
+	if _, err := w.db.SQL.ExecContext(ctx, `
+		UPDATE swaps SET status='route_unavailable', error='ROUTE_UNAVAILABLE', updated_at=NOW()
+		WHERE id=$1 AND status IN ('pending','execution_requested')`, id); err != nil {
+		slog.Error("SwapWorker: erro ao marcar route_unavailable", "id", id, "error", err)
+		return
+	}
+	slog.Warn("SwapWorker: executor real de swap indisponivel", "id", id)
+}
+
 func (w *SwapWorker) retryPending(ctx context.Context) {
 	rows, err := w.db.SQL.QueryContext(ctx, `
-		SELECT id FROM swaps WHERE status='pending' AND created_at < NOW() - INTERVAL '1 minute'
+		SELECT id FROM swaps WHERE status IN ('pending','execution_requested') AND created_at < NOW() - INTERVAL '1 minute'
 		LIMIT 5`)
 	if err != nil {
 		return
@@ -163,28 +161,4 @@ func (w *SwapWorker) retryPending(ctx context.Context) {
 			w.executeSwap(ctx, id)
 		}
 	}
-}
-
-// priceInBRL returns the BRL price of an asset via the PriceWorker cache.
-func priceInBRL(pw *PriceWorker, symbol string) float64 {
-	if pw == nil {
-		return 0
-	}
-	switch symbol {
-	case "USDT", "USDC", "BUSD":
-		return pw.GetPrice("BRL")
-	case "BTCB", "BTC":
-		btcUSD := pw.GetPrice("BTCUSDT_SOURCE")
-		usdtBRL := pw.GetPrice("BRL")
-		if btcUSD > 0 && usdtBRL > 0 {
-			return btcUSD * usdtBRL
-		}
-	case "EURC":
-		usdtEUR := pw.GetPrice("USDTEUR")
-		usdtBRL := pw.GetPrice("BRL")
-		if usdtEUR > 0 && usdtBRL > 0 {
-			return (1 / usdtEUR) * usdtBRL
-		}
-	}
-	return 0
 }
