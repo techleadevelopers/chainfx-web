@@ -1,9 +1,11 @@
 package mobile
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -12,7 +14,7 @@ import (
 	"time"
 
 	"payment-gateway/internal/liquidity"
-	"payment-gateway/internal/privacy"
+	"payment-gateway/internal/security"
 
 	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -60,11 +62,12 @@ func (s *Server) handleWalletTransfer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		To      string `json:"to"`
-		Amount  string `json:"amount"`
-		Asset   string `json:"asset"`
-		Network string `json:"network"`
-		PIN     string `json:"pin"`
+		To         string `json:"to"`
+		Amount     string `json:"amount"`
+		Asset      string `json:"asset"`
+		Network    string `json:"network"`
+		PIN        string `json:"pin"`
+		SponsorGas bool   `json:"sponsor_gas"`
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "payload invalido"})
@@ -88,13 +91,13 @@ func (s *Server) handleWalletTransfer(w http.ResponseWriter, r *http.Request) {
 
 	token, decimals, chainID, err := s.mobileTransferToken(asset, network)
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusBadRequest, mobileProductError("ROUTE_UNAVAILABLE", "Asset ou rede indisponivel para envio."))
 		return
 	}
 	nativeTransfer := token == "" && liquidity.IsNativeAsset(asset, network)
 	rawAmount, err := parseTokenAmount(req.Amount, decimals)
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusBadRequest, mobileProductError("INVALID_AMOUNT", "Valor invalido."))
 		return
 	}
 
@@ -179,11 +182,26 @@ func (s *Server) handleWalletTransfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.SponsorGas && !nativeTransfer && network == "BSC" {
+		if err := s.ensureSponsoredBSCGas(r.Context(), from, idempKey); err != nil {
+			_, _ = s.db.SQL.ExecContext(r.Context(), `
+			UPDATE mobile_wallet_transfers
+			SET status = 'failed'
+			WHERE user_id = $1::uuid AND idempotency_key = $2
+		`, user.ID, idempKey)
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+				"error": "gas sponsorship indisponivel",
+				"code":  "GAS_SPONSOR_UNAVAILABLE",
+			})
+			return
+		}
+	}
+
 	var txHash string
 	if nativeTransfer {
 		txHash, err = s.sendCustodialMobileNativeTransfer(
 			r.Context(),
-			keyRecord.EncryptedPrivateKey,
+			*keyRecord,
 			from,
 			recipient,
 			rawAmount,
@@ -193,7 +211,7 @@ func (s *Server) handleWalletTransfer(w http.ResponseWriter, r *http.Request) {
 	} else {
 		txHash, err = s.sendCustodialMobileERC20Transfer(
 			r.Context(),
-			keyRecord.EncryptedPrivateKey,
+			*keyRecord,
 			from,
 			recipient,
 			tokenAddress,
@@ -209,7 +227,7 @@ func (s *Server) handleWalletTransfer(w http.ResponseWriter, r *http.Request) {
 			SET status = 'failed'
 			WHERE user_id = $1::uuid AND idempotency_key = $2
 		`, user.ID, idempKey)
-		writeJSON(w, http.StatusBadGateway, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusBadGateway, mobileProductError("TRANSACTION_FAILED", "Nao foi possivel transmitir a transacao agora."))
 		return
 	}
 
@@ -282,6 +300,87 @@ func (s *Server) mobileTransferByIdempotency(ctx context.Context, userID, idempo
 	}, true, nil
 }
 
+func (s *Server) ensureSponsoredBSCGas(ctx context.Context, walletAddress, idempotencyKey string) error {
+	if s == nil || s.cfg == nil || strings.TrimSpace(s.cfg.SignerUrl) == "" || strings.TrimSpace(s.cfg.SignerHmacSecret) == "" {
+		return fmt.Errorf("signer nao configurado")
+	}
+	rpcURLs := s.mobileTransferRPCURLs("BSC")
+	if len(rpcURLs) == 0 {
+		return fmt.Errorf("BSC RPC nao configurado")
+	}
+	reserve := s.cfg.BscGasReserveBNB
+	if reserve <= 0 {
+		reserve = 0.003
+	}
+	balance, err := s.fetchNativeBalance(ctx, rpcURLs, walletAddress)
+	if err != nil {
+		return err
+	}
+	if balance >= reserve {
+		return nil
+	}
+	topUp := reserve - balance
+	if topUp < 0.0005 {
+		topUp = 0.0005
+	}
+	payload := struct {
+		DerivationIndex int    `json:"derivationIndex"`
+		To              string `json:"to"`
+		Amount          string `json:"amount"`
+		TokenContract   string `json:"tokenContract"`
+		Network         string `json:"network"`
+		IdempotencyKey  string `json:"idempotencyKey"`
+	}{
+		DerivationIndex: 0,
+		To:              common.HexToAddress(walletAddress).Hex(),
+		Amount:          fmt.Sprintf("%.8f", topUp),
+		TokenContract:   "",
+		Network:         "BSC",
+		IdempotencyKey:  "mobile-gas-sponsor-" + mobilePayHash(idempotencyKey + ":" + walletAddress)[:24],
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(s.cfg.SignerUrl, "/")+"/hd/transfer", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	security.SignRawBodyHeaders(req, s.cfg.SignerHmacSecret, body)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("signer gas sponsor status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+func (s *Server) fetchNativeBalance(ctx context.Context, rpcURLs []string, walletAddress string) (float64, error) {
+	var lastErr error
+	for _, rpcURL := range rpcURLs {
+		client, err := ethclient.DialContext(ctx, rpcURL)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		bal, err := client.BalanceAt(ctx, common.HexToAddress(walletAddress), nil)
+		client.Close()
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		return bigIntToFloat(bal, 18), nil
+	}
+	if lastErr != nil {
+		return 0, lastErr
+	}
+	return 0, fmt.Errorf("nenhum RPC disponivel")
+}
+
 func (s *Server) handleWalletTransferQuote(w http.ResponseWriter, r *http.Request) {
 	uid := userIDFromCtx(r)
 	user, err := mobileDB(s.db).GetUserByID(r.Context(), uid)
@@ -320,13 +419,13 @@ func (s *Server) handleWalletTransferQuote(w http.ResponseWriter, r *http.Reques
 	}
 	token, decimals, chainID, err := s.mobileTransferToken(asset, network)
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusBadRequest, mobileProductError("ROUTE_UNAVAILABLE", "Asset ou rede indisponivel para envio."))
 		return
 	}
 	nativeTransfer := token == "" && liquidity.IsNativeAsset(asset, network)
 	rawAmount, err := parseTokenAmount(req.Amount, decimals)
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusBadRequest, mobileProductError("INVALID_AMOUNT", "Valor invalido."))
 		return
 	}
 	rpcURLs := s.mobileTransferRPCURLs(network)
@@ -418,23 +517,12 @@ func (s *Server) handleWalletTransferQuote(w http.ResponseWriter, r *http.Reques
 	})
 }
 
-func (s *Server) sendCustodialMobileERC20Transfer(ctx context.Context, encryptedPrivateKey, expectedFrom string, recipient, token common.Address, amount *big.Int, network string, expectedChainID int64) (string, error) {
-	codec, err := privacy.New(s.mobileWalletEncryptionSecret())
-	if err != nil {
-		return "", err
-	}
-	privateKeyHex, err := codec.Decrypt(encryptedPrivateKey)
+func (s *Server) sendCustodialMobileERC20Transfer(ctx context.Context, keyRecord mobileWalletKey, expectedFrom string, recipient, token common.Address, amount *big.Int, network string, expectedChainID int64) (string, error) {
+	key, err := s.decryptMobileWalletSigningKey(keyRecord, expectedFrom)
 	if err != nil {
 		return "", fmt.Errorf("falha ao abrir chave custodial")
 	}
-	key, err := crypto.HexToECDSA(strings.TrimPrefix(strings.TrimSpace(privateKeyHex), "0x"))
-	if err != nil {
-		return "", fmt.Errorf("chave custodial invalida")
-	}
 	from := crypto.PubkeyToAddress(key.PublicKey)
-	if !strings.EqualFold(from.Hex(), expectedFrom) {
-		return "", fmt.Errorf("chave custodial nao corresponde a wallet do usuario")
-	}
 
 	rpcURLs := s.mobileTransferRPCURLs(network)
 	if len(rpcURLs) == 0 {
@@ -493,23 +581,12 @@ func (s *Server) sendCustodialMobileERC20Transfer(ctx context.Context, encrypted
 	return signed.Hash().Hex(), nil
 }
 
-func (s *Server) sendCustodialMobileNativeTransfer(ctx context.Context, encryptedPrivateKey, expectedFrom string, recipient common.Address, amount *big.Int, network string, expectedChainID int64) (string, error) {
-	codec, err := privacy.New(s.mobileWalletEncryptionSecret())
-	if err != nil {
-		return "", err
-	}
-	privateKeyHex, err := codec.Decrypt(encryptedPrivateKey)
+func (s *Server) sendCustodialMobileNativeTransfer(ctx context.Context, keyRecord mobileWalletKey, expectedFrom string, recipient common.Address, amount *big.Int, network string, expectedChainID int64) (string, error) {
+	key, err := s.decryptMobileWalletSigningKey(keyRecord, expectedFrom)
 	if err != nil {
 		return "", fmt.Errorf("falha ao abrir chave custodial")
 	}
-	key, err := crypto.HexToECDSA(strings.TrimPrefix(strings.TrimSpace(privateKeyHex), "0x"))
-	if err != nil {
-		return "", fmt.Errorf("chave custodial invalida")
-	}
 	from := crypto.PubkeyToAddress(key.PublicKey)
-	if !strings.EqualFold(from.Hex(), expectedFrom) {
-		return "", fmt.Errorf("chave custodial nao corresponde a wallet do usuario")
-	}
 
 	rpcURLs := s.mobileTransferRPCURLs(network)
 	if len(rpcURLs) == 0 {
