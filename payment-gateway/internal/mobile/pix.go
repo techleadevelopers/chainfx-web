@@ -36,7 +36,7 @@ func (s *Server) handlePixGenerate(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := forwardToInternal(r, "POST", s.internalBase(r)+"/api/order", payload, s.internalAPIKey())
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusBadGateway, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	defer resp.Body.Close()
@@ -57,7 +57,7 @@ func (s *Server) handlePixGenerate(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handlePixConfirm(w http.ResponseWriter, r *http.Request) {
 	resp, err := forwardToInternal(r, "POST", s.internalBase(r)+"/api/pix/webhook", nil, "")
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusBadGateway, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	defer resp.Body.Close()
@@ -73,7 +73,7 @@ func (s *Server) handlePixStatus(w http.ResponseWriter, r *http.Request) {
 	uid := userIDFromCtx(r)
 	order, err := mobileDB(s.db).GetSellOrderByUser(r.Context(), id, uid)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	if order == nil {
@@ -96,7 +96,7 @@ func (s *Server) handlePixCopy(w http.ResponseWriter, r *http.Request) {
 	uid := userIDFromCtx(r)
 	order, err := mobileDB(s.db).GetSellOrderByUser(r.Context(), req.OrderID, uid)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	if order == nil {
