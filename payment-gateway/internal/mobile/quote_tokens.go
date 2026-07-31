@@ -12,14 +12,23 @@ import (
 )
 
 type mobileQuoteClaims struct {
-	Side      string  `json:"side"`
-	Asset     string  `json:"asset"`
-	Network   string  `json:"network,omitempty"`
-	Amount    float64 `json:"amount"`
-	Rate      float64 `json:"rate"`
-	Fee       float64 `json:"fee"`
-	Total     float64 `json:"total"`
-	ExpiresAt int64   `json:"exp"`
+	QuoteID        string   `json:"qid,omitempty"`
+	UserID         string   `json:"uid,omitempty"`
+	Side           string   `json:"side"`
+	Asset          string   `json:"asset"`
+	Network        string   `json:"network,omitempty"`
+	Provider       string   `json:"provider,omitempty"`
+	Router         string   `json:"router,omitempty"`
+	Path           []string `json:"path,omitempty"`
+	Amount         float64  `json:"amount"`
+	Rate           float64  `json:"rate"`
+	Fee            float64  `json:"fee"`
+	Total          float64  `json:"total"`
+	AmountInRaw    string   `json:"amount_in_raw,omitempty"`
+	ExpectedOutRaw string   `json:"expected_out_raw,omitempty"`
+	MinReceivedRaw string   `json:"min_received_raw,omitempty"`
+	SlippageBPS    int      `json:"slippage_bps,omitempty"`
+	ExpiresAt      int64    `json:"exp"`
 }
 
 func (s *Server) issueMobileQuote(claims mobileQuoteClaims) (string, error) {
@@ -67,7 +76,11 @@ func (s *Server) verifyMobileQuote(raw, side, asset string, amount float64, now 
 	if len(networks) > 0 && strings.TrimSpace(claims.Network) != "" && !strings.EqualFold(claims.Network, networks[0]) {
 		return nil, fmt.Errorf("quote_id nao corresponde a rede")
 	}
-	if math.Abs(claims.Amount-amount) > 0.000001 {
+	if strings.EqualFold(claims.Asset, "BTC") {
+		if btcToSats(claims.Amount) != btcToSats(amount) {
+			return nil, fmt.Errorf("quote_id nao corresponde ao valor")
+		}
+	} else if math.Abs(claims.Amount-amount) > 0.000001 {
 		return nil, fmt.Errorf("quote_id nao corresponde ao valor")
 	}
 	if claims.ExpiresAt <= now.UTC().Unix() {
