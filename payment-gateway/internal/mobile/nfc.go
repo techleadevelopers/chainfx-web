@@ -22,7 +22,7 @@ func (s *Server) handleNFCCard(w http.ResponseWriter, r *http.Request) {
 	network := "BSC"
 	bal, err := s.db.GetNFCBalance(r.Context(), *user.WalletAddress, network)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -87,7 +87,7 @@ func (s *Server) handleNFCProvision(w http.ResponseWriter, r *http.Request) {
 	now := time.Now().UTC()
 	token, claims, err := nfc.IssueToken(s.cfg.NFCTokenSecret, *user.WalletAddress, req.DeviceID, req.Network, ttl, now)
 	if err != nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusServiceUnavailable, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	if err := s.db.StoreNFCToken(r.Context(), database.NFCTokenInput{
@@ -98,7 +98,7 @@ func (s *Server) handleNFCProvision(w http.ResponseWriter, r *http.Request) {
 		Network:   claims.Network,
 		ExpiresAt: time.Unix(claims.ExpiresAtUnix, 0),
 	}); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{
@@ -176,7 +176,6 @@ type nfcWalletInfo struct {
 	addr string
 	name string
 }
-
 
 // handleNFCHistory returns the authenticated user's NFC tap history (authorizations)
 // ordered newest-first. The user can only see their own wallet's records.
