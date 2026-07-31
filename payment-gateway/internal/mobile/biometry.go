@@ -34,7 +34,7 @@ func (s *Server) handleKYCAnalysisStatus(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 
@@ -80,7 +80,7 @@ func (s *Server) handleBiometryVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 
@@ -144,7 +144,7 @@ func (s *Server) handleKYCEngineMetrics(w http.ResponseWriter, r *http.Request) 
 		 ORDER BY created_at DESC
 		 LIMIT 50`, uid)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	defer rows.Close()
