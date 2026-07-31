@@ -1692,8 +1692,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       pixStep.className = 'step-4 step-content hidden';
       pixStep.innerHTML = `
         <div class="order-summary-step2 order-summary-step3">
-          <p>Pagar: <strong id="displayPayAmountStep4"></strong></p>
-          <p>Receber: <strong id="displayReceiveAmountStep4"></strong></p>
+          <p>Pay: <strong id="displayPayAmountStep4"></strong></p>
+          <p>Receive: <strong id="displayReceiveAmountStep4"></strong></p>
         </div>
       `;
       continueBtn.parentElement?.insertBefore(pixStep, continueBtn);
@@ -1773,7 +1773,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           </span>
           <svg class="buy-network-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
-        <ul class="buy-network-panel" role="listbox" aria-label="Escolha a rede de recebimento">
+        <ul class="buy-network-panel" role="listbox" aria-label="Select network">
           ${networks.map(network => {
             const meta = getBuyNetworkMeta(network);
             const active = normalizeBuyNetwork(state.receiveNetwork) === network;
@@ -1980,7 +1980,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const assetCode = String(asset || 'USDT').toUpperCase();
 
     if (assetCode === 'BTC') {
-  if (labelEl) labelEl.textContent = 'Rede para envio';
+  if (labelEl) labelEl.textContent = 'Rede para envio:';
 
   state.sellNetwork = 'BITCOIN';
   priceState.sellNetwork = 'BITCOIN';
@@ -2053,7 +2053,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   return;
 } else if (assetCode === 'ETH') {
-      if (labelEl) labelEl.textContent = 'Rede para envio do ETH';
+      if (labelEl) labelEl.textContent = 'Rede para envio: do ETH';
       const ethNetworks = [
         { code: 'ETHEREUM', label: 'Ethereum', sub: 'ERC20', icon: SELL_NETWORKS.ETHEREUM.icon },
         { code: 'BSC',      label: 'BSC',      sub: 'BEP20', icon: SELL_NETWORKS.BSC.icon }
@@ -2079,7 +2079,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     } else {
       // USDT: show BSC + POLYGON
-      if (labelEl) labelEl.textContent = 'Rede para envio do USDT';
+      if (labelEl) labelEl.textContent = 'Rede para envio: do USDT';
       const evmNetworks = normalizeSellNetworks(priceState.sellNetworks).filter(n => n !== 'BITCOIN' && n !== 'ETHEREUM');
       if (!evmNetworks.includes(normalizeSellNetwork(state.sellNetwork))) {
         state.sellNetwork = evmNetworks[0] || 'BSC';
@@ -3022,6 +3022,21 @@ const payload = state.action === 'sell'
       state.platformFee = Number(data.spreadBRL || data.feeBRL || 0) || 0;
       const pixReceiveBRL = Number(data.payoutBRL || payoutBRL || receiveAmountInput?.value || 0);
       if (receiveAmountInput && pixReceiveBRL > 0) receiveAmountInput.value = pixReceiveBRL.toFixed(2);
+      const sellFinalPayAmount =
+    document.getElementById('sellFinalPayAmount');
+
+const sellFinalReceiveAmount =
+    document.getElementById('sellFinalReceiveAmount');
+
+if (sellFinalPayAmount) {
+    sellFinalPayAmount.textContent =
+        `${Number(cryptoAmount)} ${asset}`;
+}
+
+if (sellFinalReceiveAmount) {
+    sellFinalReceiveAmount.textContent =
+        `${pixReceiveBRL.toFixed(2)} BRL`;
+}
       if (orderIdEl) orderIdEl.textContent = currentSellId || '-';
       if (orderStatusEl) orderStatusEl.textContent = data.status || 'aguardando_deposito';
       if (depositAddressEl) depositAddressEl.textContent = depositAddr;
@@ -3031,6 +3046,7 @@ const payload = state.action === 'sell'
       if (paymentWalletEl) paymentWalletEl.textContent = pixReceiveBRL > 0 ? `R$ ${pixReceiveBRL.toFixed(2).replace('.', ',')}` : getReceiveDisplayValue();
       if (paymentStatusLabelEl) paymentStatusLabelEl.textContent = 'Aguardando deposito';
       if (sellDepositBlock) sellDepositBlock.classList.remove('hidden');
+      startSellOrderTimer();
       updateSellDepositWallet();
       updatePaymentTxHash(data.depositTx || data.txHash || '');
       updateOrderSummaries();
@@ -3436,19 +3452,24 @@ if (continueBtn)
         !sellNetworkSection.classList.contains('hidden');
 
 
-    // ==================================================
-    // SEGUNDO CLIQUE -> Sell Now -> cria ordem
-    // ==================================================
-    if (depositStepVisible) {
+if (depositStepVisible) {
 
-        const sellOrder = await createSellOrder();
+    const sellOrder = await createSellOrder();
 
-        if (sellOrder) {
-            updateStep(5);
-        }
+    if (sellOrder) {
+        updateStep(5);
 
-        return;
+        // mostra o timer SOMENTE depois que a ordem foi criada
+        const sellOrderTimer =
+            document.getElementById('sellOrderTimer');
+
+        sellOrderTimer?.classList.remove('hidden');
+
+        startSellOrderTimer();
     }
+
+    return;
+}
 
 
     // ==================================================
