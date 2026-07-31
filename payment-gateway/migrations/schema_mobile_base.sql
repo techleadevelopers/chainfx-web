@@ -18,12 +18,14 @@ CREATE TABLE IF NOT EXISTS users (
   two_factor_enabled   BOOLEAN       NOT NULL DEFAULT false,
   two_factor_secret    TEXT,
   refresh_token_hash   TEXT,
+  refresh_token_device_id TEXT,
   deleted_at           TIMESTAMPTZ,
   created_at           TIMESTAMPTZ   NOT NULL DEFAULT now(),
   updated_at           TIMESTAMPTZ   NOT NULL DEFAULT now()
 );
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS refresh_token_device_id TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_active_email ON users(email) WHERE deleted_at IS NULL;
@@ -73,6 +75,7 @@ CREATE TABLE IF NOT EXISTS operation_ids (
   operation_id   TEXT        NOT NULL,
   user_id        UUID        NOT NULL,
   operation_type TEXT        NOT NULL,
+  request_hash   TEXT,
   status         TEXT        NOT NULL DEFAULT 'pending',
   result_ref     TEXT,
   completed_at   TIMESTAMPTZ,
@@ -83,6 +86,7 @@ CREATE TABLE IF NOT EXISTS operation_ids (
 
 CREATE INDEX IF NOT EXISTS idx_operation_ids_expires_at ON operation_ids(expires_at);
 CREATE INDEX IF NOT EXISTS idx_operation_ids_status ON operation_ids(status);
+ALTER TABLE operation_ids ADD COLUMN IF NOT EXISTS request_hash TEXT;
 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id, created_at DESC) WHERE user_id IS NOT NULL;
