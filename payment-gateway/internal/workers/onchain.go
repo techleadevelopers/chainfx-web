@@ -569,14 +569,55 @@ func (ow *OnchainWorker) confirmDeposit(ctx context.Context, network onchainNetw
 			return
 		}
 	}
+	evidence := map[string]any{
+		"depositTx":      txHash,
+		"depositAmount":  amountFloat,
+		"block":          blockNum,
+		"blockNumber":    blockNum,
+		"network":        network.Name,
+		"tokenContract":  network.TokenContract,
+		"tokenDecimals":  network.TokenDecimals,
+		"confirmations":  network.RequiredConfirmations,
+		"detectedAt":     time.Now().UTC().Format(time.RFC3339Nano),
+		"rateLockExpiry": order.RateLockExpiresAt.UTC().Format(time.RFC3339Nano),
+	}
+	now := time.Now().UTC()
+	if !order.RateLockExpiresAt.IsZero() && !now.Before(order.RateLockExpiresAt.UTC()) {
+		reason := "funding recebido apos expiracao do rate lock; payout automatico bloqueado"
+		evidence["error"] = reason
+		evidence["reason"] = "funding_expired_quote"
+		evidence["action"] = "manual_review_required_no_auto_payout"
+		if err := ow.db.RecordExpiredSellFunding(cCtx, orderID, txHash, amountFloat, evidence); err != nil {
+			slog.Error("OnchainWorker: erro ao registrar funding SELL expirado", "network", network.Name, "order_id", orderID, "err", err)
+			return
+		}
+		_ = ow.db.OpenOrderIncident(cCtx, orderID, "sell_funding_after_quote_expired", "critical", reason, evidence)
+		slog.Warn("sell_funding_after_quote_expired", "network", network.Name, "order_id", orderID, "tx", txHash, "amount_usdt", amountFloat, "block", blockNum)
+		return
+	}
 
 	slog.Info("OnchainWorker: deposito confirmado",
 		"network", network.Name, "order_id", orderID, "tx", txHash, "amount_usdt", amountFloat, "block", blockNum)
 
-	if err := ow.db.UpdateOrderStatus(cCtx, orderID, "pago", map[string]any{
-		"depositTx": txHash, "depositAmount": amountFloat, "block": blockNum, "network": network.Name,
-	}); err != nil {
+	confirmed, err := ow.db.ConfirmSellDepositForPayout(cCtx, orderID, txHash, amountFloat, evidence)
+	if err != nil {
 		slog.Error("OnchainWorker: erro ao atualizar status", "network", network.Name, "order_id", orderID, "err", err)
+		return
+	}
+	if !confirmed {
+		latest, err := ow.db.GetOrder(cCtx, orderID)
+		if err == nil && latest != nil && !latest.RateLockExpiresAt.IsZero() && !time.Now().UTC().Before(latest.RateLockExpiresAt.UTC()) {
+			reason := "funding recebido apos expiracao do rate lock; payout automatico bloqueado"
+			evidence["error"] = reason
+			evidence["reason"] = "funding_expired_quote"
+			evidence["action"] = "manual_review_required_no_auto_payout"
+			if err := ow.db.RecordExpiredSellFunding(cCtx, orderID, txHash, amountFloat, evidence); err != nil {
+				slog.Error("OnchainWorker: erro ao registrar funding SELL expirado apos race", "network", network.Name, "order_id", orderID, "err", err)
+				return
+			}
+			_ = ow.db.OpenOrderIncident(cCtx, orderID, "sell_funding_after_quote_expired", "critical", reason, evidence)
+			slog.Warn("sell_funding_after_quote_expired", "network", network.Name, "order_id", orderID, "tx", txHash, "amount_usdt", amountFloat, "block", blockNum, "race", true)
+		}
 		return
 	}
 
