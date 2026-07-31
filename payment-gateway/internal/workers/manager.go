@@ -44,13 +44,14 @@ type WorkerManager struct {
 	PaymasterService    *paymaster.Service
 	PSPRouter           *psp.Router // optional; set by cmd/api/main.go before StartAll when Efí is configured
 	// BTC rail — nil when BTC_ENABLED=false or when the BTC config is absent.
-	BTCSvc       *bitcoin.Service
-	BTCWorker    *bitcoin.BTCWorker
-	SolanaSvc    *solana.Service
-	SolanaWorker *solana.Worker
-	db           *database.DB
-	cfg          *config.Config
-	wg           sync.WaitGroup
+	BTCSvc               *bitcoin.Service
+	BTCWorker            *bitcoin.BTCWorker
+	BTCSellFundingWorker *BTCSellFundingWorker
+	SolanaSvc            *solana.Service
+	SolanaWorker         *solana.Worker
+	db                   *database.DB
+	cfg                  *config.Config
+	wg                   sync.WaitGroup
 }
 
 func NewWorkerManager(db *database.DB, cfg *config.Config, mailer *email.Service, pool *rpc.Pool) *WorkerManager {
@@ -84,28 +85,29 @@ func NewWorkerManager(db *database.DB, cfg *config.Config, mailer *email.Service
 
 	priceWorker := NewPriceWorker(bus)
 	return &WorkerManager{
-		Bus:                 bus,
-		PriceWorker:         priceWorker,
-		PayoutWorker:        NewPayoutWorker(bus, db, cfg),
-		BuySendWorker:       NewBuySendWorker(bus, db, cfg),
-		DCAWorker:           NewDCAWorker(bus, db, cfg, priceWorker),
-		OnchainWorker:       NewOnchainWorker(bus, db, cfg),
-		SellExpiryWorker:    NewSellExpiryWorker(db),
-		SweepWorker:         NewSweepWorker(bus, db, cfg),
-		EmailWorker:         NewEmailWorker(bus, db, mailer),
-		KYCWorker:           NewKYCWorker(bus, db, cfg),
-		M2MSettlementWorker: NewM2MSettlementWorker(bus, db, cfg),
-		AutoSweeperWorker:   NewAutoSweeperWorker(cfg, db, pool),
-		NFCExpirationWorker: NewNFCExpirationWorker(bus, db, cfg),
-		NFCSettlementWorker: NewNFCMerchantSettlementWorker(bus, db, cfg),
-		NFCReconcileWorker:  NewNFCSettlementReconciliationWorker(db, cfg),
-		PaymasterService:    paymasterSvc,
-		BTCSvc:              btcSvc,
-		BTCWorker:           btcWorker,
-		SolanaSvc:           solanaSvc,
-		SolanaWorker:        solanaWorker,
-		db:                  db,
-		cfg:                 cfg,
+		Bus:                  bus,
+		PriceWorker:          priceWorker,
+		PayoutWorker:         NewPayoutWorker(bus, db, cfg),
+		BuySendWorker:        NewBuySendWorker(bus, db, cfg),
+		DCAWorker:            NewDCAWorker(bus, db, cfg, priceWorker),
+		OnchainWorker:        NewOnchainWorker(bus, db, cfg),
+		SellExpiryWorker:     NewSellExpiryWorker(db),
+		SweepWorker:          NewSweepWorker(bus, db, cfg),
+		EmailWorker:          NewEmailWorker(bus, db, mailer),
+		KYCWorker:            NewKYCWorker(bus, db, cfg),
+		M2MSettlementWorker:  NewM2MSettlementWorker(bus, db, cfg),
+		AutoSweeperWorker:    NewAutoSweeperWorker(cfg, db, pool),
+		NFCExpirationWorker:  NewNFCExpirationWorker(bus, db, cfg),
+		NFCSettlementWorker:  NewNFCMerchantSettlementWorker(bus, db, cfg),
+		NFCReconcileWorker:   NewNFCSettlementReconciliationWorker(db, cfg),
+		PaymasterService:     paymasterSvc,
+		BTCSvc:               btcSvc,
+		BTCWorker:            btcWorker,
+		BTCSellFundingWorker: NewBTCSellFundingWorker(bus, db, cfg),
+		SolanaSvc:            solanaSvc,
+		SolanaWorker:         solanaWorker,
+		db:                   db,
+		cfg:                  cfg,
 	}
 }
 
@@ -119,6 +121,9 @@ func (wm *WorkerManager) StartAll(ctx context.Context) {
 	}
 	if wm.BTCWorker != nil {
 		workerCount++ // + BTC deposit scanner + confirmation tracker
+	}
+	if wm.BTCSellFundingWorker != nil {
+		workerCount++ // + native BTC SELL funding matcher
 	}
 	if wm.SolanaWorker != nil {
 		workerCount++ // + Solana deposit scanner + confirmation tracker
@@ -213,6 +218,12 @@ func (wm *WorkerManager) StartAll(ctx context.Context) {
 		go func() {
 			defer wm.wg.Done()
 			wm.BTCWorker.Start(ctx)
+		}()
+	}
+	if wm.BTCSellFundingWorker != nil {
+		go func() {
+			defer wm.wg.Done()
+			wm.BTCSellFundingWorker.Start(ctx)
 		}()
 	}
 	if wm.SolanaWorker != nil {
