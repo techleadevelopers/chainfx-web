@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -16,28 +15,31 @@ import (
 )
 
 type mobileGiftCardProduct struct {
-	ID             string
-	ProviderID     string
-	ProviderSlug   string
-	ProviderName   string
-	ProductID      string
-	Brand          string
-	Title          string
-	Description    string
-	Category       string
-	Currency       string
-	FaceValueMinor int64
-	PriceBRLMinor  int64
-	DiscountBps    int
-	ProductType    string
-	DeliveryMode   string
-	ImageURL       string
-	RequiresKYC    bool
-	CatalogID      string
-	Subtitle       string
-	Badge          string
-	OfferText      string
-	SortOrder      int
+	ID                 string
+	ProviderID         string
+	ProviderSlug       string
+	ProviderName       string
+	ProductID          string
+	Brand              string
+	Title              string
+	Description        string
+	Category           string
+	Currency           string
+	FaceValueMinor     int64
+	PriceBRLMinor      int64
+	DiscountBps        int
+	ProductType        string
+	DeliveryMode       string
+	ImageURL           string
+	RequiresKYC        bool
+	CatalogID          string
+	Subtitle           string
+	Badge              string
+	OfferText          string
+	SortOrder          int
+	Packages           []commerceProductPackage
+	MinimumAmountMinor int64
+	MaximumAmountMinor int64
 }
 
 type mobileGiftCardQuote struct {
@@ -51,8 +53,10 @@ type mobileGiftCardQuote struct {
 	RequiredUSDTMicro    int64
 	AvailableUSDTMicro   int64
 	LockedUSDTMicro      int64
+	OnchainUSDTMicro     int64
 	HasSufficientBalance bool
 	ExpiresAt            time.Time
+	RecipientPhone       string
 }
 
 type giftCardProviderResult struct {
@@ -112,15 +116,16 @@ ORDER BY gc.sort_order ASC, pp.brand ASC`)
 
 func (s *Server) handleGiftCardQuote(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		ProductID     string `json:"product_id"`
-		Quantity      int    `json:"quantity"`
-		FundingMethod string `json:"funding_method"`
+		ProductID      string `json:"product_id"`
+		Quantity       int    `json:"quantity"`
+		FundingMethod  string `json:"funding_method"`
+		RecipientPhone string `json:"recipient_phone"`
 	}
 	if err := decodeJSON(r, &req); err != nil || strings.TrimSpace(req.ProductID) == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "product_id obrigatorio"})
 		return
 	}
-	quote, ok := s.mobileGiftCardQuotePayload(w, r, req.ProductID, req.Quantity)
+	quote, ok := s.mobileGiftCardQuotePayload(w, r, req.ProductID, req.Quantity, req.RecipientPhone)
 	if !ok {
 		return
 	}
@@ -158,6 +163,7 @@ func (s *Server) handleGiftCardPurchase(w http.ResponseWriter, r *http.Request) 
 		QuoteID        string `json:"quote_id"`
 		ProductID      string `json:"product_id"`
 		Quantity       int    `json:"quantity"`
+		UnitPrice      any    `json:"unit_price"`
 		FundingMethod  string `json:"funding_method"`
 		RecipientPhone string `json:"recipient_phone"`
 	}
@@ -165,7 +171,8 @@ func (s *Server) handleGiftCardPurchase(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "product_id obrigatorio"})
 		return
 	}
-	quote, ok := s.mobileGiftCardQuotePayload(w, r, req.ProductID, req.Quantity)
+	unitPriceMinor := decimalToMinor(req.UnitPrice, brlMinorScale)
+	quote, ok := s.mobileGiftCardQuotePayloadWithUnitPrice(w, r, req.ProductID, req.Quantity, unitPriceMinor, req.RecipientPhone)
 	if !ok {
 		return
 	}
@@ -184,9 +191,17 @@ func (s *Server) handleGiftCardPurchase(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	recipientPhone := normalizeE164Phone(req.RecipientPhone, "BR")
-	if quote.Product.ProductType == "phone_refill" && recipientPhone == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "telefone obrigatorio para recarga", "code": "RECIPIENT_PHONE_REQUIRED"})
-		return
+	if giftCardOrderType(quote.Product.ProductType) == "mobile_topup" {
+		var valid bool
+		recipientPhone, valid = normalizeBrazilMobileTopupPhone(req.RecipientPhone)
+		if !valid {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "telefone invalido para recarga", "code": "RECIPIENT_PHONE_INVALID"})
+			return
+		}
+		if quote.RecipientPhone != "" && recipientPhone != quote.RecipientPhone {
+			writeJSON(w, http.StatusConflict, map[string]any{"error": "telefone diferente da cotacao", "code": "QUOTE_PHONE_MISMATCH"})
+			return
+		}
 	}
 	if fundingMethod == "internal_usdt" &&
 		quote.Product.ProviderSlug == "bitrefill" &&
@@ -207,6 +222,10 @@ func (s *Server) handleGiftCardPurchase(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "schema gift cards indisponivel"})
 		return
 	}
+	if err := mobileDB(s.db).ensureMobilePaySchema(r.Context()); err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "schema payment engine indisponivel"})
+		return
+	}
 	tx, err := s.db.SQL.BeginTx(r.Context(), nil)
 	if err != nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "database indisponivel"})
@@ -214,15 +233,21 @@ func (s *Server) handleGiftCardPurchase(w http.ResponseWriter, r *http.Request) 
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	existing, existingStatus, err := txGetGiftCardOrderByIdempotency(r, tx, uid, idempotencyKey)
+	existing, existingStatus, err := txGetGiftCardOrderByIdempotency(r, tx, uid, idempotencyKey, req.ProductID, quote.Quantity, quote.RequiredUSDTMicro, recipientPhone)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	if existing != "" {
 		_ = tx.Commit()
 		writeJSON(w, http.StatusOK, map[string]any{"order_id": existing, "status": existingStatus, "idempotent": true})
 		return
+	}
+	if (fundingMethod == "internal_usdt" || fundingMethod == "onchain_treasury_hot") && isPaymentEngineCommerceProduct(quote.Product.ProductType) {
+		if err := s.txConsumeCanonicalGiftCardQuoteAndCreateIntent(r, tx, uid, idempotencyKey, orderID, wallet, quote, fundingMethod); err != nil {
+			writeJSON(w, http.StatusConflict, mobileProductError("TRANSACTION_PENDING", "Operacao em processamento."))
+			return
+		}
 	}
 
 	provider := giftCardProviderResult{
@@ -232,6 +257,8 @@ func (s *Server) handleGiftCardPurchase(w http.ResponseWriter, r *http.Request) 
 	}
 	if fundingMethod == "pix" {
 		provider.ProviderReference = "pix_" + mobilePayHash(orderID)[:16]
+	} else if fundingMethod == "onchain_treasury_hot" {
+		provider = giftCardProviderResult{Status: "awaiting_funding", ProviderStatus: "awaiting_usdt_treasury", EmailStatus: "not_sent"}
 	} else {
 		res, err := tx.ExecContext(r.Context(), `
 UPDATE nfc_wallet_balances
@@ -251,7 +278,10 @@ WHERE lower(wallet_address) = lower($1)
 			writeJSON(w, http.StatusPaymentRequired, map[string]any{"error": "saldo USDT insuficiente", "code": "INSUFFICIENT_USDT"})
 			return
 		}
-		txInsertGiftCardLedgerEntry(r, tx, wallet, orderID, "gift_card_purchase_lock", -quote.RequiredUSDTMicro, quote.RequiredUSDTMicro)
+		if err := txInsertGiftCardLedgerEntry(r, tx, wallet, orderID, "gift_card_purchase_lock", -quote.RequiredUSDTMicro, quote.RequiredUSDTMicro); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro ao auditar reserva USDT"})
+			return
+		}
 		provider = giftCardProviderResult{Status: "funds_locked", ProviderStatus: "ready_for_provider_purchase", EmailStatus: "not_sent"}
 		if strings.EqualFold(os.Getenv("GIFT_CARD_PROVIDER_MODE"), "mock") {
 			provider = s.purchaseGiftCardViaProvider(r, quote, orderID, user.Email)
@@ -310,7 +340,164 @@ VALUES ($1,$2::uuid,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19
 	if provider.Status == "delivered" {
 		s.sendGiftCardOrderEmailAsync(user.Email, orderID, quote, provider)
 	}
-	writeJSON(w, http.StatusAccepted, giftCardOrderCreatedPayload(orderID, quote, provider, fundingMethod))
+	payload := giftCardOrderCreatedPayload(orderID, quote, provider, fundingMethod)
+	if fundingMethod == "onchain_treasury_hot" {
+		addGiftCardOnchainFundingFields(payload, s, quote)
+	}
+	writeJSON(w, http.StatusAccepted, payload)
+}
+
+func (s *Server) handleGiftCardFundingConfirm(w http.ResponseWriter, r *http.Request) {
+	uid := userIDFromCtx(r)
+	orderID := strings.TrimSpace(r.PathValue("id"))
+	var req struct {
+		TxHash string `json:"tx_hash"`
+	}
+	if err := decodeJSON(r, &req); err != nil || orderID == "" || strings.TrimSpace(req.TxHash) == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "order_id e tx_hash obrigatorios"})
+		return
+	}
+	s.handleGiftCardFundingConfirmationForOrder(w, r, uid, orderID, strings.TrimSpace(req.TxHash))
+}
+
+func (s *Server) handleGiftCardFundingConfirmationForOrder(w http.ResponseWriter, r *http.Request, uid, orderID, txHash string) {
+	if err := mobileDB(s.db).ensureMobileGiftCardSchema(r.Context()); err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "schema gift cards indisponivel"})
+		return
+	}
+	if err := mobileDB(s.db).ensureMobilePaySchema(r.Context()); err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "schema payment engine indisponivel"})
+		return
+	}
+	var wallet, fundingMethod, status string
+	var requiredMic int64
+	err := s.db.SQL.QueryRowContext(r.Context(), `
+SELECT wallet_address, funding_method, status, required_usdt_micro
+FROM mobile_gift_card_orders
+WHERE id=$1 AND user_id=$2::uuid`, orderID, uid).Scan(&wallet, &fundingMethod, &status, &requiredMic)
+	if err == sql.ErrNoRows {
+		writeJSON(w, http.StatusNotFound, map[string]any{"error": "pedido nao encontrado"})
+		return
+	}
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro ao buscar pedido"})
+		return
+	}
+	if fundingMethod != "onchain_treasury_hot" {
+		writeJSON(w, http.StatusConflict, map[string]any{"error": "pedido nao usa funding on-chain"})
+		return
+	}
+	if status != "awaiting_funding" && status != "funding_seen" {
+		writeJSON(w, http.StatusOK, map[string]any{"order_id": orderID, "status": status, "idempotent": true})
+		return
+	}
+	network, tokenContract, tokenDecimals, _, treasuryAddress, err := s.mobilePayFundingSpec()
+	if err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, mobileProductError("ROUTE_UNAVAILABLE", "Pagamento indisponivel no momento."))
+		return
+	}
+	receipt, err := s.verifyMobilePayUSDTFunding(r.Context(), network, txHash, tokenContract, tokenDecimals, wallet, treasuryAddress, requiredMic)
+	if err != nil {
+		if pendingStatus, ok := isMobilePayFundingPending(err); ok {
+			_, _ = s.db.SQL.ExecContext(r.Context(), `
+UPDATE mobile_gift_card_orders
+SET status=$2, provider_status='awaiting_usdt_confirmations', provider_reference=$3, updated_at=NOW()
+WHERE id=$1 AND user_id=$4::uuid`, orderID, pendingStatus, strings.ToLower(txHash), uid)
+			_, _ = s.db.SQL.ExecContext(r.Context(), `
+UPDATE mobile_payment_intents
+SET status=$2, provider_status='awaiting_usdt_confirmations', funding_tx_hash=$3, updated_at=NOW()
+WHERE id=$1 AND user_id=$4::uuid`, orderID, pendingStatus, strings.ToLower(txHash), uid)
+			writeJSON(w, http.StatusAccepted, map[string]any{
+				"order_id": orderID, "status": pendingStatus, "provider_status": "awaiting_usdt_confirmations",
+				"tx_hash": strings.ToLower(txHash), "next_step": "retry_funding_confirmation",
+			})
+			return
+		}
+		_, _ = s.db.SQL.ExecContext(r.Context(), `
+UPDATE mobile_gift_card_orders
+SET status='manual_review', provider_status='funding_verification_failed', error_message=$3, provider_reference=$4, updated_at=NOW()
+WHERE id=$1 AND user_id=$2::uuid`, orderID, uid, err.Error(), strings.ToLower(txHash))
+		writeJSON(w, http.StatusBadRequest, map[string]any{"code": "MANUAL_REVIEW", "error": "Funding em analise.", "status": "manual_review"})
+		return
+	}
+	tx, err := s.db.SQL.BeginTx(r.Context(), nil)
+	if err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "database indisponivel"})
+		return
+	}
+	defer tx.Rollback() //nolint:errcheck
+	res, err := tx.ExecContext(r.Context(), `
+UPDATE mobile_gift_card_orders
+SET status='funds_locked',
+    provider_status='ready_for_provider_purchase',
+    provider_reference=$3,
+    updated_at=NOW()
+WHERE id=$1 AND user_id=$2::uuid
+  AND status IN ('awaiting_funding','funding_seen')`, orderID, uid, receipt.TxHash)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro ao confirmar pedido"})
+		return
+	}
+	if rows, _ := res.RowsAffected(); rows == 0 {
+		_ = tx.Commit()
+		writeJSON(w, http.StatusOK, map[string]any{"order_id": orderID, "status": "funds_locked", "idempotent": true})
+		return
+	}
+	if _, err := tx.ExecContext(r.Context(), `
+UPDATE mobile_payment_intents
+SET status='funding_confirmed',
+    provider_status='provider_execution_pending',
+    funding_tx_hash=$3,
+    funding_amount_raw=$4,
+    funding_block_number=$5,
+    funding_confirmations=$6,
+    funding_confirmed_at=COALESCE(funding_confirmed_at, NOW()),
+    updated_at=NOW()
+WHERE id=$1 AND user_id=$2::uuid`, orderID, uid, receipt.TxHash, receipt.AmountRaw, int64(receipt.BlockNumber), int64(receipt.Confirmations)); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro ao confirmar funding"})
+		return
+	}
+	if _, err := tx.ExecContext(r.Context(), `
+INSERT INTO mobile_payment_funding_transactions
+  (id, payment_intent_id, user_id, tx_hash, network, asset, token_contract, token_decimals,
+   from_address, to_address, amount_raw, required_amount_raw, block_number, block_hash, log_index,
+   confirmations, status)
+VALUES ($1,$2,$3::uuid,$4,$5,'USDT',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'confirmed')
+ON CONFLICT (tx_hash) DO NOTHING`,
+		"mpfund_"+mobilePayHash(receipt.TxHash)[:24], orderID, uid, receipt.TxHash, network, tokenContract, tokenDecimals,
+		receipt.From, receipt.To, receipt.AmountRaw, receipt.RequiredRaw, int64(receipt.BlockNumber), receipt.BlockHash, receipt.LogIndex, int64(receipt.Confirmations)); err != nil {
+		writeJSON(w, http.StatusConflict, map[string]any{"error": "tx_hash ja usado ou erro ao registrar funding"})
+		return
+	}
+	providerKey := "mgc-bitrefill-" + mobilePayHash(orderID)[:24]
+	if _, err := tx.ExecContext(r.Context(), `
+INSERT INTO mobile_payment_executions
+  (id, payment_intent_id, user_id, provider, provider_idempotency_key, status, next_attempt_at, provider_status)
+VALUES ($1,$2,$3::uuid,'bitrefill',$4,'pending',NOW(),'purchase_pending')
+ON CONFLICT (payment_intent_id, provider) DO NOTHING`,
+		"mpexec_"+mobilePayHash(orderID + ":bitrefill")[:24], orderID, uid, providerKey); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro ao criar execucao provider"})
+		return
+	}
+	if _, err := tx.ExecContext(r.Context(), `
+INSERT INTO mobile_payment_ledger_entries
+  (id, payment_intent_id, user_id, entry_type, asset, network, amount_micro, tx_hash, provider, metadata)
+VALUES ($1,$2,$3::uuid,'funding_confirmed','USDT',$4,$5,$6,'bitrefill',
+        jsonb_build_object('treasury_address',$7,'token_contract',$8,'order_table','mobile_gift_card_orders'))
+ON CONFLICT (payment_intent_id, entry_type) DO NOTHING`,
+		"mpledger_"+mobilePayHash(orderID + ":funding_confirmed")[:24], orderID, uid, network, requiredMic, receipt.TxHash, treasuryAddress, tokenContract); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro ao auditar funding"})
+		return
+	}
+	txInsertGiftCardOutbox(r, tx, orderID, "commerce.purchase.requested", mobileGiftCardQuote{RequiredUSDTMicro: requiredMic}, giftCardProviderResult{ProviderStatus: "purchase_pending"})
+	if err := tx.Commit(); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro ao confirmar funding"})
+		return
+	}
+	writeJSON(w, http.StatusAccepted, map[string]any{
+		"order_id": orderID, "status": "funds_locked", "provider_status": "provider_execution_pending",
+		"funding_tx_hash": receipt.TxHash, "confirmations": receipt.Confirmations, "next_step": "provider_execution",
+	})
 }
 
 func (s *Server) handleGiftCardOrder(w http.ResponseWriter, r *http.Request) {
@@ -405,7 +592,11 @@ LIMIT 50`, uid)
 	writeJSON(w, http.StatusOK, map[string]any{"items": items})
 }
 
-func (s *Server) mobileGiftCardQuotePayload(w http.ResponseWriter, r *http.Request, productID string, quantity int) (mobileGiftCardQuote, bool) {
+func (s *Server) mobileGiftCardQuotePayload(w http.ResponseWriter, r *http.Request, productID string, quantity int, recipientPhone string) (mobileGiftCardQuote, bool) {
+	return s.mobileGiftCardQuotePayloadWithUnitPrice(w, r, productID, quantity, 0, recipientPhone)
+}
+
+func (s *Server) mobileGiftCardQuotePayloadWithUnitPrice(w http.ResponseWriter, r *http.Request, productID string, quantity int, unitPriceMinor int64, recipientPhone string) (mobileGiftCardQuote, bool) {
 	if quantity <= 0 {
 		quantity = 1
 	}
@@ -422,6 +613,24 @@ func (s *Server) mobileGiftCardQuotePayload(w http.ResponseWriter, r *http.Reque
 		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro ao buscar gift card"})
 		return mobileGiftCardQuote{}, false
 	}
+	priceMinor, priceErr := canonicalGiftCardUnitPriceMinor(product, unitPriceMinor)
+	if priceErr != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": priceErr.Error(), "code": "INVALID_DENOMINATION"})
+		return mobileGiftCardQuote{}, false
+	}
+	product.PriceBRLMinor = priceMinor
+	if product.FaceValueMinor <= 0 {
+		product.FaceValueMinor = priceMinor
+	}
+	normalizedPhone := ""
+	if giftCardOrderType(product.ProductType) == "mobile_topup" {
+		var valid bool
+		normalizedPhone, valid = normalizeBrazilMobileTopupPhone(recipientPhone)
+		if !valid {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "telefone invalido para recarga", "code": "RECIPIENT_PHONE_INVALID"})
+			return mobileGiftCardQuote{}, false
+		}
+	}
 	user, err := mobileDB(s.db).GetUserByID(r.Context(), userIDFromCtx(r))
 	if err != nil || user == nil || user.WalletAddress == nil || strings.TrimSpace(*user.WalletAddress) == "" {
 		writeJSON(w, http.StatusConflict, map[string]any{"error": "wallet do usuario nao registrada"})
@@ -435,10 +644,7 @@ func (s *Server) mobileGiftCardQuotePayload(w http.ResponseWriter, r *http.Reque
 		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "USDT/BRL indisponivel"})
 		return mobileGiftCardQuote{}, false
 	}
-	feeBps := 0
-	if s.cfg != nil {
-		feeBps = firstPositiveIntMobile(s.cfg.NFCFeeBps, s.cfg.M2MPixFeeBps)
-	}
+	feeBps := s.giftCardQuoteFeeBps(product)
 	amountBRLMinor := product.PriceBRLMinor * int64(quantity)
 	feeBRLMinor := feeMinor(amountBRLMinor, feeBps)
 	totalBRLMinor := amountBRLMinor + feeBRLMinor
@@ -450,13 +656,110 @@ func (s *Server) mobileGiftCardQuotePayload(w http.ResponseWriter, r *http.Reque
 		availableMicros = bal.AvailableMicro
 		lockedMicros = bal.LockedMicro
 	}
-	quoteID := "gcq_" + mobilePayHash(product.ProductID + ":" + strconv.Itoa(quantity) + ":" + brlMinorString(amountBRLMinor) + ":" + minorString(rateMicros, usdtMicroScale))[:24]
+	onchain := s.mobileOnchainWalletBalancesAll(r.Context(), *user.WalletAddress)
+	onchainUSDTMicros := int64(onchain.bscUSDT * 1_000_000)
+	quoteID := "gcq_" + strings.TrimPrefix(mobileSwapQuoteID(), "msq_")
 	return mobileGiftCardQuote{
 		QuoteID: quoteID, Product: product, Quantity: quantity, AmountBRLMinor: amountBRLMinor, FeeBRLMinor: feeBRLMinor,
 		TotalBRLMinor: totalBRLMinor, USDTRateMicro: rateMicros, RequiredUSDTMicro: requiredMic,
 		AvailableUSDTMicro: availableMicros, LockedUSDTMicro: lockedMicros, HasSufficientBalance: availableMicros >= requiredMic,
-		ExpiresAt: time.Now().UTC().Add(90 * time.Second),
+		OnchainUSDTMicro: onchainUSDTMicros,
+		ExpiresAt:        time.Now().UTC().Add(90 * time.Second),
+		RecipientPhone:   normalizedPhone,
 	}, true
+}
+
+func (s *Server) giftCardQuoteFeeBps(product mobileGiftCardProduct) int {
+	if strings.EqualFold(product.ProviderSlug, "bitrefill") && giftCardOrderType(product.ProductType) == "mobile_topup" {
+		return 1000
+	}
+	if s.cfg != nil {
+		return firstPositiveIntMobile(s.cfg.NFCFeeBps, s.cfg.M2MPixFeeBps)
+	}
+	return 0
+}
+
+func isPaymentEngineCommerceProduct(productType string) bool {
+	switch giftCardOrderType(productType) {
+	case "gift_card", "mobile_topup", "esim":
+		return true
+	default:
+		return false
+	}
+}
+
+func canonicalGiftCardUnitPriceMinor(product mobileGiftCardProduct, requestedMinor int64) (int64, error) {
+	if requestedMinor < 0 {
+		return 0, fmt.Errorf("valor invalido")
+	}
+	if len(product.Packages) > 0 {
+		if requestedMinor <= 0 && len(product.Packages) == 1 {
+			return product.Packages[0].ValueMinor, nil
+		}
+		for _, pkg := range product.Packages {
+			if pkg.ValueMinor > 0 && pkg.ValueMinor == requestedMinor {
+				return pkg.ValueMinor, nil
+			}
+		}
+		return 0, fmt.Errorf("denominacao indisponivel para o produto")
+	}
+	if product.MinimumAmountMinor > 0 || product.MaximumAmountMinor > 0 {
+		if requestedMinor <= 0 {
+			return 0, fmt.Errorf("valor da recarga obrigatorio")
+		}
+		if product.MinimumAmountMinor > 0 && requestedMinor < product.MinimumAmountMinor {
+			return 0, fmt.Errorf("valor abaixo do minimo do produto")
+		}
+		if product.MaximumAmountMinor > 0 && requestedMinor > product.MaximumAmountMinor {
+			return 0, fmt.Errorf("valor acima do maximo do produto")
+		}
+		return requestedMinor, nil
+	}
+	if requestedMinor > 0 {
+		if product.PriceBRLMinor > 0 && requestedMinor != product.PriceBRLMinor {
+			return 0, fmt.Errorf("valor nao corresponde ao produto")
+		}
+		return requestedMinor, nil
+	}
+	if product.PriceBRLMinor > 0 {
+		return product.PriceBRLMinor, nil
+	}
+	return 0, fmt.Errorf("valor do produto indisponivel")
+}
+
+func normalizeBrazilMobileTopupPhone(phone string) (string, bool) {
+	raw := strings.TrimSpace(phone)
+	if raw == "" {
+		return "", false
+	}
+	for _, r := range raw {
+		if (r >= '0' && r <= '9') || r == '+' || r == ' ' || r == '-' || r == '(' || r == ')' || r == '.' {
+			continue
+		}
+		return "", false
+	}
+	digits := onlyDigits(raw)
+	if strings.HasPrefix(digits, "00") {
+		digits = strings.TrimPrefix(digits, "00")
+	}
+	if strings.HasPrefix(digits, "55") {
+		digits = strings.TrimPrefix(digits, "55")
+	}
+	if len(digits) != 10 && len(digits) != 11 {
+		return "", false
+	}
+	ddd := digits[:2]
+	if ddd < "11" || ddd > "99" {
+		return "", false
+	}
+	subscriber := digits[2:]
+	if len(subscriber) == 9 && subscriber[0] != '9' {
+		return "", false
+	}
+	if len(subscriber) == 8 && subscriber[0] < '2' {
+		return "", false
+	}
+	return "+55" + digits, true
 }
 
 func (s *Server) getGiftCardProduct(r *http.Request, productID string) (mobileGiftCardProduct, error) {
@@ -481,6 +784,20 @@ WHERE pp.product_id=$1 AND pp.active=true AND p.status='active'`, strings.TrimSp
 		&product.OfferText, &product.SortOrder,
 	)
 	product.PriceBRLMinor = decimalToMinor(priceText, brlMinorScale)
+	if err == nil {
+		var rawMeta string
+		if metaErr := s.db.SQL.QueryRowContext(r.Context(), `
+SELECT metadata::text
+FROM gift_card_provider_products
+WHERE product_id=$1 AND provider_id=$2`, strings.TrimSpace(productID), product.ProviderID).Scan(&rawMeta); metaErr == nil && strings.TrimSpace(rawMeta) != "" {
+			var commerce commerceProduct
+			if json.Unmarshal([]byte(rawMeta), &commerce) == nil {
+				product.Packages = commerce.Packages
+				product.MinimumAmountMinor = commerce.MinimumAmountMinor
+				product.MaximumAmountMinor = commerce.MaximumAmountMinor
+			}
+		}
+	}
 	return product, err
 }
 
@@ -569,19 +886,47 @@ func giftCardProductPayload(product mobileGiftCardProduct) map[string]any {
 
 func giftCardQuotePayload(quote mobileGiftCardQuote, fundingMethod string) map[string]any {
 	productKind := giftCardProductKind(quote.Product.ProductType)
+	availableMicros := quote.AvailableUSDTMicro
+	sufficient := quote.HasSufficientBalance
+	if fundingMethod == "onchain_treasury_hot" {
+		availableMicros = quote.OnchainUSDTMicro
+		sufficient = quote.OnchainUSDTMicro >= quote.RequiredUSDTMicro
+	}
 	return map[string]any{
 		"quote_id": quote.QuoteID, "product": giftCardProductPayload(quote.Product), "quantity": quote.Quantity,
 		"quote_type": "commerce", "order_type": giftCardOrderType(productKind), "product_type": productKind, "product_kind": productKind, "provider": quote.Product.ProviderSlug,
 		"amount_brl": brlMinorString(quote.AmountBRLMinor), "fee_brl": brlMinorString(quote.FeeBRLMinor), "total_brl": brlMinorString(quote.TotalBRLMinor),
 		"usdt_rate": minorString(quote.USDTRateMicro, usdtMicroScale), "total_usdt": usdtMicroString(quote.RequiredUSDTMicro), "required_usdt": usdtMicroString(quote.RequiredUSDTMicro),
-		"available_usdt": usdtMicroString(quote.AvailableUSDTMicro), "locked_usdt": usdtMicroString(quote.LockedUSDTMicro),
+		"available_usdt": usdtMicroString(availableMicros), "locked_usdt": usdtMicroString(quote.LockedUSDTMicro),
 		"funding_method": fundingMethod, "funding_asset": giftCardFundingAsset(fundingMethod), "funding_source": giftCardFundingSource(fundingMethod),
-		"has_sufficient_balance": quote.HasSufficientBalance, "expires_at": quote.ExpiresAt,
+		"has_sufficient_balance": sufficient, "expires_at": quote.ExpiresAt,
 		"payment_methods": []map[string]any{
-			{"key": "internal_usdt", "label": "Saldo USDT", "detail": "Carteira interna ChainFX", "asset": "USDT", "recommended": true},
+			{"key": "onchain_treasury_hot", "label": "USDT wallet", "detail": "Envia USDT para a treasury ChainFX", "asset": "USDT", "recommended": true},
+			{"key": "internal_usdt", "label": "Saldo USDT interno", "detail": "Ledger interno ChainFX legado", "asset": "USDT", "recommended": false},
 			{"key": "pix", "label": "PIX", "detail": "Depositar em BRL", "asset": "BRL", "recommended": false},
 		},
 	}
+}
+
+func addGiftCardOnchainFundingFields(payload map[string]any, s *Server, quote mobileGiftCardQuote) {
+	if payload == nil || s == nil {
+		return
+	}
+	network, tokenContract, tokenDecimals, chainID, treasuryAddress, err := s.mobilePayFundingSpec()
+	if err != nil {
+		payload["funding_error"] = "treasury_route_unavailable"
+		return
+	}
+	payload["funding_asset"] = "USDT"
+	payload["funding_network"] = network
+	payload["funding_source"] = "onchain_treasury_hot"
+	payload["treasury_address"] = treasuryAddress
+	payload["token_contract"] = tokenContract
+	payload["token_decimals"] = tokenDecimals
+	payload["chain_id"] = chainID
+	payload["required_usdt"] = usdtMicroString(quote.RequiredUSDTMicro)
+	payload["next_step"] = "send_usdt_to_treasury"
+	payload["gas_payer"] = "chainfx_required"
 }
 
 func giftCardOrderCreatedPayload(orderID string, quote mobileGiftCardQuote, provider giftCardProviderResult, fundingMethod string) map[string]any {
@@ -599,16 +944,118 @@ func giftCardOrderCreatedPayload(orderID string, quote mobileGiftCardQuote, prov
 	}
 }
 
-func txGetGiftCardOrderByIdempotency(r *http.Request, tx *sql.Tx, userID, key string) (id, status string, err error) {
+func txGetGiftCardOrderByIdempotency(r *http.Request, tx *sql.Tx, userID, key, productID string, quantity int, requiredMic int64, recipientPhone string) (id, status string, err error) {
+	var existingProductID, existingRecipientPhone string
+	var existingQuantity int
+	var existingRequiredMic int64
 	err = tx.QueryRowContext(r.Context(), `
-SELECT id, status
+SELECT id, status, product_id, quantity, required_usdt_micro, COALESCE(recipient_phone, '')
 FROM mobile_gift_card_orders
 WHERE user_id=$1::uuid AND idempotency_key=$2
-FOR UPDATE`, userID, key).Scan(&id, &status)
+FOR UPDATE`, userID, key).Scan(&id, &status, &existingProductID, &existingQuantity, &existingRequiredMic, &existingRecipientPhone)
 	if err == sql.ErrNoRows {
 		return "", "", nil
 	}
+	if err == nil && id != "" {
+		if existingProductID != productID || existingQuantity != quantity || existingRequiredMic != requiredMic || existingRecipientPhone != recipientPhone {
+			return "", "", fmt.Errorf("idempotency key reutilizada com payload diferente")
+		}
+	}
 	return id, status, err
+}
+
+func (s *Server) txConsumeCanonicalGiftCardQuoteAndCreateIntent(r *http.Request, tx *sql.Tx, userID, idempotencyKey, paymentID, wallet string, quote mobileGiftCardQuote, fundingMethod string) error {
+	if strings.TrimSpace(quote.QuoteID) == "" {
+		return fmt.Errorf("quote_id obrigatorio")
+	}
+	network, tokenContract, tokenDecimals, _, treasuryAddress, err := s.mobilePayFundingSpec()
+	if err != nil {
+		return fmt.Errorf("rota treasury indisponivel")
+	}
+	var consumedAt sql.NullTime
+	var productID, provider, providerProductID, quotedPhone string
+	var quantity int
+	var requiredMic int64
+	var expiresAt time.Time
+	err = tx.QueryRowContext(r.Context(), `
+SELECT product_id, provider, provider_product_id, quantity, required_usdt_micro, expires_at, consumed_at, COALESCE(recipient_phone, '')
+FROM mobile_payment_quotes
+WHERE quote_id=$1 AND user_id=$2::uuid
+FOR UPDATE`, quote.QuoteID, userID).Scan(&productID, &provider, &providerProductID, &quantity, &requiredMic, &expiresAt, &consumedAt, &quotedPhone)
+	if err == sql.ErrNoRows {
+		return fmt.Errorf("quote_id invalido ou nao pertence ao usuario")
+	}
+	if err != nil {
+		return fmt.Errorf("erro ao buscar quote canonico")
+	}
+	if consumedAt.Valid {
+		return fmt.Errorf("quote_id ja consumido")
+	}
+	if time.Now().UTC().After(expiresAt.UTC()) {
+		_, _ = tx.ExecContext(r.Context(), `
+UPDATE mobile_payment_quotes
+SET status='expired', updated_at=NOW()
+WHERE quote_id=$1 AND user_id=$2::uuid AND consumed_at IS NULL`, quote.QuoteID, userID)
+		return fmt.Errorf("quote expirado")
+	}
+	if productID != quote.Product.ProductID || provider != quote.Product.ProviderSlug ||
+		providerProductID != quote.Product.ID || quantity != quote.Quantity || requiredMic != quote.RequiredUSDTMicro {
+		return fmt.Errorf("quote nao corresponde ao produto confirmado")
+	}
+	if quotedPhone != "" && quotedPhone != quote.RecipientPhone {
+		return fmt.Errorf("telefone nao corresponde ao quote confirmado")
+	}
+	metadata, _ := json.Marshal(map[string]any{
+		"order_id":            paymentID,
+		"brand":               quote.Product.Brand,
+		"title":               quote.Product.Title,
+		"provider_product_id": quote.Product.ID,
+		"recipient_phone":     quote.RecipientPhone,
+		"legacy_order_table":  "mobile_gift_card_orders",
+		"reservation_backend": giftCardFundingSource(fundingMethod),
+		"funding_method":      fundingMethod,
+	})
+	status := "reserved"
+	providerStatus := "funds_reserved"
+	if fundingMethod == "onchain_treasury_hot" {
+		status = "awaiting_funding"
+		providerStatus = "awaiting_usdt_treasury"
+	}
+	if _, err := tx.ExecContext(r.Context(), `
+INSERT INTO mobile_payment_intents
+  (id, user_id, wallet_address, idempotency_key, quote_id, raw_code, payment_type,
+   beneficiary_name, description, amount_brl, fee_brl, total_brl, usdt_rate,
+   required_usdt_micro, status, provider, provider_status, funding_asset, funding_network,
+   funding_token_contract, funding_token_decimals, treasury_address,
+   quote_expires_at, product_id, provider_product_id, quantity, metadata)
+VALUES ($1,$2::uuid,$3,$4,$5,'','gift_card',$6,$7,$8,$9,$10,$11,$12,
+        $13,'bitrefill',$14,'USDT',$15,$16,$17,$18,$19,$20,$21,$22::jsonb)
+ON CONFLICT (user_id, idempotency_key) DO NOTHING`,
+		paymentID, userID, wallet, idempotencyKey, quote.QuoteID, quote.Product.Brand, quote.Product.Title,
+		brlMinorString(quote.AmountBRLMinor), brlMinorString(quote.FeeBRLMinor), brlMinorString(quote.TotalBRLMinor),
+		minorString(quote.USDTRateMicro, usdtMicroScale), quote.RequiredUSDTMicro, status, providerStatus,
+		network, tokenContract, tokenDecimals, treasuryAddress, expiresAt,
+		quote.Product.ProductID, quote.Product.ID, quote.Quantity, string(metadata)); err != nil {
+		return fmt.Errorf("erro ao criar PaymentIntent gift card")
+	}
+	if _, err := tx.ExecContext(r.Context(), `
+UPDATE mobile_payment_quotes
+SET status='consumed', consumed_at=NOW(), consumed_intent_id=$3, updated_at=NOW()
+WHERE quote_id=$1 AND user_id=$2::uuid AND consumed_at IS NULL`, quote.QuoteID, userID, paymentID); err != nil {
+		return fmt.Errorf("erro ao consumir quote canonico")
+	}
+	if fundingMethod == "internal_usdt" {
+		providerKey := "mgc-bitrefill-" + mobilePayHash(paymentID)[:24]
+		if _, err := tx.ExecContext(r.Context(), `
+INSERT INTO mobile_payment_executions
+  (id, payment_intent_id, user_id, provider, provider_idempotency_key, status, next_attempt_at, provider_status)
+VALUES ($1,$2,$3::uuid,'bitrefill',$4,'pending',NOW(),'purchase_pending')
+ON CONFLICT (payment_intent_id, provider) DO NOTHING`,
+			"mpexec_"+mobilePayHash(paymentID + ":bitrefill")[:24], paymentID, userID, providerKey); err != nil {
+			return fmt.Errorf("erro ao criar PaymentExecution gift card")
+		}
+	}
+	return nil
 }
 
 func (s *Server) getGiftCardOrderPayload(w http.ResponseWriter, r *http.Request, id string) (map[string]any, bool) {
@@ -702,6 +1149,17 @@ func (s *Server) recordGiftCardQuote(r *http.Request, quote mobileGiftCardQuote,
 	if s == nil || s.db == nil {
 		return
 	}
+	_ = mobileDB(s.db).ensureMobilePaySchema(r.Context())
+	metadata, _ := json.Marshal(map[string]any{
+		"brand":            quote.Product.Brand,
+		"title":            quote.Product.Title,
+		"product_type":     giftCardProductKind(quote.Product.ProductType),
+		"delivery_mode":    quote.Product.DeliveryMode,
+		"funding_method":   fundingMethod,
+		"face_value_minor": quote.Product.FaceValueMinor,
+		"price_brl_minor":  quote.AmountBRLMinor,
+		"recipient_phone":  quote.RecipientPhone,
+	})
 	_, _ = s.db.SQL.ExecContext(r.Context(), `
 INSERT INTO gift_card_quotes
   (id, user_id, product_id, quantity, funding_method, amount_brl, fee_brl, total_brl, usdt_rate, required_usdt_micro, expires_at)
@@ -709,14 +1167,27 @@ VALUES ($1,$2::uuid,$3,$4,$5,$6,$7,$8,$9,$10,$11)
 ON CONFLICT (id) DO NOTHING`,
 		quote.QuoteID, userIDFromCtx(r), quote.Product.ProductID, quote.Quantity, fundingMethod,
 		brlMinorString(quote.AmountBRLMinor), brlMinorString(quote.FeeBRLMinor), brlMinorString(quote.TotalBRLMinor), minorString(quote.USDTRateMicro, usdtMicroScale), quote.RequiredUSDTMicro, quote.ExpiresAt)
+	_, _ = s.db.SQL.ExecContext(r.Context(), `
+INSERT INTO mobile_payment_quotes
+  (quote_id, user_id, wallet_address, parsed_payment_id, raw_code_hash, payment_type,
+   beneficiary_name, description, amount_brl, fee_brl, total_brl, usdt_rate,
+   required_usdt_micro, funding_asset, funding_network, product_id, provider,
+   provider_product_id, quantity, recipient_phone, metadata, expires_at)
+VALUES ($1,$2::uuid,'',$3,$4,'gift_card',$5,$6,$7,$8,$9,$10,$11,'USDT','BSC',$12,$13,$14,$15,$16,$17::jsonb,$18)
+ON CONFLICT (quote_id) DO NOTHING`,
+		quote.QuoteID, userIDFromCtx(r), quote.Product.ProductID, mobilePayHash(quote.Product.ID+":"+quote.QuoteID),
+		quote.Product.Brand, quote.Product.Title, brlMinorString(quote.AmountBRLMinor), brlMinorString(quote.FeeBRLMinor),
+		brlMinorString(quote.TotalBRLMinor), minorString(quote.USDTRateMicro, usdtMicroScale), quote.RequiredUSDTMicro,
+		quote.Product.ProductID, quote.Product.ProviderSlug, quote.Product.ID, quote.Quantity, quote.RecipientPhone, string(metadata), quote.ExpiresAt)
 }
 
-func txInsertGiftCardLedgerEntry(r *http.Request, tx *sql.Tx, wallet, orderID, source string, availableDelta, lockedDelta int64) {
-	_, _ = tx.ExecContext(r.Context(), `
+func txInsertGiftCardLedgerEntry(r *http.Request, tx *sql.Tx, wallet, orderID, source string, availableDelta, lockedDelta int64) error {
+	_, err := tx.ExecContext(r.Context(), `
 INSERT INTO mobile_wallet_ledger_entries
   (id, wallet_address, network, asset, source, reference_id, available_delta_micro, locked_delta_micro)
 VALUES ($1,$2,'BSC','USDT',$3,$4,$5,$6)`,
 		"mwle_"+mobilePayHash(orderID + ":" + source)[:24], wallet, source, orderID, availableDelta, lockedDelta)
+	return err
 }
 
 func txInsertGiftCardProviderAttempt(r *http.Request, tx *sql.Tx, orderID, providerID, action string, result giftCardProviderResult) {
@@ -776,7 +1247,9 @@ WHERE lower(wallet_address) = lower($1)
 	if rows, _ := res.RowsAffected(); rows == 0 {
 		return fmt.Errorf("locked USDT insuficiente para capturar gift card")
 	}
-	txInsertGiftCardLedgerEntry(r, tx, wallet, orderID, "gift_card_purchase_capture", 0, -requiredMic)
+	if err := txInsertGiftCardLedgerEntry(r, tx, wallet, orderID, "gift_card_purchase_capture", 0, -requiredMic); err != nil {
+		return err
+	}
 	_, _ = tx.ExecContext(r.Context(), `
 UPDATE mobile_gift_card_orders
 SET captured_at=NOW(), updated_at=NOW()
@@ -801,7 +1274,9 @@ WHERE lower(wallet_address) = lower($1)
 	if rows, _ := res.RowsAffected(); rows == 0 {
 		return fmt.Errorf("locked USDT insuficiente para liberar gift card")
 	}
-	txInsertGiftCardLedgerEntry(r, tx, wallet, orderID, "gift_card_purchase_release", requiredMic, -requiredMic)
+	if err := txInsertGiftCardLedgerEntry(r, tx, wallet, orderID, "gift_card_purchase_release", requiredMic, -requiredMic); err != nil {
+		return err
+	}
 	_, _ = tx.ExecContext(r.Context(), `
 UPDATE mobile_gift_card_orders
 SET refunded_at=NOW(), updated_at=NOW()
@@ -809,10 +1284,45 @@ WHERE id=$1`, orderID)
 	return nil
 }
 
+func txCreditGiftCardProviderRefund(r *http.Request, tx *sql.Tx, wallet, orderID string, requiredMic int64) error {
+	var inserted int
+	if err := tx.QueryRowContext(r.Context(), `
+INSERT INTO mobile_wallet_ledger_entries
+  (id, wallet_address, network, asset, source, reference_id, available_delta_micro, locked_delta_micro)
+VALUES ($1,$2,'BSC','USDT','gift_card_provider_refund',$3,$4,0)
+ON CONFLICT (id) DO NOTHING
+RETURNING 1`,
+		"mwle_"+mobilePayHash(orderID + ":gift_card_provider_refund")[:24], wallet, orderID, requiredMic).Scan(&inserted); err != nil {
+		if err == sql.ErrNoRows {
+			return nil
+		}
+		return err
+	}
+	if inserted != 1 {
+		return nil
+	}
+	if _, err := tx.ExecContext(r.Context(), `
+UPDATE nfc_wallet_balances
+SET available_usdt_micro = available_usdt_micro + $3,
+    updated_at = NOW()
+WHERE lower(wallet_address) = lower($1)
+  AND network = $2
+  AND asset = 'USDT'`, wallet, "BSC", requiredMic); err != nil {
+		return err
+	}
+	_, err := tx.ExecContext(r.Context(), `
+UPDATE mobile_gift_card_orders
+SET refunded_at=COALESCE(refunded_at, NOW()), updated_at=NOW()
+WHERE id=$1`, orderID)
+	return err
+}
+
 func normalizeGiftCardFundingMethod(value string) string {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "pix":
 		return "pix"
+	case "onchain", "onchain_treasury", "onchain_treasury_hot", "wallet_usdt", "evm_usdt":
+		return "onchain_treasury_hot"
 	default:
 		return "internal_usdt"
 	}
@@ -854,6 +1364,9 @@ func giftCardFundingSource(method string) string {
 	if method == "pix" {
 		return "pix_deposit"
 	}
+	if method == "onchain_treasury_hot" {
+		return "onchain_treasury_hot"
+	}
 	return "mobile_internal_usdt_ledger"
 }
 
@@ -883,11 +1396,11 @@ func (s *Server) sendGiftCardOrderEmailAsync(to, orderID string, quote mobileGif
 		if !mailer.Enabled() {
 			status = "smtp_not_configured"
 		} else {
-			body := buildGiftCardEmailBody(orderID, quote, provider)
-			if err := mailer.Send(email.Message{
-				To:      to,
-				Subject: "ChainFX - pedido de gift card",
-				Body:    body,
+			if err := mailer.SendTransaction(to, giftCardEmailSubject(quote.Product.ProductType), email.TransactionReceipt{
+				Title:   giftCardEmailTitle(quote.Product.ProductType),
+				Intro:   "Seu pedido foi concluido e os dados de resgate estao abaixo.",
+				CTA:     "Abrir ChainFX",
+				Details: giftCardEmailDetails(orderID, quote.Product.Title, quote.Product.ProductType, quote.TotalBRLMinor, quote.RequiredUSDTMicro, provider.Status, provider.RedemptionCode, provider.RedemptionPIN, provider.RedemptionURL),
 			}); err != nil {
 				status = "send_failed"
 			}
@@ -899,27 +1412,41 @@ WHERE id=$1`, orderID, status)
 	}()
 }
 
-func buildGiftCardEmailBody(orderID string, quote mobileGiftCardQuote, provider giftCardProviderResult) string {
-	lines := []string{
-		"Pedido ChainFX Gift Card",
-		"",
-		"Pedido: " + orderID,
-		"Produto: " + quote.Product.Title,
-		"Status: " + provider.Status,
-		"Valor BRL: R$ " + brlMinorString(quote.TotalBRLMinor),
-		"Total debitado: " + usdtMicroString(quote.RequiredUSDTMicro) + " USDT",
+func giftCardEmailSubject(productType string) string {
+	if giftCardOrderType(productType) == "mobile_topup" {
+		return "Recarga concluida na ChainFX"
 	}
-	if provider.RedemptionCode != "" {
-		lines = append(lines, "Codigo: "+provider.RedemptionCode)
+	return "Gift card entregue na ChainFX"
+}
+
+func giftCardEmailTitle(productType string) string {
+	if giftCardOrderType(productType) == "mobile_topup" {
+		return "Recarga concluida"
 	}
-	if provider.RedemptionPIN != "" {
-		lines = append(lines, "PIN: "+provider.RedemptionPIN)
+	return "Gift card entregue"
+}
+
+func giftCardEmailDetails(orderID, title, productType string, totalBRLMinor, requiredUSDTMicro int64, status, code, pin, url string) []email.TransactionDetail {
+	productLabel := "Produto"
+	if giftCardOrderType(productType) == "mobile_topup" {
+		productLabel = "Recarga"
 	}
-	if provider.RedemptionURL != "" {
-		lines = append(lines, "Link: "+provider.RedemptionURL)
+	details := []email.TransactionDetail{
+		{Label: productLabel, Value: title},
+		{Label: "Status", Value: firstNonEmptyStr(status, "delivered")},
+		{Label: "Valor", Value: "R$ " + brlMinorString(totalBRLMinor)},
+		{Label: "USDT debitado", Value: usdtMicroString(requiredUSDTMicro) + " USDT"},
+		{Label: "Ordem", Value: orderID, CopyHint: true},
+		{Label: "Concluido em", Value: time.Now().Format("02/01/2006 15:04 MST")},
 	}
-	if provider.Status == "manual_review" {
-		lines = append(lines, "", "Seu pedido esta em processamento/manual review e sera entregue assim que o provider confirmar.")
+	if strings.TrimSpace(code) != "" {
+		details = append(details, email.TransactionDetail{Label: "Codigo", Value: code, CopyHint: true})
 	}
-	return strings.Join(lines, "\n")
+	if strings.TrimSpace(pin) != "" {
+		details = append(details, email.TransactionDetail{Label: "PIN", Value: pin, CopyHint: true})
+	}
+	if strings.TrimSpace(url) != "" {
+		details = append(details, email.TransactionDetail{Label: "Link", Value: url, CopyHint: true})
+	}
+	return details
 }
