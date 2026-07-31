@@ -107,6 +107,22 @@
     padding-top: 72px;
   }
 
+  body.index-page #inputSection .currency-input .input-group {
+        min-height: 42px;
+        height: 42px;
+        padding-block: 4px;
+    }
+       body.index-page #inputSection .currency-selector {
+        min-height: 30px;
+        height: 30px;
+        padding: 4px 7px;
+    }
+
+    body.index-page #inputSection .currency-selector img {
+        width: 19px;
+        height: 19px;
+    }
+
   body.index-page .markets-view {
     width: min(100%, calc(100vw - 28px));
     padding: 34px 0 38px;
@@ -733,7 +749,7 @@ body.index-page .contact-hero::before {
   }
 
   body.index-page #inputSection .currency-input .input-group {
-    min-height: 50px;
+    min-height: 40px;
     padding-block: 6px;
   }
 
