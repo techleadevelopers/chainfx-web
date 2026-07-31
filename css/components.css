@@ -1670,3 +1670,146 @@
 .confirm-payment-btn:hover {
   opacity: 0.9;
 }
+#sellWalletAddress {
+    width: 90%;
+    height: 38px;
+    padding: 0 14px;
+    border-radius: 10px;
+    background: #fff;
+    color: #1d63a9;
+    font-size: 14px;
+    font-weight: 500;
+    outline: none;
+    box-shadow: none;
+    box-sizing: border-box;
+}
+
+#sellWalletAddress {
+    color: #1d63a9;
+    font-weight: 500;
+}
+
+/* SELL — Wallet de depósito */
+#sellWalletStep .sell-wallet-address-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 6px 10px;
+}
+
+.sell-wallet-address-group {
+    position: relative;
+    
+}
+
+/* 45px VISUALMENTE, sem aumentar o input */
+.sell-wallet-prefix-icon {
+    position: absolute;
+    left: 0px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 45px;
+    height: 45px;
+    object-fit: contain;
+
+    z-index: 2;
+    pointer-events: none;
+}
+
+#sellWalletAddress {
+    flex: 1;
+    min-width: 0;
+    height: 34px;
+    padding: 0 !important;
+    left: 20px;
+    margin-left: 35px;
+    border: 0;
+    background: transparent;
+
+    color: #1d63a9;
+    -webkit-text-fill-color: #1d63a9;
+    opacity: 1;
+
+    font-size: 0.88rem;
+    font-weight: 600;
+    line-height: 34px;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sell-wallet-copy-btn {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #1d63a9;
+    cursor: pointer;
+}
+
+.sell-wallet-copy-btn svg {
+    width: 22px;
+    height: 22px;
+    fill: currentColor;
+}
+
+.sell-wallet-copy-btn:hover {
+    background: rgba(29, 99, 169, 0.09);
+}
+
+.sell-wallet-copy-btn:active {
+    transform: scale(0.92);
+}
+
+.sell-wallet-copy-btn.copied {
+    color: #06a77d;
+}
+#sellCpfStep label,
+#sellPixStep label {
+    color: #1d63a9;
+    font-weight: 600;
+}
+
+.sell-order-timer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    margin: 10px 0 2px;
+
+    color: #1d63a9;
+}
+
+.sell-order-timer strong {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+.sell-order-timer small {
+    display: block;
+    margin-top: 3px;
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: #7b8794;
+}
+
+.sell-order-timer-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #17a8d4;
+    box-shadow: 0 0 0 4px rgba(23, 168, 212, 0.10);
+}
