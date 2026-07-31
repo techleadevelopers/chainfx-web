@@ -1,11 +1,17 @@
 package email
 
 import (
+	"bytes"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
+	"net"
+	"net/http"
 	"net/smtp"
 	"net/textproto"
+	"os"
 	"strings"
 	"time"
 
@@ -29,6 +35,12 @@ func NewService(cfg *config.Config) *Service {
 }
 
 func (s *Service) Enabled() bool {
+	if s == nil || s.cfg == nil {
+		return false
+	}
+	if s.shouldUseBrevoAPI() {
+		return s.brevoSenderEmail() != "" && s.brevoAPIKey() != ""
+	}
 	return s.cfg.SMTPHost != "" && s.cfg.SMTPPort > 0 && s.cfg.SMTPFromEmail != ""
 }
 
@@ -48,13 +60,84 @@ func (s *Service) Send(msg Message) error {
 	}
 
 	raw := s.renderMIME(from, msg)
+	if s.shouldUseBrevoAPI() {
+		return s.sendBrevoAPI(fromName, msg)
+	}
 
 	addr := fmt.Sprintf("%s:%d", s.cfg.SMTPHost, s.cfg.SMTPPort)
 	auth := smtp.PlainAuth("", s.cfg.SMTPUser, s.cfg.SMTPPass, s.cfg.SMTPHost)
-	if s.cfg.SMTPSecure {
-		return s.sendStartTLS(addr, auth, raw, msg.To)
+	return s.sendSMTP(addr, auth, raw, msg.To, s.cfg.SMTPSecure)
+}
+
+func (s *Service) shouldUseBrevoAPI() bool {
+	if strings.TrimSpace(os.Getenv("BREVO_API_KEY")) != "" {
+		return true
 	}
-	return smtp.SendMail(addr, auth, s.cfg.SMTPFromEmail, []string{msg.To}, raw)
+	return strings.Contains(strings.ToLower(strings.TrimSpace(s.cfg.SMTPHost)), "brevo") &&
+		strings.HasPrefix(strings.TrimSpace(s.cfg.SMTPPass), "xkeysib-")
+}
+
+func (s *Service) brevoAPIKey() string {
+	return firstNonEmpty(os.Getenv("BREVO_API_KEY"), s.cfg.SMTPPass)
+}
+
+func (s *Service) brevoSenderEmail() string {
+	user := strings.TrimSpace(s.cfg.SMTPUser)
+	if strings.Contains(strings.ToLower(user), "@smtp-brevo.com") {
+		return user
+	}
+	return firstNonEmpty(s.cfg.SMTPFromEmail, user)
+}
+
+func (s *Service) sendBrevoAPI(fromName string, msg Message) error {
+	apiKey := s.brevoAPIKey()
+	if apiKey == "" {
+		return fmt.Errorf("brevo api key vazia")
+	}
+	textBody := firstNonEmpty(msg.TextBody, msg.Body)
+	payload := map[string]any{
+		"sender": map[string]string{
+			"email": s.brevoSenderEmail(),
+			"name":  firstNonEmpty(fromName, s.cfg.SMTPFromName, "ChainFX"),
+		},
+		"to": []map[string]string{
+			{"email": msg.To},
+		},
+		"subject": msg.Subject,
+	}
+	if html := strings.TrimSpace(msg.HTMLBody); html != "" {
+		payload["htmlContent"] = html
+	} else {
+		payload["textContent"] = textBody
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest(http.MethodPost, firstNonEmpty(os.Getenv("BREVO_API_URL"), "https://api.brevo.com/v3/smtp/email"), bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("api-key", apiKey)
+	req.Header.Set("accept", "application/json")
+	req.Header.Set("content-type", "application/json")
+	client := &http.Client{Timeout: 12 * time.Second}
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	rawResponse, _ := io.ReadAll(io.LimitReader(res.Body, 8<<10))
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return fmt.Errorf("brevo email api status %d: %s", res.StatusCode, strings.TrimSpace(string(rawResponse)))
+	}
+	var response struct {
+		MessageID string `json:"messageId"`
+	}
+	if err := json.Unmarshal(rawResponse, &response); err == nil && strings.TrimSpace(response.MessageID) != "" {
+		slog.Info("brevo transactional email accepted", "message_id", response.MessageID)
+	}
+	return nil
 }
 
 func (s *Service) NotifyOps(subject, body string) {
@@ -81,6 +164,11 @@ func (s *Service) SendSellCompleted(to string, receipt Receipt) error {
 func (s *Service) SendMarketing(to string, campaign MarketingCampaign) error {
 	campaign.Brand = s.brand()
 	return s.Send(BuildMarketingMessage(to, campaign))
+}
+
+func (s *Service) SendTransaction(to, subject string, receipt TransactionReceipt) error {
+	receipt.Brand = s.brand()
+	return s.Send(BuildTransactionMessage(to, subject, receipt))
 }
 
 func (s *Service) brand() Brand {
@@ -128,13 +216,24 @@ func (s *Service) renderMIME(from string, msg Message) []byte {
 	return []byte(strings.Join(parts, "\r\n"))
 }
 
-func (s *Service) sendStartTLS(addr string, auth smtp.Auth, raw []byte, to string) error {
-	client, err := smtp.Dial(addr)
+func (s *Service) sendSMTP(addr string, auth smtp.Auth, raw []byte, to string, startTLS bool) error {
+	conn, err := net.DialTimeout("tcp", addr, 8*time.Second)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(12 * time.Second))
+
+	client, err := smtp.NewClient(conn, s.cfg.SMTPHost)
 	if err != nil {
 		return err
 	}
 	defer client.Close()
-	if ok, _ := client.Extension("STARTTLS"); ok {
+	if startTLS {
+		ok, _ := client.Extension("STARTTLS")
+		if !ok {
+			return fmt.Errorf("smtp STARTTLS indisponivel")
+		}
 		if err := client.StartTLS(&tls.Config{ServerName: s.cfg.SMTPHost, MinVersion: tls.VersionTLS12}); err != nil {
 			return err
 		}
