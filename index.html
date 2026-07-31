@@ -346,31 +346,32 @@ void main() {
 
           <div class="step-2 step-content hidden" id="step2">
               <div class="order-summary-step2">
-                  <p>Pagar: <strong id="displayPayAmountStep2"></strong></p>
-                  <p>Receber: <strong id="displayReceiveAmountStep2"></strong></p>
+                  <p>Pay: <strong id="displayPayAmountStep2"></strong></p>
+                  <p>Receive: <strong id="displayReceiveAmountStep2"></strong></p>
               </div>
               <div class="wallet-input" id="walletGroup">
                   <div class="sell-network-input hidden" id="buyNetworkInput">
-                      <label>Rede para receber</label>
-                      <div class="sell-network-options" id="buyNetworkOptions" role="radiogroup" aria-label="Escolha a rede de recebimento"></div>
+                      <label>Network to receive</label>
+                      <div class="sell-network-options" id="buyNetworkOptions" role="radiogroup" aria-label="Select network"></div>
                   </div>
                   <label for="walletAddress">Wallet Address (BSC / USDT BEP20):</label>
                   <div class="input-group">
-                      <input type="text" id="walletAddress" placeholder="Cole um endereco BSC 0x..." />
+                      <input type="text" id="walletAddress" placeholder="Paste a BSC 0x address..." />
                   </div>
               </div>
 
               <div class="buy-payer-info hidden" id="buyPayerInfo">
                   <div class="wallet-input">
-                      <label for="buyCustomerName">Nome Completo:</label>
+                    
+                      <label for="buyCustomerName">Full Name:</label>
                       <div class="input-group">
-                          <input type="text" id="buyCustomerName" autocomplete="name" placeholder="Nome completo" />
+                          <input type="text" id="buyCustomerName" autocomplete="name" placeholder="Full name" />
                       </div>
                   </div>
                   <div class="wallet-input">
-                      <label for="buyCustomerEmail">Digite seu E-mail:</label>
+                      <label for="buyCustomerEmail">Enter your email:</label>
                       <div class="input-group">
-                          <input type="email" id="buyCustomerEmail" autocomplete="email" placeholder="email@exemplo.com" />
+                          <input type="email" id="buyCustomerEmail" autocomplete="email" placeholder="email@example.com" />
                       </div>
                   </div>
                   <div class="wallet-input">
@@ -383,9 +384,9 @@ void main() {
 
               <div class="sell-info hidden" id="sellInfo">
 
-    <!-- REDE -->
-    <div class="wallet-input sell-network-input hidden" id="sellNetworkSection">
-        <label id="sellNetworkLabel">Rede para envio</label>
+    <!-- REDE VISÍVEL NO STEP 2 -->
+    <div class="wallet-input sell-network-input" id="sellNetworkSection">
+        <label id="sellNetworkLabel">Rede para envio::</label>
 
         <div
             class="sell-network-options"
@@ -395,51 +396,7 @@ void main() {
         </div>
     </div>
 
-    <!-- WALLET CHAINFX -->
-    <div class="wallet-input hidden" id="sellWalletStep">
-        <label for="sellWalletAddress">Wallet para depósito:</label>
-
-        <div class="input-group sell-wallet-address-group">
-
-    <img
-        class="sell-wallet-prefix-icon"
-        src="https://res.cloudinary.com/limpeja/image/upload/v1785517224/image-Photoroom_16_chv3uo.png"
-        alt=""
-        aria-hidden="true"
-    />
-
-    <input
-        type="text"
-        id="sellWalletAddress"
-        readonly
-    />
-
-    <button
-        type="button"
-        class="sell-wallet-copy-btn"
-        id="sellWalletCopyBtn"
-        aria-label="Copiar endereço da wallet"
-        title="Copiar endereço"
-    >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M8 7a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-1v1a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3h1V7Zm3-1a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-6Zm-4 4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-1h-3a3 3 0 0 1-3-3v-3H7Z"/>
-        </svg>
-    </button>
-
-</div>
-
-<!-- COLOCA EXATAMENTE AQUI -->
-<div class="sell-order-timer hidden" id="sellOrderTimer">
-    <span class="sell-order-timer-dot"></span>
-
-    <div>
-        <strong id="sellOrderCountdown">15:00</strong>
-        <small>Tempo para envio do BTC</small>
-    </div>
-</div>
-    </div>
-
-    <!-- CPF começa escondido -->
+    <!-- CPF -->
     <div class="wallet-input" id="sellCpfStep">
         <label for="pixCpf">Seu CPF (para PIX)</label>
 
@@ -452,7 +409,7 @@ void main() {
         </div>
     </div>
 
-    <!-- PIX começa escondido -->
+    <!-- PIX -->
     <div class="wallet-input" id="sellPixStep">
         <label for="pixPhone">Chave PIX para receber</label>
 
@@ -490,9 +447,10 @@ void main() {
           </div>
           <div class="step-3 step-content hidden" id="step3">
               <div class="order-summary-step2 order-summary-step3">
-                  <p>Pagar: <strong id="displayPayAmountStep3"></strong></p>
-                  <p>Receber: <strong id="displayReceiveAmountStep3"></strong></p>
+                  <p>Pay: <strong id="displayPayAmountStep3"></strong></p>
+                  <p>Receive: <strong id="displayReceiveAmountStep3"></strong></p>
               </div>
+              
               <div class="step3-payment-card" id="step3PixPanel">
                   <div class="step3-payment-head">
                       <img src="/images/pix.png" alt="PIX" />
@@ -607,23 +565,78 @@ void main() {
         Transa&ccedil;&atilde;o Completa!
     </p>
     <div id="sellDepositBlock" class="hidden">
-        <div class="sell-deposit-title">Envie para:</div>
-        <div class="sell-deposit-card" id="sellDepositNotice">
-            <div class="sell-deposit-network-row">
-                <strong>Rede:</strong>
-                <img id="sellDepositNetworkIcon" src="https://cryptologos.cc/logos/bnb-bnb-logo.png?v=033" alt="BSC" />
-                <span id="sellDepositNetworkLabel">BEP20</span>
-            </div>
-            <div class="sell-deposit-address-row">
-                <code id="sellDepositWallet">0x7e3BF3FDfeF16040CE3ec60A663381766d3dB375</code>
-                <button class="step3-copy-btn" id="sellDepositCopyBtn" type="button" aria-label="Copiar endereco de deposito">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M8 7a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-1v1a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3h1V7Zm3-1a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-6Zm-4 4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-1h-3a3 3 0 0 1-3-3v-3H7Z"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
+
+    <!-- RESUMO DA ORDER -->
+    <div class="sell-final-summary">
+        <p>
+            Pay:
+            <strong id="sellFinalPayAmount"></strong>
+        </p>
+
+        <p>
+            Receive:
+            <strong id="sellFinalReceiveAmount"></strong>
+        </p>
     </div>
+
+    <div class="sell-deposit-title">Envie para:</div>
+
+    <div class="sell-deposit-card" id="sellDepositNotice">
+
+        <div class="sell-deposit-network-row">
+            <strong>Rede:</strong>
+
+            <img
+                id="sellDepositNetworkIcon"
+                src="https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/btc.png"
+                alt="BTC"
+            />
+
+            <span id="sellDepositNetworkLabel">
+                BTC Nativa
+            </span>
+        </div>
+
+        <!-- WALLET COM MESMO ÍCONE DO STEP ANTERIOR -->
+        <div class="sell-final-wallet-row">
+
+            <img
+                class="sell-final-wallet-icon"
+                src="https://res.cloudinary.com/limpeja/image/upload/v1785517224/image-Photoroom_16_chv3uo.png"
+                alt=""
+                aria-hidden="true"
+            />
+
+            <code id="sellDepositWallet">
+                bc1qpu935hr3mx7zttznlemxv4xmqflg96fex6n0rn
+            </code>
+
+
+            <button
+                class="sell-wallet-copy-btn"
+                id="sellDepositCopyBtn"
+                type="button"
+                aria-label="Copiar endereco de deposito"
+            >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M8 7a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-1v1a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3h1V7Zm3-1a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-6Zm-4 4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-1h-3a3 3 0 0 1-3-3v-3H7Z"/>
+                </svg>
+            </button>
+
+        </div>
+
+    </div>
+</div>
+<!-- TIMER SELL: FORA DO CARD/WALLET -->
+<div class="sell-order-timer hidden" id="sellOrderTimer">
+    <span class="sell-order-timer-dot"></span>
+
+    <div>
+        <strong id="sellOrderCountdown">15:00</strong>
+        <small>Tempo para envio do BTC</small>
+    </div>
+</div>
+
     <img id="qrCodeImg" class="hidden" src="" alt="QR Code PIX" />
     <div id="countdownBlock" class="hidden countdown">
         <div class="countdown-circle">
