@@ -31,6 +31,72 @@ func TestTierLimitSupportsMCPAvailabilityLoad(t *testing.T) {
 	if got := tierLimit("sk_live_cfx_probe", "mcp_abuse"); got != 30 {
 		t.Fatalf("expected live MCP abuse limit 30/min, got %d", got)
 	}
+	if got := tierLimit("", "mcp_abuse"); got != 5 {
+		t.Fatalf("expected anonymous MCP abuse limit 5/min, got %d", got)
+	}
+}
+
+func TestMCPAnonymousAbuseLimiterAllowsFiveAndBlocksSixth(t *testing.T) {
+	rl := newMCPRateLimiter()
+	key := "anon:203.0.113.10:mcp_abuse"
+
+	for i := 0; i < 5; i++ {
+		allowed, remaining, _ := rl.allow(key, tierLimit("", "mcp_abuse"))
+		if !allowed {
+			t.Fatalf("request %d should be allowed", i+1)
+		}
+		if want := 4 - i; remaining != want {
+			t.Fatalf("request %d remaining=%d, want %d", i+1, remaining, want)
+		}
+	}
+	allowed, remaining, _ := rl.allow(key, tierLimit("", "mcp_abuse"))
+	if allowed || remaining != 0 {
+		t.Fatalf("sixth anonymous abuse request allowed=%v remaining=%d, want blocked with remaining 0", allowed, remaining)
+	}
+}
+
+func TestMCPAnonymousAbuseLimiterConcurrentDoesNotExceedFive(t *testing.T) {
+	rl := newMCPRateLimiter()
+	key := "anon:203.0.113.11:mcp_abuse"
+	limit := tierLimit("", "mcp_abuse")
+	var allowed atomic.Int32
+	var wg sync.WaitGroup
+	start := make(chan struct{})
+
+	for i := 0; i < 30; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			ok, _, _ := rl.allow(key, limit)
+			if ok {
+				allowed.Add(1)
+			}
+		}()
+	}
+	close(start)
+	wg.Wait()
+	if got := allowed.Load(); got != 5 {
+		t.Fatalf("concurrent anonymous abuse allowed %d requests, want exactly 5", got)
+	}
+}
+
+func TestMCPAnonymousAbuseLimiterKeepsIdentitiesIndependent(t *testing.T) {
+	rl := newMCPRateLimiter()
+	limit := tierLimit("", "mcp_abuse")
+
+	for _, key := range []string{"anon:203.0.113.12:mcp_abuse", "anon:203.0.113.13:mcp_abuse"} {
+		for i := 0; i < 5; i++ {
+			allowed, _, _ := rl.allow(key, limit)
+			if !allowed {
+				t.Fatalf("%s request %d should be allowed", key, i+1)
+			}
+		}
+		allowed, _, _ := rl.allow(key, limit)
+		if allowed {
+			t.Fatalf("%s sixth request should be blocked", key)
+		}
+	}
 }
 
 func TestMCPStaticDiscoveryUsesCachedJSON(t *testing.T) {
