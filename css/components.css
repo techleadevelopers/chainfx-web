@@ -297,6 +297,7 @@
 /* Reordena sem alterar o HTML */
 #buyPayerInfo .wallet-input:has(#buyCustomerEmail) {
   order: 1;
+  margin-top: 8px;
 }
 
 #buyPayerInfo .wallet-input:has(#buyCustomerName) {
