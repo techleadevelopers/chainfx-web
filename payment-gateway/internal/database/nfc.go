@@ -102,35 +102,51 @@ type NFCAuthorization struct {
 }
 
 type MerchantSettlement struct {
-	ID                string     `json:"id"`
-	MerchantID        string     `json:"merchant_id"`
-	TerminalID        string     `json:"terminal_id"`
-	AuthorizationID   string     `json:"authorization_id"`
-	CaptureID         string     `json:"capture_id"`
-	AmountBRLMinor    int64      `json:"amount_brl_minor"`
-	FeeBRLMinor       int64      `json:"fee_brl_minor"`
-	Provider          string     `json:"provider"`
-	Rail              string     `json:"rail"`
-	Status            string     `json:"status"`
-	ProviderReference string     `json:"provider_reference,omitempty"`
-	ProviderE2EID     string     `json:"provider_e2e_id,omitempty"`
-	ProviderIDEnvio   string     `json:"provider_id_envio,omitempty"`
-	ProviderStatus    string     `json:"provider_status,omitempty"`
-	TXID              string     `json:"txid,omitempty"`
-	IdempotencyKey    string     `json:"idempotency_key"`
-	TargetPixKey      string     `json:"target_pix_key,omitempty"`
-	TargetDocument    string     `json:"target_document,omitempty"`
-	RetryCount        int        `json:"retry_count"`
-	NextRetryAt       time.Time  `json:"next_retry_at"`
-	ClaimedAt         *time.Time `json:"claimed_at,omitempty"`
-	ClaimedBy         string     `json:"claimed_by,omitempty"`
-	ErrorMessage      string     `json:"error_message,omitempty"`
-	SubmittedAt       *time.Time `json:"submitted_at,omitempty"`
-	ConfirmedAt       *time.Time `json:"confirmed_at,omitempty"`
-	FailedAt          *time.Time `json:"failed_at,omitempty"`
-	CreatedAt         time.Time  `json:"created_at"`
-	UpdatedAt         time.Time  `json:"updated_at"`
+	ID                         string     `json:"id"`
+	MerchantID                 string     `json:"merchant_id"`
+	TerminalID                 string     `json:"terminal_id"`
+	AuthorizationID            string     `json:"authorization_id"`
+	CaptureID                  string     `json:"capture_id"`
+	AmountBRLMinor             int64      `json:"amount_brl_minor"`
+	FeeBRLMinor                int64      `json:"fee_brl_minor"`
+	Provider                   string     `json:"provider"`
+	Rail                       string     `json:"rail"`
+	Status                     string     `json:"status"`
+	ProviderReference          string     `json:"provider_reference,omitempty"`
+	ProviderE2EID              string     `json:"provider_e2e_id,omitempty"`
+	ProviderIDEnvio            string     `json:"provider_id_envio,omitempty"`
+	ProviderStatus             string     `json:"provider_status,omitempty"`
+	TXID                       string     `json:"txid,omitempty"`
+	IdempotencyKey             string     `json:"idempotency_key"`
+	TargetPixKey               string     `json:"target_pix_key,omitempty"`
+	TargetDocument             string     `json:"target_document,omitempty"`
+	RetryCount                 int        `json:"retry_count"`
+	NextRetryAt                time.Time  `json:"next_retry_at"`
+	ClaimedAt                  *time.Time `json:"claimed_at,omitempty"`
+	ClaimedBy                  string     `json:"claimed_by,omitempty"`
+	ErrorMessage               string     `json:"error_message,omitempty"`
+	SubmittedAt                *time.Time `json:"submitted_at,omitempty"`
+	SubmitStartedAt            *time.Time `json:"submit_started_at,omitempty"`
+	SubmitCompletedAt          *time.Time `json:"submit_completed_at,omitempty"`
+	SubmitOutcome              string     `json:"submit_outcome,omitempty"`
+	ConfirmedAt                *time.Time `json:"confirmed_at,omitempty"`
+	FailedAt                   *time.Time `json:"failed_at,omitempty"`
+	ReconciliationAttemptCount int        `json:"reconciliation_attempt_count"`
+	FirstAmbiguousAt           *time.Time `json:"first_ambiguous_at,omitempty"`
+	LastReconciledAt           *time.Time `json:"last_reconciled_at,omitempty"`
+	ConsecutiveNotFound        int        `json:"consecutive_not_found"`
+	ManualReviewReason         string     `json:"manual_review_reason,omitempty"`
+	CreatedAt                  time.Time  `json:"created_at"`
+	UpdatedAt                  time.Time  `json:"updated_at"`
 }
+
+const merchantSettlementColumns = `
+id, merchant_id, terminal_id, authorization_id, capture_id, amount_brl_minor, fee_brl_minor,
+provider, rail, status, COALESCE(provider_reference,''), COALESCE(provider_e2e_id,''), COALESCE(provider_id_envio,''), COALESCE(provider_status,''), COALESCE(txid,''),
+idempotency_key, COALESCE(target_pix_key,''), COALESCE(target_document,''), retry_count, next_retry_at, claimed_at, COALESCE(claimed_by,''),
+COALESCE(error_message,''), submitted_at, submit_started_at, submit_completed_at, COALESCE(submit_outcome,'not_submitted'), confirmed_at, failed_at,
+COALESCE(reconciliation_attempt_count,0), first_ambiguous_at, last_reconciled_at, COALESCE(consecutive_not_found,0), COALESCE(manual_review_reason,''),
+created_at, updated_at`
 
 type NFCCaptureResult struct {
 	Authorization *NFCAuthorization   `json:"authorization"`
@@ -698,6 +714,19 @@ func (db *DB) captureNFCAuthorization(ctx context.Context, id string) (*NFCCaptu
 	if auth.Status != NFCStatusApproved {
 		return nil, fmt.Errorf("nfc: authorization %s is %s, not approved", id, auth.Status)
 	}
+	now, err := txNow(ctx, tx)
+	if err != nil {
+		return nil, fmt.Errorf("nfc: capture clock check: %w", err)
+	}
+	if nfcHoldExpiredAt(auth.HoldExpiresAt, now) {
+		if err := txExpireApprovedNFCAuthorization(ctx, tx, auth); err != nil {
+			return nil, err
+		}
+		if err := tx.Commit(); err != nil {
+			return nil, fmt.Errorf("nfc: commit expired capture guard: %w", err)
+		}
+		return nil, fmt.Errorf("nfc: authorization %s hold expired", id)
+	}
 
 	balanceResult, err := tx.ExecContext(ctx, `
 UPDATE nfc_wallet_balances
@@ -745,6 +774,60 @@ WHERE id=$1 AND status='approved'`, auth.ID)
 	return &NFCCaptureResult{Authorization: captured, Settlement: settlement}, nil
 }
 
+func txNow(ctx context.Context, tx *sql.Tx) (time.Time, error) {
+	var now time.Time
+	if err := tx.QueryRowContext(ctx, `SELECT NOW()`).Scan(&now); err != nil {
+		return time.Time{}, err
+	}
+	return now.UTC(), nil
+}
+
+func nfcHoldExpiredAt(hold *time.Time, now time.Time) bool {
+	return hold != nil && !now.UTC().Before(hold.UTC())
+}
+
+func txExpireApprovedNFCAuthorization(ctx context.Context, tx *sql.Tx, auth *NFCAuthorization) error {
+	if auth == nil {
+		return fmt.Errorf("nfc: authorization is nil")
+	}
+	res, err := tx.ExecContext(ctx, `
+UPDATE nfc_wallet_balances
+SET available_usdt_micro = available_usdt_micro + $3,
+    locked_usdt_micro = locked_usdt_micro - $3,
+    updated_at = NOW()
+WHERE wallet_address = $1 AND network = $2 AND asset = 'USDT'
+  AND locked_usdt_micro >= $3`,
+		strings.ToLower(auth.Wallet), normalizeNFCNetwork(auth.Network), auth.RequiredUSDTMic)
+	if err != nil {
+		return fmt.Errorf("nfc: expire balance %s: %w", auth.ID, err)
+	}
+	if rows, err := res.RowsAffected(); err != nil {
+		return err
+	} else if rows != 1 {
+		return fmt.Errorf("nfc: authorization %s has no matching locked balance", auth.ID)
+	}
+	res, err = tx.ExecContext(ctx, `
+UPDATE nfc_authorizations
+SET status='expired', reason='hold_expired', expired_at=NOW(), updated_at=NOW()
+WHERE id=$1 AND status='approved'
+  AND hold_expires_at IS NOT NULL
+  AND hold_expires_at <= NOW()`, auth.ID)
+	if err != nil {
+		return fmt.Errorf("nfc: expire authorization %s: %w", auth.ID, err)
+	}
+	if rows, err := res.RowsAffected(); err != nil {
+		return err
+	} else if rows != 1 {
+		return fmt.Errorf("nfc: authorization %s changed before expiry", auth.ID)
+	}
+	if err := txReleaseNFCLiquidityReservation(ctx, tx, auth.ID); err != nil {
+		return err
+	}
+	auth.Status = NFCStatusExpired
+	auth.Reason = "hold_expired"
+	return nil
+}
+
 func txCreateMerchantSettlementForCapture(ctx context.Context, tx *sql.Tx, auth *NFCAuthorization) (*MerchantSettlement, error) {
 	if auth == nil {
 		return nil, fmt.Errorf("nfc settlement: authorization is nil")
@@ -765,16 +848,13 @@ FOR UPDATE`, auth.MerchantID).Scan(&pixKey, &document); err != nil {
 	}
 	settlementID := "nfc_settle_" + NewAccessToken()[:24]
 	idempotencyKey := settlementID
-	const q = `
+	q := fmt.Sprintf(`
 INSERT INTO merchant_settlements
   (id, merchant_id, terminal_id, authorization_id, capture_id, amount_brl_minor, fee_brl_minor,
    provider, rail, status, idempotency_key, target_pix_key, target_document)
 VALUES ($1,$2,$3,$4,$5,$6,$7,'efi','pix_send','PENDING',$8,$9,$10)
 ON CONFLICT (authorization_id) DO UPDATE SET updated_at = merchant_settlements.updated_at
-RETURNING id, merchant_id, terminal_id, authorization_id, capture_id, amount_brl_minor, fee_brl_minor,
-          provider, rail, status, COALESCE(provider_reference,''), COALESCE(provider_e2e_id,''), COALESCE(provider_id_envio,''), COALESCE(provider_status,''), COALESCE(txid,''),
-          idempotency_key, COALESCE(target_pix_key,''), COALESCE(target_document,''), retry_count, next_retry_at, claimed_at, COALESCE(claimed_by,''),
-          COALESCE(error_message,''), submitted_at, confirmed_at, failed_at, created_at, updated_at`
+RETURNING %s`, merchantSettlementColumns)
 	settlement, err := scanMerchantSettlement(tx.QueryRowContext(ctx, q,
 		settlementID, auth.MerchantID, auth.TerminalID, auth.ID, auth.ID, auth.AmountBRLMinor, auth.FeeBRLMinor,
 		idempotencyKey, pixKey, document,
@@ -786,13 +866,10 @@ RETURNING id, merchant_id, terminal_id, authorization_id, capture_id, amount_brl
 }
 
 func (db *DB) GetMerchantSettlement(ctx context.Context, id string) (*MerchantSettlement, error) {
-	const q = `
-SELECT id, merchant_id, terminal_id, authorization_id, capture_id, amount_brl_minor, fee_brl_minor,
-       provider, rail, status, COALESCE(provider_reference,''), COALESCE(provider_e2e_id,''), COALESCE(provider_id_envio,''), COALESCE(provider_status,''), COALESCE(txid,''),
-       idempotency_key, COALESCE(target_pix_key,''), COALESCE(target_document,''), retry_count, next_retry_at, claimed_at, COALESCE(claimed_by,''),
-       COALESCE(error_message,''), submitted_at, confirmed_at, failed_at, created_at, updated_at
+	q := fmt.Sprintf(`
+SELECT %s
 FROM merchant_settlements
-WHERE id = $1`
+WHERE id = $1`, merchantSettlementColumns)
 	settlement, err := scanMerchantSettlement(db.SQL.QueryRowContext(ctx, q, strings.TrimSpace(id)))
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -804,16 +881,16 @@ func (db *DB) GetDueMerchantSettlements(ctx context.Context, limit int) ([]Merch
 	if limit <= 0 || limit > 100 {
 		limit = 50
 	}
-	const q = `
-SELECT id, merchant_id, terminal_id, authorization_id, capture_id, amount_brl_minor, fee_brl_minor,
-       provider, rail, status, COALESCE(provider_reference,''), COALESCE(provider_e2e_id,''), COALESCE(provider_id_envio,''), COALESCE(provider_status,''), COALESCE(txid,''),
-       idempotency_key, COALESCE(target_pix_key,''), COALESCE(target_document,''), retry_count, next_retry_at, claimed_at, COALESCE(claimed_by,''),
-       COALESCE(error_message,''), submitted_at, confirmed_at, failed_at, created_at, updated_at
+	q := fmt.Sprintf(`
+SELECT %s
 FROM merchant_settlements
-WHERE status IN ('PENDING','RETRYABLE','SUBMITTED','SUBMISSION_UNKNOWN')
+WHERE (
+    status IN ('PENDING','RETRYABLE','SUBMITTED','SUBMISSION_UNKNOWN')
+    OR (status = 'PROCESSING' AND COALESCE(claimed_at, updated_at) < NOW() - INTERVAL '2 minutes')
+  )
   AND next_retry_at <= NOW()
 ORDER BY created_at
-LIMIT $1`
+LIMIT $1`, merchantSettlementColumns)
 	rows, err := db.SQL.QueryContext(ctx, q, limit)
 	if err != nil {
 		return nil, fmt.Errorf("nfc settlement: list due: %w", err)
@@ -831,28 +908,31 @@ LIMIT $1`
 }
 
 func (db *DB) ClaimMerchantSettlement(ctx context.Context, id string) (*MerchantSettlement, bool, error) {
-	const q = `
+	q := fmt.Sprintf(`
 WITH candidate AS (
     SELECT id
     FROM merchant_settlements
     WHERE id = $1
-      AND status IN ('PENDING','RETRYABLE','SUBMITTED','SUBMISSION_UNKNOWN')
+      AND (
+        status IN ('PENDING','RETRYABLE','SUBMITTED','SUBMISSION_UNKNOWN')
+        OR (status = 'PROCESSING' AND COALESCE(claimed_at, updated_at) < NOW() - INTERVAL '2 minutes')
+      )
       AND next_retry_at <= NOW()
     ORDER BY created_at
     FOR UPDATE SKIP LOCKED
     LIMIT 1
 )
 UPDATE merchant_settlements
-SET status='PROCESSING',
+SET status=CASE
+      WHEN merchant_settlements.status IN ('PENDING','RETRYABLE') THEN 'PROCESSING'
+      ELSE merchant_settlements.status
+    END,
     claimed_at=NOW(),
     claimed_by=$2,
     updated_at=NOW()
 FROM candidate
 WHERE merchant_settlements.id = candidate.id
-RETURNING id, merchant_id, terminal_id, authorization_id, capture_id, amount_brl_minor, fee_brl_minor,
-          provider, rail, status, COALESCE(provider_reference,''), COALESCE(provider_e2e_id,''), COALESCE(provider_id_envio,''), COALESCE(provider_status,''), COALESCE(txid,''),
-          idempotency_key, COALESCE(target_pix_key,''), COALESCE(target_document,''), retry_count, next_retry_at, claimed_at, COALESCE(claimed_by,''),
-          COALESCE(error_message,''), submitted_at, confirmed_at, failed_at, created_at, updated_at`
+RETURNING %s`, merchantSettlementColumns)
 	settlement, err := scanMerchantSettlement(db.SQL.QueryRowContext(ctx, q, strings.TrimSpace(id), "nfc-worker"))
 	if err == sql.ErrNoRows {
 		return nil, false, nil
@@ -861,6 +941,28 @@ RETURNING id, merchant_id, terminal_id, authorization_id, capture_id, amount_brl
 		return nil, false, err
 	}
 	return settlement, true, nil
+}
+
+func (db *DB) MarkMerchantSettlementSubmitStarted(ctx context.Context, id, idEnvio string) error {
+	id = strings.TrimSpace(id)
+	idEnvio = strings.TrimSpace(idEnvio)
+	if id == "" || idEnvio == "" {
+		return fmt.Errorf("nfc settlement: id and provider_id_envio are required before submit")
+	}
+	_, err := db.SQL.ExecContext(ctx, `
+UPDATE merchant_settlements
+SET provider_id_envio=COALESCE(NULLIF(provider_id_envio,''), $2),
+    provider_reference=COALESCE(NULLIF(provider_reference,''), $2),
+    submit_started_at=COALESCE(submit_started_at, NOW()),
+    submit_outcome='started',
+    error_message=NULL,
+    updated_at=NOW()
+WHERE id=$1
+  AND status='PROCESSING'
+  AND COALESCE(submit_outcome,'not_submitted') IN ('not_submitted','started')
+  AND (provider_id_envio IS NULL OR provider_id_envio='' OR provider_id_envio=$2)`,
+		id, idEnvio)
+	return err
 }
 
 func (db *DB) MarkMerchantSettlementManualRequired(ctx context.Context, id, reason string) error {
@@ -880,9 +982,12 @@ UPDATE merchant_settlements
 SET status='SUBMITTED',
     retry_count=retry_count+1,
     provider_reference=$2,
-    provider_id_envio=$3,
+    provider_id_envio=COALESCE(NULLIF(provider_id_envio,''), $3),
     provider_e2e_id=$4,
     provider_status=$5,
+    submit_completed_at=COALESCE(submit_completed_at, NOW()),
+    submit_outcome='confirmed',
+    consecutive_not_found=0,
     error_message=NULL,
     submitted_at=COALESCE(submitted_at, NOW()),
     claimed_at=NULL,
@@ -894,18 +999,22 @@ WHERE id=$1 AND status='PROCESSING'`,
 	return err
 }
 
-func (db *DB) MarkMerchantSettlementSubmissionUnknown(ctx context.Context, id, errMsg string) error {
+func (db *DB) MarkMerchantSettlementSubmissionUnknown(ctx context.Context, id, idEnvio, errMsg string) error {
 	_, err := db.SQL.ExecContext(ctx, `
 UPDATE merchant_settlements
 SET status='SUBMISSION_UNKNOWN',
     retry_count=retry_count+1,
+    provider_id_envio=COALESCE(NULLIF(provider_id_envio,''), $3),
+    provider_reference=COALESCE(NULLIF(provider_reference,''), $3),
+    submit_outcome='ambiguous',
+    first_ambiguous_at=COALESCE(first_ambiguous_at, NOW()),
     error_message=$2,
     claimed_at=NULL,
     claimed_by=NULL,
     next_retry_at=NOW() + INTERVAL '30 seconds',
     updated_at=NOW()
 WHERE id=$1 AND status='PROCESSING'`,
-		strings.TrimSpace(id), strings.TrimSpace(errMsg))
+		strings.TrimSpace(id), strings.TrimSpace(errMsg), nullableString(strings.TrimSpace(idEnvio)))
 	return err
 }
 
@@ -933,12 +1042,56 @@ func (db *DB) MarkMerchantSettlementManualReview(ctx context.Context, id, errMsg
 UPDATE merchant_settlements
 SET status='MANUAL_REVIEW',
     error_message=$2,
+    manual_review_reason=$2,
     failed_at=NOW(),
     claimed_at=NULL,
     claimed_by=NULL,
     updated_at=NOW()
 WHERE id=$1 AND status IN ('PENDING','PROCESSING','SUBMITTED','SUBMISSION_UNKNOWN','RETRYABLE','MANUAL_REQUIRED')`,
 		strings.TrimSpace(id), strings.TrimSpace(errMsg))
+	return err
+}
+
+func (db *DB) MarkMerchantSettlementReconcileNotFound(ctx context.Context, id, errMsg string, retryAfter time.Duration, minAttempts int, grace time.Duration) error {
+	if retryAfter <= 0 {
+		retryAfter = 30 * time.Second
+	}
+	if minAttempts <= 0 {
+		minAttempts = 3
+	}
+	if grace <= 0 {
+		grace = 15 * time.Minute
+	}
+	_, err := db.SQL.ExecContext(ctx, `
+UPDATE merchant_settlements
+SET status=CASE
+      WHEN COALESCE(first_ambiguous_at, submit_started_at, created_at) <= NOW() - ($4::BIGINT * INTERVAL '1 millisecond')
+       AND reconciliation_attempt_count + 1 >= $5
+      THEN 'MANUAL_REVIEW'
+      ELSE status
+    END,
+    reconciliation_attempt_count=reconciliation_attempt_count+1,
+    consecutive_not_found=consecutive_not_found+1,
+    last_reconciled_at=NOW(),
+    error_message=$2,
+    manual_review_reason=CASE
+      WHEN COALESCE(first_ambiguous_at, submit_started_at, created_at) <= NOW() - ($4::BIGINT * INTERVAL '1 millisecond')
+       AND reconciliation_attempt_count + 1 >= $5
+      THEN $2
+      ELSE manual_review_reason
+    END,
+    failed_at=CASE
+      WHEN COALESCE(first_ambiguous_at, submit_started_at, created_at) <= NOW() - ($4::BIGINT * INTERVAL '1 millisecond')
+       AND reconciliation_attempt_count + 1 >= $5
+      THEN NOW()
+      ELSE failed_at
+    END,
+    claimed_at=NULL,
+    claimed_by=NULL,
+    next_retry_at=NOW() + ($3::BIGINT * INTERVAL '1 millisecond'),
+    updated_at=NOW()
+WHERE id=$1 AND status IN ('SUBMISSION_UNKNOWN','SUBMITTED','PROCESSING','RETRYABLE')`,
+		strings.TrimSpace(id), strings.TrimSpace(errMsg), retryAfter.Milliseconds(), grace.Milliseconds(), minAttempts)
 	return err
 }
 
@@ -956,15 +1109,12 @@ func (db *DB) ApplyMerchantSettlementProviderEvent(ctx context.Context, provider
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	settlement, err := scanMerchantSettlement(tx.QueryRowContext(ctx, `
-SELECT id, merchant_id, terminal_id, authorization_id, capture_id, amount_brl_minor, fee_brl_minor,
-       provider, rail, status, COALESCE(provider_reference,''), COALESCE(provider_e2e_id,''), COALESCE(provider_id_envio,''), COALESCE(provider_status,''), COALESCE(txid,''),
-       idempotency_key, COALESCE(target_pix_key,''), COALESCE(target_document,''), retry_count, next_retry_at, claimed_at, COALESCE(claimed_by,''),
-       COALESCE(error_message,''), submitted_at, confirmed_at, failed_at, created_at, updated_at
+	settlement, err := scanMerchantSettlement(tx.QueryRowContext(ctx, fmt.Sprintf(`
+SELECT %s
 FROM merchant_settlements
 WHERE provider = $1
   AND (($2 <> '' AND idempotency_key = $2) OR ($2 <> '' AND provider_id_envio = $2) OR ($3 <> '' AND provider_e2e_id = $3))
-FOR UPDATE`, provider, idEnvio, e2eID))
+FOR UPDATE`, merchantSettlementColumns), provider, idEnvio, e2eID))
 	if err == sql.ErrNoRows {
 		return false, nil, nil
 	}
@@ -993,6 +1143,11 @@ SET status='CONFIRMED',
     provider_id_envio=$4,
     provider_status=$5,
     txid=$2,
+    submit_outcome='confirmed',
+    submit_completed_at=COALESCE(submit_completed_at, NOW()),
+    reconciliation_attempt_count=reconciliation_attempt_count+1,
+    last_reconciled_at=NOW(),
+    consecutive_not_found=0,
     error_message=NULL,
     confirmed_at=COALESCE(confirmed_at, NOW()),
     claimed_at=NULL,
@@ -1009,6 +1164,10 @@ SET status='REJECTED',
     provider_e2e_id=$3,
     provider_id_envio=$4,
     provider_status=$5,
+    submit_outcome='rejected',
+    submit_completed_at=COALESCE(submit_completed_at, NOW()),
+    reconciliation_attempt_count=reconciliation_attempt_count+1,
+    last_reconciled_at=NOW(),
     error_message='provider rejected Pix Send',
     failed_at=COALESCE(failed_at, NOW()),
     claimed_at=NULL,
@@ -1024,6 +1183,9 @@ SET provider_reference=$2,
     provider_e2e_id=COALESCE(NULLIF($3,''), provider_e2e_id),
     provider_id_envio=COALESCE(NULLIF($4,''), provider_id_envio),
     provider_status=$5,
+    reconciliation_attempt_count=reconciliation_attempt_count+1,
+    last_reconciled_at=NOW(),
+    consecutive_not_found=0,
     updated_at=NOW()
 WHERE id=$1`,
 			settlement.ID, firstNonEmptyDB(e2eID, idEnvio), e2eID, idEnvio, status)
@@ -1290,13 +1452,10 @@ ON CONFLICT (anomaly_key) DO UPDATE SET
 }
 
 func txGetMerchantSettlementByAuthorization(ctx context.Context, tx *sql.Tx, authorizationID string) (*MerchantSettlement, error) {
-	const q = `
-SELECT id, merchant_id, terminal_id, authorization_id, capture_id, amount_brl_minor, fee_brl_minor,
-       provider, rail, status, COALESCE(provider_reference,''), COALESCE(provider_e2e_id,''), COALESCE(provider_id_envio,''), COALESCE(provider_status,''), COALESCE(txid,''),
-       idempotency_key, COALESCE(target_pix_key,''), COALESCE(target_document,''), retry_count, next_retry_at, claimed_at, COALESCE(claimed_by,''),
-       COALESCE(error_message,''), submitted_at, confirmed_at, failed_at, created_at, updated_at
+	q := fmt.Sprintf(`
+SELECT %s
 FROM merchant_settlements
-WHERE authorization_id = $1`
+WHERE authorization_id = $1`, merchantSettlementColumns)
 	settlement, err := scanMerchantSettlement(tx.QueryRowContext(ctx, q, strings.TrimSpace(authorizationID)))
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -1394,12 +1553,14 @@ WHERE authorization_id=$1 AND status='ACTIVE'`,
 
 func scanMerchantSettlement(row scanner) (*MerchantSettlement, error) {
 	var s MerchantSettlement
-	var claimedAt, submittedAt, confirmedAt, failedAt sql.NullTime
+	var claimedAt, submittedAt, submitStartedAt, submitCompletedAt, confirmedAt, failedAt, firstAmbiguousAt, lastReconciledAt sql.NullTime
 	err := row.Scan(
 		&s.ID, &s.MerchantID, &s.TerminalID, &s.AuthorizationID, &s.CaptureID, &s.AmountBRLMinor, &s.FeeBRLMinor,
 		&s.Provider, &s.Rail, &s.Status, &s.ProviderReference, &s.ProviderE2EID, &s.ProviderIDEnvio, &s.ProviderStatus, &s.TXID,
 		&s.IdempotencyKey, &s.TargetPixKey, &s.TargetDocument, &s.RetryCount, &s.NextRetryAt, &claimedAt, &s.ClaimedBy,
-		&s.ErrorMessage, &submittedAt, &confirmedAt, &failedAt, &s.CreatedAt, &s.UpdatedAt,
+		&s.ErrorMessage, &submittedAt, &submitStartedAt, &submitCompletedAt, &s.SubmitOutcome, &confirmedAt, &failedAt,
+		&s.ReconciliationAttemptCount, &firstAmbiguousAt, &lastReconciledAt, &s.ConsecutiveNotFound, &s.ManualReviewReason,
+		&s.CreatedAt, &s.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -1410,11 +1571,23 @@ func scanMerchantSettlement(row scanner) (*MerchantSettlement, error) {
 	if submittedAt.Valid {
 		s.SubmittedAt = &submittedAt.Time
 	}
+	if submitStartedAt.Valid {
+		s.SubmitStartedAt = &submitStartedAt.Time
+	}
+	if submitCompletedAt.Valid {
+		s.SubmitCompletedAt = &submitCompletedAt.Time
+	}
 	if confirmedAt.Valid {
 		s.ConfirmedAt = &confirmedAt.Time
 	}
 	if failedAt.Valid {
 		s.FailedAt = &failedAt.Time
+	}
+	if firstAmbiguousAt.Valid {
+		s.FirstAmbiguousAt = &firstAmbiguousAt.Time
+	}
+	if lastReconciledAt.Valid {
+		s.LastReconciledAt = &lastReconciledAt.Time
 	}
 	return &s, nil
 }
