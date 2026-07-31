@@ -489,5 +489,5 @@ func writeUploadError(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": clientErr.Error()})
 		return
 	}
-	writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+	writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 }
