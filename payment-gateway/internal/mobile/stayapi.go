@@ -2,14 +2,19 @@ package mobile
 
 import (
 	"context"
+	"crypto/sha256"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -52,6 +57,22 @@ type stayHotelProduct struct {
 	Available    bool           `json:"available"`
 	BookingLinks map[string]any `json:"booking_links,omitempty"`
 }
+
+type stayHotelMetricsCounters struct {
+	cacheHit          atomic.Uint64
+	cacheMiss         atomic.Uint64
+	cacheStaleHit     atomic.Uint64
+	providerRequests  atomic.Uint64
+	providerErrors402 atomic.Uint64
+	providerErrors429 atomic.Uint64
+}
+
+var (
+	stayHotelCacheSchemaMu    sync.Mutex
+	stayHotelCacheSchemaReady sync.Map
+	stayHotelRequestLocks     sync.Map
+	stayHotelMetrics          stayHotelMetricsCounters
+)
 
 func newStayAPIClient() *stayAPIClient {
 	timeout := time.Duration(envInt("STAYAPI_TIMEOUT_SECONDS", 10)) * time.Second
@@ -120,7 +141,16 @@ func (c *stayAPIClient) SearchHotels(ctx context.Context, q stayHotelQuery) ([]s
 	values.Set("check_in", firstNonEmptyStr(q.CheckIn, time.Now().UTC().AddDate(0, 0, 30).Format("2006-01-02")))
 	values.Set("check_out", firstNonEmptyStr(q.CheckOut, time.Now().UTC().AddDate(0, 0, 32).Format("2006-01-02")))
 	values.Set("adults", firstNonEmptyStr(q.Adults, "2"))
+	if q.Children != "" {
+		values.Set("children", q.Children)
+	}
+	if q.Rooms != "" {
+		values.Set("rooms", q.Rooms)
+	}
 	values.Set("currency", firstNonEmptyStr(q.Currency, "BRL"))
+	if q.Locale != "" {
+		values.Set("locale", q.Locale)
+	}
 	var decoded map[string]any
 	path := firstNonEmptyStr(os.Getenv("STAYAPI_HOTEL_SEARCH_PATH"), "/v1/google_hotels/search")
 	if err := c.get(ctx, path, values, &decoded); err != nil {
@@ -145,7 +175,224 @@ type stayHotelQuery struct {
 	CheckIn  string
 	CheckOut string
 	Adults   string
+	Children string
+	Rooms    string
 	Currency string
+	Locale   string
+}
+
+func normalizeStayHotelQuery(q stayHotelQuery) stayHotelQuery {
+	now := time.Now().UTC()
+	q.Location = firstNonEmptyStr(strings.TrimSpace(q.Location), "Brazil")
+	q.Search = strings.TrimSpace(q.Search)
+	q.CheckIn = firstNonEmptyStr(strings.TrimSpace(q.CheckIn), now.AddDate(0, 0, 30).Format("2006-01-02"))
+	q.CheckOut = firstNonEmptyStr(strings.TrimSpace(q.CheckOut), now.AddDate(0, 0, 32).Format("2006-01-02"))
+	q.Adults = firstNonEmptyStr(strings.TrimSpace(q.Adults), "2")
+	q.Children = firstNonEmptyStr(strings.TrimSpace(q.Children), "0")
+	q.Rooms = firstNonEmptyStr(strings.TrimSpace(q.Rooms), "1")
+	q.Currency = strings.ToUpper(firstNonEmptyStr(strings.TrimSpace(q.Currency), "BRL"))
+	q.Locale = firstNonEmptyStr(strings.TrimSpace(q.Locale), "pt-BR")
+	return q
+}
+
+func stayHotelCacheKey(q stayHotelQuery) string {
+	q = normalizeStayHotelQuery(q)
+	raw := strings.Join([]string{
+		strings.ToLower(q.Location),
+		strings.ToLower(q.Search),
+		q.CheckIn,
+		q.CheckOut,
+		q.Adults,
+		q.Children,
+		q.Rooms,
+		q.Currency,
+		q.Locale,
+	}, "|")
+	sum := sha256.Sum256([]byte(raw))
+	return fmt.Sprintf("%x", sum[:])
+}
+
+func stayHotelCacheFreshTTL() time.Duration {
+	hours := envInt("STAYAPI_CACHE_TTL_HOURS", 24)
+	if hours <= 0 {
+		hours = 24
+	}
+	return time.Duration(hours) * time.Hour
+}
+
+func stayHotelCacheStaleTTL() time.Duration {
+	days := envInt("STAYAPI_STALE_CACHE_DAYS", 30)
+	if days <= 0 {
+		days = 30
+	}
+	return time.Duration(days) * 24 * time.Hour
+}
+
+func observeStayHotelMetric(event string, err error) {
+	switch event {
+	case "cache_hit":
+		stayHotelMetrics.cacheHit.Add(1)
+	case "cache_miss":
+		stayHotelMetrics.cacheMiss.Add(1)
+	case "cache_stale_hit":
+		stayHotelMetrics.cacheStaleHit.Add(1)
+	case "stayapi_request":
+		stayHotelMetrics.providerRequests.Add(1)
+	case "stayapi_error":
+		if providerErr, ok := err.(stayAPIError); ok {
+			switch providerErr.HTTPStatus {
+			case http.StatusPaymentRequired:
+				stayHotelMetrics.providerErrors402.Add(1)
+			case http.StatusTooManyRequests:
+				stayHotelMetrics.providerErrors429.Add(1)
+			}
+		}
+	}
+	if err != nil {
+		slog.Debug("stayapi_hotels_metric", "event", event, "error_code", stayAPIErrorCode(err))
+		return
+	}
+	slog.Debug("stayapi_hotels_metric", "event", event)
+}
+
+func lockStayHotelCacheKey(key string) func() {
+	actual, _ := stayHotelRequestLocks.LoadOrStore(key, &sync.Mutex{})
+	mu := actual.(*sync.Mutex)
+	mu.Lock()
+	return func() {
+		mu.Unlock()
+	}
+}
+
+type stayHotelCacheHit struct {
+	Items     []stayHotelProduct
+	ExpiresAt time.Time
+	Stale     bool
+}
+
+func ensureStayHotelCacheSchema(ctx context.Context, db *sql.DB) error {
+	if db == nil {
+		return nil
+	}
+	if _, ok := stayHotelCacheSchemaReady.Load(db); ok {
+		return nil
+	}
+	stayHotelCacheSchemaMu.Lock()
+	defer stayHotelCacheSchemaMu.Unlock()
+	if _, ok := stayHotelCacheSchemaReady.Load(db); ok {
+		return nil
+	}
+	_, err := db.ExecContext(ctx, `
+CREATE TABLE IF NOT EXISTS stayapi_hotel_search_cache (
+  cache_key TEXT PRIMARY KEY,
+  query JSONB NOT NULL,
+  payload JSONB NOT NULL,
+  provider TEXT NOT NULL DEFAULT 'stayapi',
+  expires_at TIMESTAMPTZ NOT NULL,
+  stale_until TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+)`)
+	if err != nil {
+		return err
+	}
+	_, err = db.ExecContext(ctx, `
+CREATE INDEX IF NOT EXISTS idx_stayapi_hotel_search_cache_stale_until
+ON stayapi_hotel_search_cache(stale_until)`)
+	if err != nil {
+		return err
+	}
+	stayHotelCacheSchemaReady.Store(db, true)
+	if err := cleanupExpiredStayHotelCache(ctx, db); err != nil {
+		slog.Warn("stayapi hotel cache cleanup warning", "error", err)
+	}
+	return nil
+}
+
+func cleanupExpiredStayHotelCache(ctx context.Context, db *sql.DB) error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.ExecContext(ctx, `
+DELETE FROM stayapi_hotel_search_cache
+WHERE stale_until < NOW()`)
+	return err
+}
+
+func (s *Server) startStayHotelCacheJanitor(ctx context.Context) {
+	if s == nil || s.db == nil || s.db.SQL == nil {
+		return
+	}
+	minutes := envInt("STAYAPI_CACHE_CLEANUP_MINUTES", 360)
+	if minutes <= 0 {
+		minutes = 360
+	}
+	ticker := time.NewTicker(time.Duration(minutes) * time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := ensureStayHotelCacheSchema(ctx, s.db.SQL); err != nil {
+				slog.Warn("stayapi hotel cache schema warning", "error", err)
+				continue
+			}
+			if err := cleanupExpiredStayHotelCache(ctx, s.db.SQL); err != nil {
+				slog.Warn("stayapi hotel cache cleanup warning", "error", err)
+			}
+		}
+	}
+}
+
+func (s *Server) getStayHotelCache(ctx context.Context, key string, allowStale bool) (stayHotelCacheHit, bool) {
+	var hit stayHotelCacheHit
+	if s == nil || s.db == nil || s.db.SQL == nil || strings.TrimSpace(key) == "" {
+		return hit, false
+	}
+	if err := ensureStayHotelCacheSchema(ctx, s.db.SQL); err != nil {
+		return hit, false
+	}
+	var raw string
+	var expiresAt, staleUntil time.Time
+	err := s.db.SQL.QueryRowContext(ctx, `
+SELECT payload::text, expires_at, stale_until
+FROM stayapi_hotel_search_cache
+WHERE cache_key=$1 AND ($2::boolean OR expires_at > NOW()) AND stale_until > NOW()`, key, allowStale).
+		Scan(&raw, &expiresAt, &staleUntil)
+	if err != nil {
+		return hit, false
+	}
+	if err := json.Unmarshal([]byte(raw), &hit.Items); err != nil || len(hit.Items) == 0 {
+		return stayHotelCacheHit{}, false
+	}
+	hit.ExpiresAt = expiresAt
+	hit.Stale = time.Now().UTC().After(expiresAt)
+	_ = staleUntil
+	return hit, true
+}
+
+func (s *Server) setStayHotelCache(ctx context.Context, key string, q stayHotelQuery, hotels []stayHotelProduct) {
+	if s == nil || s.db == nil || s.db.SQL == nil || strings.TrimSpace(key) == "" || len(hotels) == 0 {
+		return
+	}
+	if err := ensureStayHotelCacheSchema(ctx, s.db.SQL); err != nil {
+		return
+	}
+	queryJSON, _ := json.Marshal(normalizeStayHotelQuery(q))
+	payloadJSON, _ := json.Marshal(hotels)
+	freshTTL := stayHotelCacheFreshTTL()
+	staleTTL := stayHotelCacheStaleTTL()
+	_, _ = s.db.SQL.ExecContext(ctx, `
+INSERT INTO stayapi_hotel_search_cache (cache_key, query, payload, expires_at, stale_until, updated_at)
+VALUES ($1, $2::jsonb, $3::jsonb, NOW() + $4::interval, NOW() + $5::interval, NOW())
+ON CONFLICT (cache_key) DO UPDATE SET
+  query=EXCLUDED.query,
+  payload=EXCLUDED.payload,
+  expires_at=EXCLUDED.expires_at,
+  stale_until=EXCLUDED.stale_until,
+  updated_at=NOW()`,
+		key, string(queryJSON), string(payloadJSON), fmt.Sprintf("%d seconds", int(freshTTL.Seconds())), fmt.Sprintf("%d seconds", int(staleTTL.Seconds())))
 }
 
 func (s *Server) handleTravelHotels(w http.ResponseWriter, r *http.Request) {
@@ -153,16 +400,40 @@ func (s *Server) handleTravelHotels(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"items": []any{}, "provider": "stayapi", "configured": false})
 		return
 	}
-	query := stayHotelQuery{
+	query := normalizeStayHotelQuery(stayHotelQuery{
 		Location: strings.TrimSpace(r.URL.Query().Get("location")),
 		Search:   firstNonEmptyStr(strings.TrimSpace(r.URL.Query().Get("search")), strings.TrimSpace(r.URL.Query().Get("q"))),
 		CheckIn:  strings.TrimSpace(r.URL.Query().Get("check_in")),
 		CheckOut: strings.TrimSpace(r.URL.Query().Get("check_out")),
 		Adults:   strings.TrimSpace(r.URL.Query().Get("adults")),
+		Children: strings.TrimSpace(r.URL.Query().Get("children")),
+		Rooms:    strings.TrimSpace(r.URL.Query().Get("rooms")),
 		Currency: strings.TrimSpace(r.URL.Query().Get("currency")),
+		Locale:   strings.TrimSpace(r.URL.Query().Get("locale")),
+	})
+	cacheKey := stayHotelCacheKey(query)
+	if cached, ok := s.getStayHotelCache(r.Context(), cacheKey, false); ok {
+		observeStayHotelMetric("cache_hit", nil)
+		writeJSON(w, http.StatusOK, map[string]any{"items": cached.Items, "provider": "stayapi", "configured": true, "source": "cache", "cached": true, "stale": false})
+		return
 	}
+	observeStayHotelMetric("cache_miss", nil)
+	unlock := lockStayHotelCacheKey(cacheKey)
+	defer unlock()
+	if cached, ok := s.getStayHotelCache(r.Context(), cacheKey, false); ok {
+		observeStayHotelMetric("cache_hit", nil)
+		writeJSON(w, http.StatusOK, map[string]any{"items": cached.Items, "provider": "stayapi", "configured": true, "source": "cache", "cached": true, "stale": false})
+		return
+	}
+	observeStayHotelMetric("stayapi_request", nil)
 	hotels, err := newStayAPIClient().SearchHotels(r.Context(), query)
 	if err != nil {
+		observeStayHotelMetric("stayapi_error", err)
+		if cached, ok := s.getStayHotelCache(r.Context(), cacheKey, true); ok {
+			observeStayHotelMetric("cache_stale_hit", nil)
+			writeJSON(w, http.StatusOK, map[string]any{"items": cached.Items, "provider": "stayapi", "configured": true, "source": "cache", "cached": true, "stale": true, "error_code": stayAPIErrorCode(err)})
+			return
+		}
 		status := http.StatusBadGateway
 		if providerErr, ok := err.(stayAPIError); ok && providerErr.HTTPStatus > 0 && providerErr.HTTPStatus < 500 {
 			status = http.StatusBadRequest
@@ -170,7 +441,8 @@ func (s *Server) handleTravelHotels(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, status, map[string]any{"error": "erro ao consultar StayAPI", "code": stayAPIErrorCode(err)})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": hotels, "provider": "stayapi", "configured": true})
+	s.setStayHotelCache(r.Context(), cacheKey, query, hotels)
+	writeJSON(w, http.StatusOK, map[string]any{"items": hotels, "provider": "stayapi", "configured": true, "source": "stayapi", "cached": false, "stale": false})
 }
 
 func (s *Server) handleTravelQuote(w http.ResponseWriter, r *http.Request) {
@@ -236,7 +508,7 @@ func normalizeStayHotels(decoded map[string]any, q stayHotelQuery) []stayHotelPr
 			continue
 		}
 		out = append(out, hotel)
-		if len(out) >= 12 {
+		if len(out) >= 30 {
 			break
 		}
 	}
@@ -245,10 +517,13 @@ func normalizeStayHotels(decoded map[string]any, q stayHotelQuery) []stayHotelPr
 
 func stayHotelItems(decoded map[string]any) []map[string]any {
 	candidates := []any{decoded["data"], decoded["hotels"], decoded["results"], decoded["properties"]}
+	var dataLinks map[string]any
+	var dataMap map[string]any
 	if data, ok := decoded["data"].(map[string]any); ok {
+		dataMap = data
 		candidates = append(candidates, data["hotels"], data["results"], data["properties"], data["items"])
 		if links, ok := data["links"].(map[string]any); ok {
-			return []map[string]any{dataWithLinks(data, links)}
+			dataLinks = links
 		}
 	}
 	for _, candidate := range candidates {
@@ -266,6 +541,9 @@ func stayHotelItems(decoded map[string]any) []map[string]any {
 	}
 	if links, ok := decoded["links"].(map[string]any); ok {
 		return []map[string]any{dataWithLinks(decoded, links)}
+	}
+	if dataMap != nil && dataLinks != nil {
+		return []map[string]any{dataWithLinks(dataMap, dataLinks)}
 	}
 	return nil
 }
@@ -511,6 +789,8 @@ func stayAPIHTTPErrorCode(status int) string {
 		return "provider_unauthorized"
 	case http.StatusForbidden:
 		return "provider_forbidden"
+	case http.StatusPaymentRequired:
+		return "provider_quota_exhausted"
 	case http.StatusNotFound:
 		return "not_found"
 	case http.StatusTooManyRequests:
