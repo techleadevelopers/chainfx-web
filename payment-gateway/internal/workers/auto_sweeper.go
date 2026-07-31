@@ -25,6 +25,7 @@ import (
 	"payment-gateway/internal/metrics"
 	"payment-gateway/internal/rpc"
 	"payment-gateway/internal/security"
+	"payment-gateway/internal/treasury"
 )
 
 // AutoSweeperWorker polls the hot wallet USDT balance and sweeps excess funds
@@ -118,10 +119,8 @@ func (w *AutoSweeperWorker) executeSweep(ctx context.Context) {
 		return
 	}
 
-	// Convert from token base units (USDT has 6 decimals on BSC).
 	const usdtDecimals = 6
-	divisor := new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(usdtDecimals), nil))
-	balanceFloat, _ := new(big.Float).Quo(new(big.Float).SetInt(balance), divisor).Float64()
+	balanceFloat := rawTokenToFloat(balance, usdtDecimals)
 	run.BalanceUSDT = balanceFloat
 
 	slog.Info("AutoSweeperWorker: hot wallet balance",
@@ -129,19 +128,62 @@ func (w *AutoSweeperWorker) executeSweep(ctx context.Context) {
 		"max_usdt", w.cfg.AutoSweeperHotMaxUsdt,
 	)
 
-	// 2. If below ceiling, nothing to do.
-	if balanceFloat <= w.cfg.AutoSweeperHotMaxUsdt {
+	maxRaw, err := decimalUSDTToRaw(fmt.Sprintf("%.6f", w.cfg.AutoSweeperHotMaxUsdt))
+	if err != nil {
+		w.recordSweepError(ctx, run, fmt.Errorf("AUTO_SWEEPER_HOT_MAX_USDT invalido: %w", err))
+		return
+	}
+	minRaw, err := decimalUSDTToRaw(fmt.Sprintf("%.6f", w.cfg.AutoSweeperHotMinUsdt))
+	if err != nil {
+		w.recordSweepError(ctx, run, fmt.Errorf("AUTO_SWEEPER_HOT_MIN_USDT invalido: %w", err))
+		return
+	}
+	if !common.IsHexAddress(w.cfg.TreasuryHot) || !common.IsHexAddress(w.cfg.TreasuryCold) {
+		w.recordSweepError(ctx, run, fmt.Errorf("treasury hot/cold EVM invalida"))
+		return
+	}
+	token := common.HexToAddress(w.cfg.BscUsdtContract).Hex()
+	if token == (common.Address{}).Hex() {
+		w.recordSweepError(ctx, run, fmt.Errorf("BSC_USDT_CONTRACT invalido"))
+		return
+	}
+	if strings.EqualFold(w.cfg.TreasuryHot, w.cfg.TreasuryCold) {
+		w.recordSweepError(ctx, run, fmt.Errorf("TREASURY_HOT e TREASURY_COLD nao podem ser iguais"))
+		return
+	}
+	if balance.Cmp(maxRaw) <= 0 {
 		run.Status = "skipped"
 		_ = w.db.RecordAutoSweeperRun(ctx, run)
 		return
 	}
 
-	// 3. Compute sweep amount: excess above the minimum reserve.
-	sweepAmount := balanceFloat - w.cfg.AutoSweeperHotMinUsdt
-	if sweepAmount <= 0 {
+	sweepRaw := new(big.Int).Sub(balance, minRaw)
+	if sweepRaw.Sign() <= 0 {
 		slog.Warn("AutoSweeperWorker: sweep amount would be zero or negative, skipping",
 			"balance", balanceFloat,
 			"min_reserve", w.cfg.AutoSweeperHotMinUsdt,
+		)
+		run.Status = "skipped"
+		_ = w.db.RecordAutoSweeperRun(ctx, run)
+		return
+	}
+	sweepAmount := rawTokenToFloat(sweepRaw, usdtDecimals)
+
+	gasCostUSD, err := w.estimateSweepGasUSD(ctx)
+	if err != nil {
+		w.recordSweepError(ctx, run, fmt.Errorf("profitability gas estimate failed: %w", err))
+		return
+	}
+	netUSD := sweepAmount - gasCostUSD - w.cfg.AutoSweeperProviderUSD - w.cfg.AutoSweeperRelayUSD - w.cfg.AutoSweeperBufferUSD
+	if netUSD < w.cfg.AutoSweeperMinNetUSD {
+		slog.Warn("AutoSweeperWorker: sweep skipped by profitability policy",
+			"gross_value_usd", sweepAmount,
+			"estimated_gas_usd", gasCostUSD,
+			"provider_cost_usd", w.cfg.AutoSweeperProviderUSD,
+			"relay_cost_usd", w.cfg.AutoSweeperRelayUSD,
+			"operational_buffer_usd", w.cfg.AutoSweeperBufferUSD,
+			"net_sweep_value_usd", netUSD,
+			"min_net_sweep_value_usd", w.cfg.AutoSweeperMinNetUSD,
 		)
 		run.Status = "skipped"
 		_ = w.db.RecordAutoSweeperRun(ctx, run)
@@ -152,21 +194,18 @@ func (w *AutoSweeperWorker) executeSweep(ctx context.Context) {
 		"sweep_usdt", sweepAmount,
 		"cold_wallet", w.cfg.TreasuryCold,
 	)
-
-	blockNumber, err := w.pool.BlockNumber(ctx)
-	if err != nil {
-		slog.Error("AutoSweeperWorker: failed to read block number for idempotency", "error", err)
-		run.Status = "error"
-		errMsg := err.Error()
-		run.ErrorMsg = &errMsg
-		run.SweptUSDT = 0
-		_ = w.db.RecordAutoSweeperRun(ctx, run)
-		metrics.IncAutoSweeperError()
-		return
+	rail := treasury.ResolveRail(w.cfg, "BSC", treasury.StateCreated, false)
+	if rail.CurrentRail == treasury.RailDelegate7702 {
+		slog.Warn("AutoSweeperWorker: 7702 delegate gate ready; using legacy fallback until delegate executor/reconciliation is explicitly enabled",
+			"network", rail.Network,
+			"delegate", rail.DelegateAddress,
+			"fallback", rail.Fallback,
+		)
 	}
 
 	// 4. Dispatch sweep via signer.
-	txHash, err := w.dispatchSweep(ctx, sweepAmount, blockNumber)
+	operationID := autoSweepOperationID(w.cfg.TreasuryHot, w.cfg.TreasuryCold, token, "BSC", sweepRaw)
+	dispatch, err := w.dispatchSweep(ctx, sweepRaw, operationID)
 	if err != nil {
 		slog.Error("AutoSweeperWorker: sweep dispatch failed", "error", err)
 		run.Status = "error"
@@ -178,16 +217,34 @@ func (w *AutoSweeperWorker) executeSweep(ctx context.Context) {
 		return
 	}
 
-	run.Status = "ok"
+	run.Status = autoSweeperRunStatusFromSigner(dispatch.Status)
 	run.SweptUSDT = sweepAmount
-	run.TxHash = &txHash
+	run.TxHash = &dispatch.TxHash
+	run.OperationID = operationID
+	run.ChainID = dispatch.ChainID
+	run.TokenContract = token
+	run.AmountRaw = sweepRaw.String()
+	run.SignerStatus = dispatch.Status
+	run.Nonce = dispatch.Nonce
 	_ = w.db.RecordAutoSweeperRun(ctx, run)
-	metrics.IncAutoSweeperSwept(sweepAmount)
+	if run.Status == "broadcast" || run.Status == "confirmed" {
+		metrics.IncAutoSweeperSwept(sweepAmount)
+	}
 
-	slog.Info("AutoSweeperWorker: sweep completed",
+	slog.Info("AutoSweeperWorker: sweep dispatched",
 		"swept_usdt", sweepAmount,
-		"tx_hash", txHash,
+		"tx_hash", dispatch.TxHash,
+		"status", run.Status,
 	)
+}
+
+func (w *AutoSweeperWorker) recordSweepError(ctx context.Context, run database.AutoSweeperRun, err error) {
+	slog.Error("AutoSweeperWorker: hardening guard failed", "error", err)
+	run.Status = "error"
+	errMsg := err.Error()
+	run.ErrorMsg = &errMsg
+	_ = w.db.RecordAutoSweeperRun(ctx, run)
+	metrics.IncAutoSweeperError()
 }
 
 // balanceOf calls ERC-20 balanceOf(address) via eth_call and returns the raw token units.
@@ -237,45 +294,49 @@ func (w *AutoSweeperWorker) balanceOf(ctx context.Context, wallet, tokenContract
 
 // sweepPayload matches the existing signer /hd/transfer contract.
 type sweepPayload struct {
-	DerivationIndex int    `json:"derivationIndex"`
-	To              string `json:"to"`
-	Amount          string `json:"amount"`
-	TokenContract   string `json:"tokenContract"`
-	Network         string `json:"network"`
-	IdempotencyKey  string `json:"idempotencyKey"`
+	To             string `json:"to"`
+	Amount         string `json:"amount"`
+	TokenContract  string `json:"tokenContract"`
+	Network        string `json:"network"`
+	IdempotencyKey string `json:"idempotencyKey"`
+}
+
+type sweepDispatchResult struct {
+	TxHash      string
+	Status      string
+	OperationID string
+	Nonce       uint64
+	ChainID     uint64
 }
 
 // dispatchSweep calls the signer to transfer sweepAmount USDT to the cold wallet.
-func (w *AutoSweeperWorker) dispatchSweep(ctx context.Context, amount float64, blockNumber uint64) (string, error) {
+func (w *AutoSweeperWorker) dispatchSweep(ctx context.Context, amountRaw *big.Int, operationID string) (sweepDispatchResult, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	hotWallet := strings.ToLower(strings.TrimSpace(w.cfg.TreasuryHot))
-	idempotencyKey := fmt.Sprintf("sweep-%s-%d", hotWallet, blockNumber)
 	payload := sweepPayload{
-		DerivationIndex: 0,
-		To:              w.cfg.TreasuryCold,
-		Amount:          fmt.Sprintf("%.6f", amount),
-		TokenContract:   w.cfg.BscUsdtContract,
-		Network:         "BSC",
-		IdempotencyKey:  idempotencyKey,
+		To:             common.HexToAddress(w.cfg.TreasuryCold).Hex(),
+		Amount:         rawUSDTToDecimal(amountRaw),
+		TokenContract:  w.cfg.BscUsdtContract,
+		Network:        "BSC",
+		IdempotencyKey: operationID,
 	}
 
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return "", fmt.Errorf("marshal sweep payload: %w", err)
+		return sweepDispatchResult{}, fmt.Errorf("marshal sweep payload: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, w.cfg.SignerUrl+"/hd/transfer", bytes.NewReader(body))
 	if err != nil {
-		return "", fmt.Errorf("build sweep request: %w", err)
+		return sweepDispatchResult{}, fmt.Errorf("build sweep request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	security.SignRawBodyHeaders(req, w.cfg.SignerHmacSecret, body)
 
 	resp, err := w.client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("sweep signer call failed: %w", err)
+		return sweepDispatchResult{}, fmt.Errorf("sweep signer call failed: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -284,15 +345,129 @@ func (w *AutoSweeperWorker) dispatchSweep(ctx context.Context, amount float64, b
 			Error string `json:"error"`
 		}
 		_ = json.NewDecoder(resp.Body).Decode(&errBody)
-		return "", fmt.Errorf("signer returned %d: %s", resp.StatusCode, errBody.Error)
+		return sweepDispatchResult{}, fmt.Errorf("signer returned %d: %s", resp.StatusCode, errBody.Error)
 	}
 
 	var result struct {
-		TxHash string `json:"txHash"`
+		TxHash      string `json:"txHash"`
+		Status      string `json:"status"`
+		OperationID string `json:"operationId"`
+		Nonce       uint64 `json:"nonce"`
+		ChainID     uint64 `json:"chainId"`
 	}
-	txHash := idempotencyKey // fallback
+	txHash := operationID // fallback
 	if err := json.NewDecoder(resp.Body).Decode(&result); err == nil && result.TxHash != "" {
 		txHash = result.TxHash
 	}
-	return txHash, nil
+	result.TxHash = txHash
+	if strings.TrimSpace(result.OperationID) == "" {
+		result.OperationID = operationID
+	}
+	return sweepDispatchResult{
+		TxHash:      result.TxHash,
+		Status:      result.Status,
+		OperationID: result.OperationID,
+		Nonce:       result.Nonce,
+		ChainID:     result.ChainID,
+	}, nil
+}
+
+func autoSweeperRunStatusFromSigner(status string) string {
+	switch strings.TrimSpace(status) {
+	case "confirmed":
+		return "confirmed"
+	case "broadcast", "submitted":
+		return "broadcast"
+	case "broadcast_unknown", "signed", "manual_review":
+		return strings.TrimSpace(status)
+	default:
+		return "broadcast_unknown"
+	}
+}
+
+func autoSweepOperationID(hot, cold, token, network string, amountRaw *big.Int) string {
+	parts := strings.Join([]string{
+		"autosweep",
+		strings.ToLower(common.HexToAddress(hot).Hex()),
+		strings.ToLower(common.HexToAddress(cold).Hex()),
+		strings.ToLower(common.HexToAddress(token).Hex()),
+		strings.ToUpper(strings.TrimSpace(network)),
+		amountRaw.String(),
+	}, ":")
+	return parts
+}
+
+func decimalUSDTToRaw(value string) (*big.Int, error) {
+	value = strings.TrimSpace(value)
+	parts := strings.Split(value, ".")
+	if len(parts) > 2 || parts[0] == "" {
+		return nil, fmt.Errorf("amount invalido")
+	}
+	whole := new(big.Int)
+	if _, ok := whole.SetString(parts[0], 10); !ok {
+		return nil, fmt.Errorf("amount invalido")
+	}
+	whole.Mul(whole, big.NewInt(1_000_000))
+	if len(parts) == 2 {
+		frac := parts[1]
+		if len(frac) > 6 {
+			frac = frac[:6]
+		}
+		for len(frac) < 6 {
+			frac += "0"
+		}
+		f := new(big.Int)
+		if _, ok := f.SetString(frac, 10); !ok {
+			return nil, fmt.Errorf("amount invalido")
+		}
+		whole.Add(whole, f)
+	}
+	return whole, nil
+}
+
+func rawUSDTToDecimal(raw *big.Int) string {
+	if raw == nil {
+		return "0.000000"
+	}
+	intPart := new(big.Int)
+	fracPart := new(big.Int)
+	intPart.DivMod(new(big.Int).Set(raw), big.NewInt(1_000_000), fracPart)
+	return fmt.Sprintf("%s.%06d", intPart.String(), fracPart.Int64())
+}
+
+func rawTokenToFloat(raw *big.Int, decimals int) float64 {
+	if raw == nil {
+		return 0
+	}
+	scale := new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil))
+	out, _ := new(big.Float).Quo(new(big.Float).SetInt(raw), scale).Float64()
+	return out
+}
+
+func (w *AutoSweeperWorker) estimateSweepGasUSD(ctx context.Context) (float64, error) {
+	if w.cfg.AutoSweeperGasCostUSD > 0 {
+		return w.cfg.AutoSweeperGasCostUSD, nil
+	}
+	if w.cfg.AutoSweeperNativeUSD <= 0 {
+		return 0, fmt.Errorf("configure AUTO_SWEEPER_NATIVE_USD ou AUTO_SWEEPER_ESTIMATED_GAS_USD")
+	}
+	if w.pool == nil {
+		return 0, fmt.Errorf("RPC pool ausente")
+	}
+	gasLimit := w.cfg.AutoSweeperGasLimit
+	if gasLimit == 0 {
+		return 0, fmt.Errorf("AUTO_SWEEPER_GAS_LIMIT invalido")
+	}
+	var gasPrice *big.Int
+	err := w.pool.Do(ctx, func(c *ethclient.Client) error {
+		var err error
+		gasPrice, err = c.SuggestGasPrice(ctx)
+		return err
+	})
+	if err != nil {
+		return 0, err
+	}
+	wei := new(big.Int).Mul(gasPrice, new(big.Int).SetUint64(gasLimit))
+	native, _ := new(big.Float).Quo(new(big.Float).SetInt(wei), big.NewFloat(1e18)).Float64()
+	return native * w.cfg.AutoSweeperNativeUSD, nil
 }
