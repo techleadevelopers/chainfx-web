@@ -33,16 +33,22 @@ type GasRelayRequest struct {
 
 // AutoSweeperRun represents a row in auto_sweeper_runs.
 type AutoSweeperRun struct {
-	ID          string
-	Network     string
-	HotWallet   string
-	ColdWallet  string
-	BalanceUSDT float64
-	SweptUSDT   float64
-	TxHash      *string
-	Status      string
-	ErrorMsg    *string
-	RanAt       time.Time
+	ID            string
+	Network       string
+	HotWallet     string
+	ColdWallet    string
+	BalanceUSDT   float64
+	SweptUSDT     float64
+	TxHash        *string
+	Status        string
+	OperationID   string
+	ChainID       uint64
+	TokenContract string
+	AmountRaw     string
+	SignerStatus  string
+	Nonce         uint64
+	ErrorMsg      *string
+	RanAt         time.Time
 }
 
 // CreateGasRelayParams holds the inputs for CreateGasRelayRequest.
@@ -217,11 +223,12 @@ func (db *DB) GasRelayStats(ctx context.Context) (map[string]any, error) {
 func (db *DB) RecordAutoSweeperRun(ctx context.Context, r AutoSweeperRun) error {
 	const q = `
 		INSERT INTO auto_sweeper_runs
-			(network, hot_wallet, cold_wallet, balance_usdt, swept_usdt, tx_hash, status, error_msg)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`
+			(network, hot_wallet, cold_wallet, balance_usdt, swept_usdt, tx_hash, status,
+			 operation_id, chain_id, token_contract, amount_raw, signer_status, nonce, error_msg)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`
 	_, err := db.SQL.ExecContext(ctx, q,
 		r.Network, r.HotWallet, r.ColdWallet, r.BalanceUSDT, r.SweptUSDT,
-		r.TxHash, r.Status, r.ErrorMsg,
+		r.TxHash, r.Status, r.OperationID, int64(r.ChainID), r.TokenContract, r.AmountRaw, r.SignerStatus, int64(r.Nonce), r.ErrorMsg,
 	)
 	if err != nil {
 		return fmt.Errorf("RecordAutoSweeperRun: %w", err)
@@ -236,7 +243,7 @@ func (db *DB) ListAutoSweeperRuns(ctx context.Context, limit int) ([]AutoSweeper
 	}
 	const q = `
 		SELECT id, network, hot_wallet, cold_wallet, balance_usdt, swept_usdt,
-		       tx_hash, status, error_msg, ran_at
+		       tx_hash, status, operation_id, chain_id, token_contract, amount_raw, signer_status, nonce, error_msg, ran_at
 		FROM auto_sweeper_runs
 		ORDER BY ran_at DESC
 		LIMIT $1`
@@ -248,12 +255,16 @@ func (db *DB) ListAutoSweeperRuns(ctx context.Context, limit int) ([]AutoSweeper
 	var runs []AutoSweeperRun
 	for rows.Next() {
 		var r AutoSweeperRun
+		var chainID, nonce int64
 		if err := rows.Scan(
 			&r.ID, &r.Network, &r.HotWallet, &r.ColdWallet,
-			&r.BalanceUSDT, &r.SweptUSDT, &r.TxHash, &r.Status, &r.ErrorMsg, &r.RanAt,
+			&r.BalanceUSDT, &r.SweptUSDT, &r.TxHash, &r.Status, &r.OperationID, &chainID,
+			&r.TokenContract, &r.AmountRaw, &r.SignerStatus, &nonce, &r.ErrorMsg, &r.RanAt,
 		); err != nil {
 			return nil, err
 		}
+		r.ChainID = uint64(chainID)
+		r.Nonce = uint64(nonce)
 		runs = append(runs, r)
 	}
 	return runs, rows.Err()
@@ -264,10 +275,10 @@ func (db *DB) AutoSweeperStats(ctx context.Context) (map[string]any, error) {
 	const q = `
 		SELECT
 			COUNT(*) AS total_runs,
-			COUNT(*) FILTER (WHERE status = 'ok')      AS successful,
+			COUNT(*) FILTER (WHERE status IN ('ok','confirmed','broadcast')) AS successful,
 			COUNT(*) FILTER (WHERE status = 'error')   AS errors,
 			COUNT(*) FILTER (WHERE status = 'skipped') AS skipped,
-			COALESCE(SUM(swept_usdt) FILTER (WHERE status = 'ok'), 0) AS total_swept_usdt
+			COALESCE(SUM(swept_usdt) FILTER (WHERE status IN ('ok','confirmed','broadcast')), 0) AS total_swept_usdt
 		FROM auto_sweeper_runs
 		WHERE ran_at > NOW() - INTERVAL '24 hours'`
 	row := db.SQL.QueryRowContext(ctx, q)
