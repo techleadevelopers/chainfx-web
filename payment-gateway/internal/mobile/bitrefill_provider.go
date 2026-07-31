@@ -67,48 +67,105 @@ func (p *bitrefillProvider) authHeader() string {
 	}
 	id := strings.TrimSpace(os.Getenv("BITREFILL_API_ID"))
 	secret := strings.TrimSpace(os.Getenv("BITREFILL_API_SECRET"))
+	if id == "" || secret == "" {
+		return ""
+	}
 	return "Basic " + base64.StdEncoding.EncodeToString([]byte(id+":"+secret))
 }
 
 func (p *bitrefillProvider) doJSON(ctx context.Context, method, path string, payload any, out any) error {
-	var body io.Reader
+	var rawPayload []byte
 	if payload != nil {
-		raw, _ := json.Marshal(payload)
-		body = bytes.NewReader(raw)
+		raw, err := json.Marshal(payload)
+		if err != nil {
+			return err
+		}
+		rawPayload = raw
+	}
+	attempts := 1
+	if isBitrefillRetryableMethod(method) {
+		attempts = 2
+	}
+	var lastErr error
+	for attempt := 0; attempt < attempts; attempt++ {
+		res, err := p.doHTTPRequest(ctx, method, path, rawPayload)
+		if err != nil {
+			lastErr = err
+			if attempt+1 < attempts && isRetryableBitrefillError(err) {
+				continue
+			}
+			return err
+		}
+		raw, _ := io.ReadAll(io.LimitReader(res.Body, 8<<20))
+		_ = res.Body.Close()
+		if res.StatusCode < 200 || res.StatusCode >= 300 {
+			err := bitrefillProviderError{
+				Code:       bitrefillErrorCode(res.StatusCode, raw),
+				HTTPStatus: res.StatusCode,
+				Message:    bitrefillSafeErrorMessage(raw),
+			}
+			lastErr = err
+			if attempt+1 < attempts && isRetryableBitrefillError(err) {
+				continue
+			}
+			return err
+		}
+		if out == nil || len(strings.TrimSpace(string(raw))) == 0 {
+			return nil
+		}
+		return json.Unmarshal(raw, out)
+	}
+	return lastErr
+}
+
+func (p *bitrefillProvider) doHTTPRequest(ctx context.Context, method, path string, rawPayload []byte) (*http.Response, error) {
+	var body io.Reader
+	if rawPayload != nil {
+		body = bytes.NewReader(rawPayload)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, bitrefillBaseURL()+path, body)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	req.Header.Set("Authorization", p.authHeader())
+	if auth := p.authHeader(); auth != "" {
+		req.Header.Set("Authorization", auth)
+	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "ChainFX-Mobile-Commerce/1.0")
-	if payload != nil {
+	if rawPayload != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
 	res, err := p.client.Do(req)
 	if err != nil {
 		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-			return bitrefillProviderError{Code: "provider_timeout", Message: "provider request timeout"}
+			return nil, bitrefillProviderError{Code: "provider_timeout", Message: "provider request timeout"}
 		}
 		if ctx.Err() != nil {
-			return bitrefillProviderError{Code: "provider_timeout", Message: "provider request cancelled"}
+			return nil, bitrefillProviderError{Code: "provider_timeout", Message: "provider request cancelled"}
 		}
-		return err
+		return nil, err
 	}
-	defer res.Body.Close()
-	raw, _ := io.ReadAll(io.LimitReader(res.Body, 8<<20))
-	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return bitrefillProviderError{
-			Code:       bitrefillErrorCode(res.StatusCode, raw),
-			HTTPStatus: res.StatusCode,
-			Message:    bitrefillSafeErrorMessage(raw),
-		}
+	return res, nil
+}
+
+func isBitrefillRetryableMethod(method string) bool {
+	switch strings.ToUpper(strings.TrimSpace(method)) {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return true
+	default:
+		return false
 	}
-	if out == nil {
-		return nil
+}
+
+func isRetryableBitrefillError(err error) bool {
+	providerErr, ok := err.(bitrefillProviderError)
+	if !ok {
+		return false
 	}
-	return json.Unmarshal(raw, out)
+	if providerErr.Code == "provider_timeout" {
+		return true
+	}
+	return providerErr.HTTPStatus == http.StatusTooManyRequests || providerErr.HTTPStatus >= 500
 }
 
 func (p *bitrefillProvider) Ping(ctx context.Context) error {
@@ -203,6 +260,10 @@ func (p *bitrefillProvider) Purchase(ctx context.Context, request commercePurcha
 		"payment_method": "balance",
 		"auto_pay":       true,
 	}
+	if custom := strings.TrimSpace(request.CustomIdentifier); custom != "" {
+		payload["custom_identifier"] = custom
+		payload["external_id"] = custom
+	}
 	if webhook := strings.TrimSpace(os.Getenv("BITREFILL_WEBHOOK_URL")); webhook != "" {
 		payload["webhook_url"] = webhook
 	}
@@ -221,6 +282,7 @@ func (p *bitrefillProvider) Purchase(ctx context.Context, request commercePurcha
 		ProviderStatus:    status,
 		ProviderReference: strings.TrimSpace(fmt.Sprint(invoice["id"])),
 		TransactionID:     orderID,
+		CustomIdentifier:  strings.TrimSpace(request.CustomIdentifier),
 	}
 	if orderID != "" {
 		order, err := p.GetOrder(ctx, orderID)
@@ -496,6 +558,8 @@ func bitrefillErrorCode(status int, raw []byte) string {
 		return "provider_unauthorized"
 	case http.StatusForbidden:
 		return "provider_forbidden"
+	case http.StatusPaymentRequired:
+		return "provider_balance_low"
 	case http.StatusNotFound:
 		return "product_not_found"
 	case http.StatusConflict:
