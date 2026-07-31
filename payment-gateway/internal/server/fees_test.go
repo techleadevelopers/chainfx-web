@@ -56,3 +56,15 @@ func TestSellQuotePaysPixBRLWithSellRate(t *testing.T) {
 		t.Fatalf("expected spread 12.60 BRL, got %.2f", spread)
 	}
 }
+
+func TestBTCSellQuoteDoesNotUseFixedUSDTBRLAsBTCRate(t *testing.T) {
+	s := &Server{cfg: &config.Config{SellUsdtBrlRate: 5.00}}
+
+	rate, payout, _ := s.sellQuoteForAsset("BTC", 0.01, 350000)
+	if rate != 350000 {
+		t.Fatalf("expected BTC sell rate to use BTCBRL market rate, got %.2f", rate)
+	}
+	if payout != 3500 {
+		t.Fatalf("expected 0.01 BTC payout at BTCBRL rate, got %.2f", payout)
+	}
+}
