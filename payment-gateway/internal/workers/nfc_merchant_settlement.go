@@ -20,6 +20,7 @@ import (
 	"payment-gateway/internal/config"
 	"payment-gateway/internal/database"
 	"payment-gateway/internal/httpclient"
+	"payment-gateway/internal/metrics"
 )
 
 const (
@@ -30,10 +31,24 @@ const (
 type NFCMerchantSettlementWorker struct {
 	bus    *EventBus
 	db     *database.DB
+	store  nfcMerchantSettlementStore
 	cfg    *config.Config
 	client *http.Client
 	dlq    *DeadLetterQueue
 	sem    chan struct{}
+}
+
+type nfcMerchantSettlementStore interface {
+	GetDueMerchantSettlements(context.Context, int) ([]database.MerchantSettlement, error)
+	ClaimMerchantSettlement(context.Context, string) (*database.MerchantSettlement, bool, error)
+	MarkMerchantSettlementManualRequired(context.Context, string, string) error
+	MarkMerchantSettlementSubmitStarted(context.Context, string, string) error
+	MarkMerchantSettlementSubmitted(context.Context, string, string, string, string) error
+	MarkMerchantSettlementSubmissionUnknown(context.Context, string, string, string) error
+	MarkMerchantSettlementRetryable(context.Context, string, string, time.Duration) error
+	MarkMerchantSettlementManualReview(context.Context, string, string) error
+	MarkMerchantSettlementReconcileNotFound(context.Context, string, string, time.Duration, int, time.Duration) error
+	ApplyMerchantSettlementProviderEvent(context.Context, string, string, string, string, map[string]any) (bool, *database.MerchantSettlement, error)
 }
 
 type efiPixSendResult struct {
@@ -47,6 +62,7 @@ func NewNFCMerchantSettlementWorker(bus *EventBus, db *database.DB, cfg *config.
 	return &NFCMerchantSettlementWorker{
 		bus:    bus,
 		db:     db,
+		store:  db,
 		cfg:    cfg,
 		client: nfcSettlementHTTPClient(cfg),
 		dlq:    NewPersistentDLQ(db, 1000),
@@ -85,7 +101,7 @@ func (w *NFCMerchantSettlementWorker) handleCaptureEvent(ctx context.Context, ev
 		return
 	}
 	if !w.automatic() {
-		_ = w.db.MarkMerchantSettlementManualRequired(ctx, settlementID, "NFC_SETTLEMENT_MODE=manual")
+		_ = w.settlementStore().MarkMerchantSettlementManualRequired(ctx, settlementID, "NFC_SETTLEMENT_MODE=manual")
 		w.bus.Publish(Event{
 			Type:    "nfc.settlement.manual_required",
 			OrderID: ev.OrderID,
@@ -102,7 +118,7 @@ func (w *NFCMerchantSettlementWorker) handleCaptureEvent(ctx context.Context, ev
 }
 
 func (w *NFCMerchantSettlementWorker) sweepDue(ctx context.Context) {
-	settlements, err := w.db.GetDueMerchantSettlements(ctx, 50)
+	settlements, err := w.settlementStore().GetDueMerchantSettlements(ctx, 50)
 	if err != nil {
 		slog.Error("NFC settlement: erro ao listar pendentes", "err", err)
 		return
@@ -131,7 +147,7 @@ func (w *NFCMerchantSettlementWorker) dispatch(ctx context.Context, settlementID
 
 func (w *NFCMerchantSettlementWorker) processOne(ctx context.Context, settlementID string) {
 	start := time.Now()
-	settlement, claimed, err := w.db.ClaimMerchantSettlement(ctx, settlementID)
+	settlement, claimed, err := w.settlementStore().ClaimMerchantSettlement(ctx, settlementID)
 	if err != nil {
 		slog.Error("NFC settlement: claim falhou", "settlement_id", settlementID, "err", err)
 		w.dlq.Push(Event{Type: "nfc.settlement.failed", OrderID: settlementID}, 1, err.Error())
@@ -140,53 +156,93 @@ func (w *NFCMerchantSettlementWorker) processOne(ctx context.Context, settlement
 	if !claimed || settlement == nil {
 		return
 	}
-	if settlement.RetryCount >= nfcSettlementMaxRuns {
-		_ = w.db.MarkMerchantSettlementManualReview(ctx, settlement.ID, "max settlement attempts exceeded")
-		return
-	}
 	if strings.TrimSpace(settlement.TargetPixKey) == "" {
-		_ = w.db.MarkMerchantSettlementManualReview(ctx, settlement.ID, "merchant settlement Pix key missing")
+		_ = w.settlementStore().MarkMerchantSettlementManualReview(ctx, settlement.ID, "merchant settlement Pix key missing")
 		w.publishSettlementFailure(settlement, true, "merchant settlement Pix key missing")
 		return
 	}
 
 	switch settlement.Status {
+	case database.MerchantSettlementStatusConfirmed, database.MerchantSettlementStatusRejected, database.MerchantSettlementStatusManualReview, database.MerchantSettlementStatusCanceled:
+		return
+	case database.MerchantSettlementStatusSubmissionUnknown, database.MerchantSettlementStatusSubmitted:
+		w.reconcileOne(ctx, settlement, start)
+		return
 	case database.MerchantSettlementStatusProcessing:
-		if settlement.ProviderIDEnvio != "" || settlement.ProviderE2EID != "" {
+		if mustReconcileNFCSettlement(settlement) {
 			w.reconcileOne(ctx, settlement, start)
+			return
+		}
+		if settlement.RetryCount >= nfcSettlementMaxRuns {
+			_ = w.settlementStore().MarkMerchantSettlementManualReview(ctx, settlement.ID, "max settlement attempts exceeded")
 			return
 		}
 		w.submitOne(ctx, settlement, start)
 	default:
+		if settlement.RetryCount >= nfcSettlementMaxRuns {
+			_ = w.settlementStore().MarkMerchantSettlementManualReview(ctx, settlement.ID, "max settlement attempts exceeded")
+			return
+		}
 		w.submitOne(ctx, settlement, start)
 	}
 }
 
 func (w *NFCMerchantSettlementWorker) submitOne(ctx context.Context, settlement *database.MerchantSettlement, start time.Time) {
+	idEnvio := stableNFCSettlementIDEnvio(settlement)
+	if err := w.settlementStore().MarkMerchantSettlementSubmitStarted(ctx, settlement.ID, idEnvio); err != nil {
+		slog.Error("NFC settlement: falha ao persistir inicio do submit", "settlement_id", settlement.ID, "provider_id_envio", idEnvio, "err", err)
+		return
+	}
+	settlement.ProviderIDEnvio = idEnvio
+	settlement.ProviderReference = firstNonEmpty(settlement.ProviderReference, idEnvio)
+	settlement.SubmitOutcome = "started"
+
 	result, retryAfter, err := w.callEfiPixSend(ctx, settlement)
 	if err != nil {
 		if isAmbiguousSubmissionError(err) {
-			_ = w.db.MarkMerchantSettlementSubmissionUnknown(ctx, settlement.ID, err.Error())
-			w.bus.Publish(Event{Type: "nfc.settlement.submission_unknown", OrderID: settlement.AuthorizationID, Payload: map[string]any{
+			_ = w.settlementStore().MarkMerchantSettlementSubmissionUnknown(ctx, settlement.ID, idEnvio, err.Error())
+			metrics.RecordEfiReconcile("ambiguous")
+			w.publish(Event{Type: "nfc.settlement.submission_unknown", OrderID: settlement.AuthorizationID, Payload: map[string]any{
 				"settlement_id": settlement.ID,
+				"id_envio":      idEnvio,
 				"error":         err.Error(),
 			}})
 			return
 		}
 		if isPermanentNFCSettlementError(err) {
-			_ = w.db.MarkMerchantSettlementManualReview(ctx, settlement.ID, err.Error())
+			_ = w.settlementStore().MarkMerchantSettlementManualReview(ctx, settlement.ID, err.Error())
 			w.publishSettlementFailure(settlement, true, err.Error())
 			return
 		}
-		_ = w.db.MarkMerchantSettlementRetryable(ctx, settlement.ID, err.Error(), retryAfter)
+		_ = w.settlementStore().MarkMerchantSettlementRetryable(ctx, settlement.ID, err.Error(), retryAfter)
 		w.publishSettlementFailure(settlement, false, err.Error())
 		return
 	}
-	if err := w.db.MarkMerchantSettlementSubmitted(ctx, settlement.ID, firstNonEmpty(result.IDEnvio, settlement.IdempotencyKey), result.E2EID, result.Status); err != nil {
+	if err := w.settlementStore().MarkMerchantSettlementSubmitted(ctx, settlement.ID, firstNonEmpty(result.IDEnvio, settlement.IdempotencyKey), result.E2EID, result.Status); err != nil {
 		slog.Error("NFC settlement: submission persist failed", "settlement_id", settlement.ID, "err", err)
 		return
 	}
-	w.bus.Publish(Event{Type: "nfc.settlement.submitted", OrderID: settlement.AuthorizationID, Payload: map[string]any{
+	if result.Status != "" {
+		_, updated, err := w.settlementStore().ApplyMerchantSettlementProviderEvent(ctx, settlement.Provider, firstNonEmpty(result.IDEnvio, settlement.ProviderIDEnvio, settlement.IdempotencyKey), result.E2EID, result.Status, map[string]any{
+			"source":           "submit",
+			"status":           result.Status,
+			"e2e_id":           result.E2EID,
+			"amount_brl_minor": result.AmountBRLMinor,
+		})
+		if err != nil {
+			slog.Error("NFC settlement: provider status persist failed after submit", "settlement_id", settlement.ID, "provider_id_envio", idEnvio, "err", err)
+			return
+		}
+		if updated != nil && updated.Status == database.MerchantSettlementStatusConfirmed {
+			w.publish(Event{Type: "nfc.settlement.confirmed", OrderID: settlement.AuthorizationID, Payload: map[string]any{
+				"settlement_id":      settlement.ID,
+				"provider":           settlement.Provider,
+				"provider_reference": updated.ProviderReference,
+				"provider_status":    updated.ProviderStatus,
+			}})
+		}
+	}
+	w.publish(Event{Type: "nfc.settlement.submitted", OrderID: settlement.AuthorizationID, Payload: map[string]any{
 		"settlement_id":      settlement.ID,
 		"provider":           settlement.Provider,
 		"id_envio":           firstNonEmpty(result.IDEnvio, settlement.IdempotencyKey),
@@ -200,16 +256,18 @@ func (w *NFCMerchantSettlementWorker) submitOne(ctx context.Context, settlement 
 func (w *NFCMerchantSettlementWorker) reconcileOne(ctx context.Context, settlement *database.MerchantSettlement, start time.Time) {
 	result, retryAfter, err := w.getEfiPixSent(ctx, settlement)
 	if err != nil {
-		if isPermanentNotFoundAfterUnknown(settlement, err) {
-			_ = w.db.MarkMerchantSettlementRetryable(ctx, settlement.ID, err.Error(), 5*time.Second)
+		if isEfiPixSentNotFound(err) {
+			msg := "not_found_unconfirmed: " + err.Error()
+			_ = w.settlementStore().MarkMerchantSettlementReconcileNotFound(ctx, settlement.ID, msg, firstNonZeroDuration(retryAfter, 30*time.Second), w.notFoundMinReconciliations(), w.ambiguousGrace())
+			metrics.RecordEfiReconcile("not_found")
 			return
 		}
 		if isPermanentNFCSettlementError(err) {
-			_ = w.db.MarkMerchantSettlementManualReview(ctx, settlement.ID, err.Error())
+			_ = w.settlementStore().MarkMerchantSettlementManualReview(ctx, settlement.ID, err.Error())
 			w.publishSettlementFailure(settlement, true, err.Error())
 			return
 		}
-		_ = w.db.MarkMerchantSettlementRetryable(ctx, settlement.ID, err.Error(), retryAfter)
+		_ = w.settlementStore().MarkMerchantSettlementRetryable(ctx, settlement.ID, err.Error(), retryAfter)
 		w.publishSettlementFailure(settlement, false, err.Error())
 		return
 	}
@@ -221,13 +279,13 @@ func (w *NFCMerchantSettlementWorker) reconcileOne(ctx context.Context, settleme
 	if result.AmountBRLMinor > 0 {
 		eventPayload["amount_brl_minor"] = result.AmountBRLMinor
 	}
-	duplicate, updated, err := w.db.ApplyMerchantSettlementProviderEvent(ctx, settlement.Provider, firstNonEmpty(result.IDEnvio, settlement.IdempotencyKey), result.E2EID, result.Status, eventPayload)
+	duplicate, updated, err := w.settlementStore().ApplyMerchantSettlementProviderEvent(ctx, settlement.Provider, firstNonEmpty(result.IDEnvio, settlement.ProviderIDEnvio, settlement.IdempotencyKey), result.E2EID, result.Status, eventPayload)
 	if err != nil {
 		slog.Error("NFC settlement: reconciliação falhou", "settlement_id", settlement.ID, "err", err)
 		return
 	}
 	if updated != nil && updated.Status == database.MerchantSettlementStatusConfirmed {
-		w.bus.Publish(Event{Type: "nfc.settlement.confirmed", OrderID: settlement.AuthorizationID, Payload: map[string]any{
+		w.publish(Event{Type: "nfc.settlement.confirmed", OrderID: settlement.AuthorizationID, Payload: map[string]any{
 			"settlement_id":      settlement.ID,
 			"provider":           settlement.Provider,
 			"provider_reference": updated.ProviderReference,
@@ -252,7 +310,7 @@ func (w *NFCMerchantSettlementWorker) callEfiPixSend(ctx context.Context, settle
 func (w *NFCMerchantSettlementWorker) doEfiPixSend(ctx context.Context, settlement *database.MerchantSettlement, token string, retryAuth bool) (efiPixSendResult, time.Duration, error) {
 	payload := buildEfiPixSendPayload(w.cfg.EfiPixKey, settlement)
 	body, _ := json.Marshal(payload)
-	idEnvio := settlement.IdempotencyKey
+	idEnvio := stableNFCSettlementIDEnvio(settlement)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut,
 		strings.TrimRight(w.cfg.EfiApiBaseURL, "/")+"/v3/gn/pix/"+idEnvio, bytes.NewReader(body))
 	if err != nil {
@@ -290,7 +348,7 @@ func (w *NFCMerchantSettlementWorker) getEfiPixSent(ctx context.Context, settlem
 	if err != nil {
 		return efiPixSendResult{}, 0, fmt.Errorf("efi auth: %w", err)
 	}
-	idEnvio := firstNonEmpty(settlement.ProviderIDEnvio, settlement.IdempotencyKey)
+	idEnvio := stableNFCSettlementIDEnvio(settlement)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		strings.TrimRight(w.cfg.EfiApiBaseURL, "/")+"/v2/gn/pix/enviados/id-envio/"+idEnvio, nil)
 	if err != nil {
@@ -385,7 +443,7 @@ func (w *NFCMerchantSettlementWorker) getEfiToken(ctx context.Context) (string, 
 }
 
 func (w *NFCMerchantSettlementWorker) publishSettlementFailure(settlement *database.MerchantSettlement, permanent bool, errMsg string) {
-	w.bus.Publish(Event{Type: "nfc.settlement.failed", OrderID: settlement.AuthorizationID, Payload: map[string]any{
+	w.publish(Event{Type: "nfc.settlement.failed", OrderID: settlement.AuthorizationID, Payload: map[string]any{
 		"settlement_id": settlement.ID,
 		"permanent":     permanent,
 		"error":         errMsg,
@@ -394,6 +452,13 @@ func (w *NFCMerchantSettlementWorker) publishSettlementFailure(settlement *datab
 	if !permanent {
 		w.dlq.Push(Event{Type: "nfc.settlement.failed", OrderID: settlement.AuthorizationID}, settlement.RetryCount, errMsg)
 	}
+}
+
+func (w *NFCMerchantSettlementWorker) publish(event Event) {
+	if w == nil || w.bus == nil {
+		return
+	}
+	w.bus.Publish(event)
 }
 
 func (w *NFCMerchantSettlementWorker) automatic() bool {
@@ -406,6 +471,62 @@ func (w *NFCMerchantSettlementWorker) mode() string {
 		return "manual"
 	}
 	return strings.ToLower(strings.TrimSpace(w.cfg.NFCSettlementMode))
+}
+
+func (w *NFCMerchantSettlementWorker) settlementStore() nfcMerchantSettlementStore {
+	if w == nil {
+		return nil
+	}
+	if w.store != nil {
+		return w.store
+	}
+	return w.db
+}
+
+func (w *NFCMerchantSettlementWorker) ambiguousGrace() time.Duration {
+	if w == nil || w.cfg == nil || w.cfg.NFCSettlementAmbiguousGraceSec <= 0 {
+		return 15 * time.Minute
+	}
+	return time.Duration(w.cfg.NFCSettlementAmbiguousGraceSec) * time.Second
+}
+
+func (w *NFCMerchantSettlementWorker) notFoundMinReconciliations() int {
+	if w == nil || w.cfg == nil || w.cfg.NFCSettlementNotFoundMinReconciliations <= 0 {
+		return 3
+	}
+	return w.cfg.NFCSettlementNotFoundMinReconciliations
+}
+
+func stableNFCSettlementIDEnvio(settlement *database.MerchantSettlement) string {
+	if settlement == nil {
+		return ""
+	}
+	return firstNonEmpty(settlement.ProviderIDEnvio, settlement.IdempotencyKey)
+}
+
+func mustReconcileNFCSettlement(settlement *database.MerchantSettlement) bool {
+	if settlement == nil {
+		return false
+	}
+	switch settlement.Status {
+	case database.MerchantSettlementStatusSubmissionUnknown, database.MerchantSettlementStatusSubmitted:
+		return true
+	case database.MerchantSettlementStatusProcessing:
+		switch strings.TrimSpace(settlement.SubmitOutcome) {
+		case "started", "ambiguous", "confirmed":
+			return true
+		}
+	}
+	return false
+}
+
+func firstNonZeroDuration(values ...time.Duration) time.Duration {
+	for _, value := range values {
+		if value > 0 {
+			return value
+		}
+	}
+	return 0
 }
 
 func nfcSettlementHTTPClient(cfg *config.Config) *http.Client {
@@ -449,18 +570,23 @@ func isAmbiguousSubmissionError(err error) bool {
 		return false
 	}
 	var netErr net.Error
-	if err != nil && strings.Contains(strings.ToLower(err.Error()), "timeout") {
+	msg := strings.ToLower(err.Error())
+	if strings.Contains(msg, "timeout") {
 		return true
 	}
-	return strings.Contains(strings.ToLower(err.Error()), "context deadline exceeded") || (errors.As(err, &netErr) && netErr.Timeout())
+	for _, marker := range []string{"context deadline exceeded", "eof", "connection reset", "connection refused", "unexpected end of file"} {
+		if strings.Contains(msg, marker) {
+			return true
+		}
+	}
+	return errors.As(err, &netErr) && netErr.Timeout()
 }
 
-func isPermanentNotFoundAfterUnknown(settlement *database.MerchantSettlement, err error) bool {
-	if settlement == nil || err == nil {
+func isEfiPixSentNotFound(err error) bool {
+	if err == nil {
 		return false
 	}
-	return settlement.Status == database.MerchantSettlementStatusSubmissionUnknown &&
-		strings.Contains(strings.ToLower(err.Error()), "status 404")
+	return strings.Contains(strings.ToLower(err.Error()), "status 404")
 }
 
 func isPermanentNFCSettlementError(err error) bool {
