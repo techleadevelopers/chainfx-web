@@ -84,7 +84,7 @@ func (s *Server) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := mobileDB(s.db).UpdateUser(r.Context(), uid, fields); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	user, err := mobileDB(s.db).GetUserByID(r.Context(), uid)
@@ -124,7 +124,7 @@ func (s *Server) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := mobileDB(s.db).DeleteUserAccount(r.Context(), uid); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	// Invalidate caches so any in-flight token is rejected immediately.
@@ -152,10 +152,10 @@ func (s *Server) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleSubmitKYC(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("X-Deprecated-By", "POST /api/mobile/kyc/submit")
 	writeJSON(w, http.StatusGone, map[string]any{
-		"error":       "Este endpoint foi descontinuado. Use POST /api/mobile/kyc/submit.",
-		"canonical":   "POST /api/mobile/kyc/submit",
-		"docs":        "O novo endpoint aceita URLs de documentos (document_front_url, document_back_url, selfie_url) e executa OCR assíncrono via KYC engine.",
-		"deprecated":  true,
+		"error":      "Este endpoint foi descontinuado. Use POST /api/mobile/kyc/submit.",
+		"canonical":  "POST /api/mobile/kyc/submit",
+		"docs":       "O novo endpoint aceita URLs de documentos (document_front_url, document_back_url, selfie_url) e executa OCR assíncrono via KYC engine.",
+		"deprecated": true,
 	})
 }
 
@@ -242,7 +242,7 @@ func (s *Server) handleListDevices(w http.ResponseWriter, r *http.Request) {
 	uid := userIDFromCtx(r)
 	devices, err := mobileDB(s.db).ListDevices(r.Context(), uid)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"devices": devices})
@@ -259,7 +259,7 @@ func (s *Server) handleRemoveDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := mobileDB(s.db).DeleteDevice(r.Context(), uid, req.DeviceID); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
