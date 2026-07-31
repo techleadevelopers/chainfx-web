@@ -3346,6 +3346,52 @@ const payload = state.action === 'sell'
       });
   }
 
+  // ==================================================
+// TIMER DA ORDEM SELL
+// ==================================================
+
+let sellOrderTimerInterval = null;
+
+function startSellOrderTimer() {
+    const countdown =
+        document.getElementById('sellOrderCountdown');
+
+    if (!countdown) return;
+
+    // evita criar vários timers ao clicar novamente
+    if (sellOrderTimerInterval) {
+        clearInterval(sellOrderTimerInterval);
+    }
+
+    let remaining = 15 * 60; // 15 minutos
+
+    const render = () => {
+        const minutes = Math.floor(remaining / 60);
+        const seconds = remaining % 60;
+
+        countdown.textContent =
+            `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+        if (remaining <= 0) {
+            clearInterval(sellOrderTimerInterval);
+            sellOrderTimerInterval = null;
+            countdown.textContent = '00:00';
+            return;
+        }
+
+        remaining--;
+    };
+
+    render();
+
+    sellOrderTimerInterval =
+        setInterval(render, 1000);
+}
+
+
+// Listen for clicks on the 'Continue' button
+if (continueBtn) 
+
   // Listen for clicks on the 'Continue' button
   if (continueBtn) {
       continueBtn.addEventListener('click', async () => {
@@ -3449,11 +3495,12 @@ const payload = state.action === 'sell'
     // mostra Rede + Wallet
     sellNetworkSection?.classList.remove('hidden');
     sellWalletStep?.classList.remove('hidden');
-    
+
     const sellOrderTimer =
     document.getElementById('sellOrderTimer');
 
 sellOrderTimer?.classList.remove('hidden');
+startSellOrderTimer();
 
     // botão vira final
     continueBtn.textContent = 'Sell Now';
