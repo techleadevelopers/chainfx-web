@@ -201,19 +201,84 @@ func (q *mobileQueries) ListKYCByUser(ctx context.Context, userID string, limit 
 
 // ─── Swaps ────────────────────────────────────────────────────────────────────
 
+type mobileSwapQuoteMetadata struct {
+	Provider       string
+	Network        string
+	Router         string
+	Path           []string
+	AmountInRaw    string
+	ExpectedOutRaw string
+	MinReceivedRaw string
+	SlippageBPS    int
+	ExpiresAt      time.Time
+}
+
 func (q *mobileQueries) CreateSwap(ctx context.Context, userID, fromAsset, toAsset string,
-	fromAmount, slippage float64, feeBPS int) (*models.Swap, error) {
+	fromAmount, slippage float64, feeBPS int, quoteID string, quoteMeta *mobileSwapQuoteMetadata) (*models.Swap, error) {
+	if err := q.ensureMobileSwapExecutionSchema(ctx); err != nil {
+		return nil, err
+	}
 	s := &models.Swap{}
+	status := "pending"
+	provider, network, router, amountInRaw, expectedOutRaw, minReceivedRaw := "", "", "", "", "", ""
+	var path []string
+	var quoteExpiresAt any
+	var slippageBPS any
+	if quoteMeta != nil {
+		status = "execution_requested"
+		provider = strings.TrimSpace(quoteMeta.Provider)
+		network = strings.ToUpper(strings.TrimSpace(quoteMeta.Network))
+		router = strings.TrimSpace(quoteMeta.Router)
+		path = quoteMeta.Path
+		amountInRaw = strings.TrimSpace(quoteMeta.AmountInRaw)
+		expectedOutRaw = strings.TrimSpace(quoteMeta.ExpectedOutRaw)
+		minReceivedRaw = strings.TrimSpace(quoteMeta.MinReceivedRaw)
+		slippageBPS = quoteMeta.SlippageBPS
+		quoteExpiresAt = quoteMeta.ExpiresAt
+	}
 	err := q.sql.QueryRowContext(ctx, `
-		INSERT INTO swaps (user_id, from_asset, to_asset, from_amount, fee_bps, slippage_tolerance)
-		VALUES ($1,$2,$3,$4,$5,$6)
+		INSERT INTO swaps (
+		  user_id, from_asset, to_asset, from_amount, fee_bps, slippage_tolerance, status,
+		  quote_id, provider, network, router, path, amount_in_raw, expected_out_raw,
+		  min_received_raw, slippage_bps, quote_expires_at, execution_id
+		)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,NULLIF($8,''),NULLIF($9,''),NULLIF($10,''),NULLIF($11,''),
+		        $12,NULLIF($13,''),NULLIF($14,''),NULLIF($15,''),$16,$17,'swap_' || gen_random_uuid()::text)
 		RETURNING id,user_id,from_asset,to_asset,from_amount,to_amount,rate,
 		          fee_bps,slippage_tolerance,status,tx_hash,error,created_at,updated_at`,
-		userID, fromAsset, toAsset, fromAmount, feeBPS, slippage).Scan(
+		userID, fromAsset, toAsset, fromAmount, feeBPS, slippage, status, quoteID, provider, network, router,
+		pq.Array(path), amountInRaw, expectedOutRaw, minReceivedRaw, slippageBPS, quoteExpiresAt).Scan(
 		&s.ID, &s.UserID, &s.FromAsset, &s.ToAsset, &s.FromAmount, &s.ToAmount,
 		&s.Rate, &s.FeeBPS, &s.SlippageTolerance, &s.Status, &s.TxHash, &s.Error,
 		&s.CreatedAt, &s.UpdatedAt)
 	return s, err
+}
+
+func (q *mobileQueries) ensureMobileSwapExecutionSchema(ctx context.Context) error {
+	stmts := []string{
+		`ALTER TABLE swaps ADD COLUMN IF NOT EXISTS quote_id TEXT`,
+		`ALTER TABLE swaps ADD COLUMN IF NOT EXISTS provider TEXT`,
+		`ALTER TABLE swaps ADD COLUMN IF NOT EXISTS network TEXT`,
+		`ALTER TABLE swaps ADD COLUMN IF NOT EXISTS router TEXT`,
+		`ALTER TABLE swaps ADD COLUMN IF NOT EXISTS path TEXT[]`,
+		`ALTER TABLE swaps ADD COLUMN IF NOT EXISTS amount_in_raw TEXT`,
+		`ALTER TABLE swaps ADD COLUMN IF NOT EXISTS expected_out_raw TEXT`,
+		`ALTER TABLE swaps ADD COLUMN IF NOT EXISTS min_received_raw TEXT`,
+		`ALTER TABLE swaps ADD COLUMN IF NOT EXISTS slippage_bps INT`,
+		`ALTER TABLE swaps ADD COLUMN IF NOT EXISTS quote_expires_at TIMESTAMPTZ`,
+		`ALTER TABLE swaps ADD COLUMN IF NOT EXISTS execution_id TEXT`,
+		`ALTER TABLE swaps ADD COLUMN IF NOT EXISTS broadcast_at TIMESTAMPTZ`,
+		`ALTER TABLE swaps ADD COLUMN IF NOT EXISTS confirmed_at TIMESTAMPTZ`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_swaps_quote_id_unique ON swaps(quote_id) WHERE quote_id IS NOT NULL AND quote_id <> ''`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_swaps_execution_id_unique ON swaps(execution_id) WHERE execution_id IS NOT NULL AND execution_id <> ''`,
+		`CREATE INDEX IF NOT EXISTS idx_swaps_recovery_status ON swaps(status, updated_at) WHERE status IN ('execution_requested','signing','broadcast','confirming')`,
+	}
+	for _, stmt := range stmts {
+		if _, err := q.sql.ExecContext(ctx, stmt); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (q *mobileQueries) GetSwap(ctx context.Context, id string) (*models.Swap, error) {
