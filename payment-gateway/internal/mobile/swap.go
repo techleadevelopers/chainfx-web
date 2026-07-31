@@ -11,10 +11,16 @@ import (
 	"time"
 
 	"payment-gateway/internal/models"
+
+	"github.com/lib/pq"
 )
 
 const defaultSwapFeeBPS = 50  // 0.50%
 const defaultSlippage = 0.005 // 0.5%
+
+func mobileProductError(code, message string) map[string]any {
+	return map[string]any{"code": code, "message": message, "error": message}
+}
 
 func (s *Server) handleSwapQuote(w http.ResponseWriter, r *http.Request) {
 	var req struct {
@@ -36,55 +42,71 @@ func (s *Server) handleSwapQuote(w http.ResponseWriter, r *http.Request) {
 	if req.Slippage <= 0 {
 		req.Slippage = defaultSlippage
 	}
-
-	pw := s.PriceCache()
-	fromBRL := mobileAssetPriceBRL(pw, req.FromAsset)
-	toBRL := mobileAssetPriceBRL(pw, req.ToAsset)
-	if fromBRL <= 0 || toBRL <= 0 {
-		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
-			"error": "cotacao indisponivel para um dos ativos",
-		})
+	if s.cfg == nil || !s.cfg.MobileSwapPancakeEnabled {
+		writeJSON(w, http.StatusServiceUnavailable, mobileProductError("ROUTE_UNAVAILABLE", "Swap indisponivel no momento."))
 		return
 	}
 
-	rate := fromBRL / toBRL
 	fee := req.Amount * float64(defaultSwapFeeBPS) / 10_000
 	netFrom := req.Amount - fee
-	estimatedTo := netFrom * rate
-	minReceived := estimatedTo * (1 - req.Slippage)
-	expiresAt := time.Now().Add(60 * time.Second).UTC()
-
-	// Issue a server-signed quote — the execute handler will verify this to
-	// prevent price bypass and replay attacks.
-	quoteID, err := s.issueMobileQuote(mobileQuoteClaims{
-		Side:      "swap",
-		Asset:     req.FromAsset + ":" + req.ToAsset,
-		Amount:    req.Amount,
-		Rate:      rate,
-		Fee:       fee,
-		Total:     estimatedTo,
-		ExpiresAt: expiresAt.Unix(),
-	})
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"code": "SWAP_QUOTE_ERROR", "message": "erro interno ao assinar cotacao"})
+	if s.cfg != nil && s.cfg.MobileSwapPancakeEnabled {
+		pancakeQuote, err := s.mobilePancakeQuote(r.Context(), req.FromAsset, req.ToAsset, netFrom, req.Slippage)
+		if err == nil {
+			estimatedTo := pancakeQuote.EstimatedTo
+			rate := estimatedTo / req.Amount
+			minReceived := estimatedTo * (1 - req.Slippage)
+			expiresAt := time.Now().Add(60 * time.Second).UTC()
+			quoteID, err := s.issueMobileQuote(mobileQuoteClaims{
+				Side:           "swap",
+				Asset:          req.FromAsset + ":" + req.ToAsset,
+				Amount:         req.Amount,
+				Rate:           rate,
+				Fee:            fee,
+				Total:          estimatedTo,
+				ExpiresAt:      expiresAt.Unix(),
+				Network:        "BSC",
+				Provider:       "pancakeswap_v2",
+				Router:         pancakeQuote.Router,
+				Path:           pancakeQuote.Path,
+				AmountInRaw:    pancakeQuote.AmountInRaw,
+				ExpectedOutRaw: pancakeQuote.AmountOutRaw,
+				MinReceivedRaw: pancakeQuote.MinOutRaw,
+				SlippageBPS:    pancakeQuote.SlippageBPS,
+			})
+			if err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]any{"code": "SWAP_QUOTE_ERROR", "message": "erro interno ao assinar cotacao"})
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{
+				"quote_id":         quoteID,
+				"expires_at":       expiresAt.Format(time.RFC3339),
+				"from_asset":       req.FromAsset,
+				"to_asset":         req.ToAsset,
+				"from_amount":      req.Amount,
+				"estimated_to":     estimatedTo,
+				"min_received":     minReceived,
+				"rate":             rate,
+				"fee_bps":          defaultSwapFeeBPS,
+				"fee_amount":       fee,
+				"slippage":         req.Slippage,
+				"provider":         "pancakeswap_v2",
+				"network":          "BSC",
+				"router":           pancakeQuote.Router,
+				"path":             pancakeQuote.Path,
+				"amount_in_raw":    pancakeQuote.AmountInRaw,
+				"amount_out_raw":   pancakeQuote.AmountOutRaw,
+				"min_received_raw": pancakeQuote.MinOutRaw,
+				"slippage_bps":     pancakeQuote.SlippageBPS,
+			})
+			return
+		}
+		slog.Warn("Pancake quote indisponivel", "from", req.FromAsset, "to", req.ToAsset, "err", err)
+		writeJSON(w, http.StatusServiceUnavailable, mobileProductError("ROUTE_UNAVAILABLE", "Swap indisponivel no momento."))
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
-		"quote_id":       quoteID,
-		"expires_at":     expiresAt.Format(time.RFC3339),
-		"from_asset":     req.FromAsset,
-		"to_asset":       req.ToAsset,
-		"from_amount":    req.Amount,
-		"estimated_to":   estimatedTo,
-		"min_received":   minReceived,
-		"rate":           rate,
-		"fee_bps":        defaultSwapFeeBPS,
-		"fee_amount":     fee,
-		"slippage":       req.Slippage,
-		"from_price_brl": fromBRL,
-		"to_price_brl":   toBRL,
-	})
+	writeJSON(w, http.StatusServiceUnavailable, mobileProductError("ROUTE_UNAVAILABLE", "Swap indisponivel no momento."))
+
 }
 
 func mobileSwapQuoteID() string {
@@ -128,11 +150,18 @@ func (s *Server) handleSwapExecute(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	if _, err := s.verifyMobileQuote(req.QuoteID, "swap", req.FromAsset+":"+req.ToAsset, req.Amount, time.Now()); err != nil {
+	claims, err := s.verifyMobileQuote(req.QuoteID, "swap", req.FromAsset+":"+req.ToAsset, req.Amount, time.Now())
+	if err != nil {
 		writeJSON(w, http.StatusConflict, map[string]any{
 			"code":    "SWAP_QUOTE_INVALID",
-			"message": err.Error(),
+			"message": "Cotacao expirada ou invalida.",
 		})
+		return
+	}
+	if s.cfg == nil || !s.cfg.MobileSwapPancakeEnabled ||
+		!strings.EqualFold(claims.Provider, "pancakeswap_v2") ||
+		!strings.EqualFold(claims.Network, "BSC") {
+		writeJSON(w, http.StatusServiceUnavailable, mobileProductError("ROUTE_UNAVAILABLE", "Swap indisponivel no momento."))
 		return
 	}
 
@@ -157,8 +186,26 @@ func (s *Server) handleSwapExecute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	swap, err := mobileDB(s.db).CreateSwap(r.Context(), uid, req.FromAsset, req.ToAsset, req.Amount, req.Slippage, defaultSwapFeeBPS)
+	quoteMeta := &mobileSwapQuoteMetadata{
+		Provider:       claims.Provider,
+		Network:        claims.Network,
+		Router:         claims.Router,
+		Path:           claims.Path,
+		AmountInRaw:    claims.AmountInRaw,
+		ExpectedOutRaw: claims.ExpectedOutRaw,
+		MinReceivedRaw: claims.MinReceivedRaw,
+		SlippageBPS:    claims.SlippageBPS,
+		ExpiresAt:      time.Unix(claims.ExpiresAt, 0).UTC(),
+	}
+	swap, err := mobileDB(s.db).CreateSwap(r.Context(), uid, req.FromAsset, req.ToAsset, req.Amount, req.Slippage, defaultSwapFeeBPS, req.QuoteID, quoteMeta)
 	if err != nil {
+		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+			writeJSON(w, http.StatusConflict, map[string]any{
+				"code":    "SWAP_QUOTE_ALREADY_USED",
+				"message": "quote_id ja usado em outro swap",
+			})
+			return
+		}
 		slog.Error("erro interno", "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro interno"})
 		return
@@ -175,8 +222,21 @@ func (s *Server) handleSwapExecute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusAccepted, map[string]any{
-		"swap":    swap,
-		"message": "Swap em processamento. Acompanhe o status pelo ID.",
+		"id":             swap.ID,
+		"swap_id":        swap.ID,
+		"status":         swap.Status,
+		"from_asset":     swap.FromAsset,
+		"to_asset":       swap.ToAsset,
+		"from_amount":    swap.FromAmount,
+		"to_amount":      swap.ToAmount,
+		"rate":           swap.Rate,
+		"fee_bps":        swap.FeeBPS,
+		"tx_hash":        swap.TxHash,
+		"provider":       "pancakeswap_v2",
+		"network":        "BSC",
+		"tracking_route": "/api/mobile/swap/" + swap.ID,
+		"swap":           swap,
+		"message":        "Swap em processamento. Acompanhe o status pelo ID.",
 	})
 }
 
