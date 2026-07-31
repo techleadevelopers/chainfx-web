@@ -781,8 +781,9 @@ body.index-page .contact-hero::before {
   body.index-page #buyCustomerCpf {
     min-height: 27px;
     height: 27px;
-    padding: 0 4px !important;
+    padding: 0 2px !important;
     font-size: 0.84rem;
+    color: #1d63a9;
     line-height: 27px;
     background: transparent;
     box-shadow: none;
