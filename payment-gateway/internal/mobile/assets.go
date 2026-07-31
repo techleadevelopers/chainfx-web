@@ -226,6 +226,9 @@ func assetPriceInBRL(pw interface{ GetPrice(string) float64 }, symbol string) fl
 		return pw.GetPrice("BRL") // USDT≈1 USD
 	case "BTCB", "BTC":
 		btcUSD := pw.GetPrice("BTCUSDT_SOURCE")
+		if btcUSD <= 0 {
+			btcUSD = pw.GetPrice("BTCUSDT")
+		}
 		usdtBRL := pw.GetPrice("BRL")
 		if btcUSD > 0 && usdtBRL > 0 {
 			return btcUSD * usdtBRL
@@ -284,7 +287,10 @@ func assetPriceInUSD(pw interface{ GetPrice(string) float64 }, symbol string) fl
 	case "USDT", "USDC", "BUSD":
 		return 1
 	case "BTCB", "BTC":
-		return pw.GetPrice("BTCUSDT_SOURCE")
+		if price := pw.GetPrice("BTCUSDT_SOURCE"); price > 0 {
+			return price
+		}
+		return pw.GetPrice("BTCUSDT")
 	case "ETH":
 		return pw.GetPrice("ETHUSDT_SOURCE")
 	case "LINK":
