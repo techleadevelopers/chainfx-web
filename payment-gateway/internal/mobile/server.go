@@ -122,8 +122,16 @@ func New(cfg *config.Config, db *database.DB, wm *workers.WorkerManager, btcSvc 
 		if err := mobileDB(db).InitSchema(ctx); err != nil {
 			_, _ = os.Stderr.WriteString("[mobile] schema init warning: " + err.Error() + "\n")
 		}
+		if db.SQL != nil {
+			if err := ensureStayHotelCacheSchema(ctx, db.SQL); err != nil {
+				_, _ = os.Stderr.WriteString("[mobile] stayapi cache schema warning: " + err.Error() + "\n")
+			}
+		}
 	}
 	go s.startCommerceOutboxWorker(context.Background())
+	go s.startMobilePaymentExecutionWorker(context.Background())
+	go s.startMobilePaymentRefundWorker(context.Background())
+	go s.startStayHotelCacheJanitor(context.Background())
 	return s
 }
 
@@ -267,6 +275,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/mobile/auth/register/request-code", s.handleRegisterRequestCode)
 	mux.HandleFunc("POST /api/mobile/auth/register/verify-code", s.handleRegisterVerifyCode)
 	mux.HandleFunc("POST /api/mobile/auth/register", s.handleRegister)
+	mux.HandleFunc("POST /api/mobile/auth/check-email", s.handleCheckEmail)
 	mux.HandleFunc("POST /api/mobile/auth/login", s.handleLogin)
 	mux.HandleFunc("POST /api/mobile/auth/refresh", s.handleRefresh)
 	mux.HandleFunc("POST /api/mobile/auth/logout", s.requireAuth(s.handleLogout))
@@ -291,6 +300,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/mobile/sol/balance", s.requireAuth(s.handleSolanaBalance))
 	mux.HandleFunc("GET /api/mobile/sol/fee-estimate", s.requireAuth(s.handleSolanaFeeEstimate))
 	mux.HandleFunc("GET /api/mobile/sol/transactions", s.requireAuth(s.handleSolanaTransactions))
+	mux.HandleFunc("GET /api/mobile/sol/transactions/{id}", s.requireAuth(s.handleSolanaTransaction))
 	mux.HandleFunc("POST /api/mobile/sol/send", s.requireAuth(s.requireIdempotency("mobile.sol.send", s.handleSolanaSend)))
 	mux.HandleFunc("GET /api/mobile/aptos/address", s.requireAuth(s.handleAptosAddress))
 	mux.HandleFunc("POST /api/mobile/wallet/generate", s.requireAuth(s.handleWalletGenerate))
@@ -327,6 +337,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/mobile/gift-cards/quote", s.requireAuth(s.handleGiftCardQuote))
 	mux.HandleFunc("POST /api/mobile/gift-cards/orders", s.requireAuth(s.requireIdempotency("mobile.gift_cards.purchase", s.handleGiftCardPurchase)))
 	mux.HandleFunc("POST /api/mobile/gift-cards/purchase", s.requireAuth(s.requireIdempotency("mobile.gift_cards.purchase", s.handleGiftCardPurchase)))
+	mux.HandleFunc("POST /api/mobile/gift-cards/orders/{id}/funding", s.requireAuth(s.requireIdempotency("mobile.gift_cards.funding", s.handleGiftCardFundingConfirm)))
 	mux.HandleFunc("GET /api/mobile/gift-cards/orders", s.requireAuth(s.handleGiftCardOrders))
 	mux.HandleFunc("GET /api/mobile/gift-cards/orders/{id}", s.requireAuth(s.handleGiftCardOrder))
 	mux.HandleFunc("GET /api/mobile/gift-cards/{id}", s.requireAuth(s.handleGiftCardOrder))
