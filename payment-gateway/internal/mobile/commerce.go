@@ -118,7 +118,7 @@ func (s *Server) handleCommerceProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	product, err = provider.GetProduct(r.Context(), providerID)
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]any{"error": "erro ao consultar produto Bitrefill", "detail": err.Error()})
+		writeJSON(w, http.StatusBadGateway, mobileProductError("NETWORK_UNAVAILABLE", "Produto indisponivel no momento."))
 		return
 	}
 	_ = s.upsertCommerceProduct(r, *product)
@@ -202,19 +202,18 @@ LIMIT 100`)
 
 func (s *Server) handleCommerceQuote(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		ProductID     string `json:"product_id"`
-		Quantity      int    `json:"quantity"`
-		UnitPrice     any    `json:"unit_price"`
-		FundingMethod string `json:"funding_method"`
+		ProductID      string `json:"product_id"`
+		Quantity       int    `json:"quantity"`
+		UnitPrice      any    `json:"unit_price"`
+		FundingMethod  string `json:"funding_method"`
+		RecipientPhone string `json:"recipient_phone"`
 	}
 	if err := decodeJSON(r, &req); err != nil || strings.TrimSpace(req.ProductID) == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "product_id obrigatorio"})
 		return
 	}
-	if unitPriceMinor := decimalToMinor(req.UnitPrice, brlMinorScale); unitPriceMinor > 0 {
-		_ = s.updateCommerceProductPrice(r, req.ProductID, unitPriceMinor)
-	}
-	quote, ok := s.mobileGiftCardQuotePayload(w, r, req.ProductID, req.Quantity)
+	unitPriceMinor := decimalToMinor(req.UnitPrice, brlMinorScale)
+	quote, ok := s.mobileGiftCardQuotePayloadWithUnitPrice(w, r, req.ProductID, req.Quantity, unitPriceMinor, req.RecipientPhone)
 	if !ok {
 		return
 	}
