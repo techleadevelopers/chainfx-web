@@ -203,22 +203,30 @@ func (s *Server) handleRegisterRequestCode(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := mailer.Send(email.Message{
-		To:       to,
-		Subject:  "ChainFX - codigo de verificacao",
-		TextBody: "Seu codigo de verificacao ChainFX e: " + code + "\n\nEle expira em 10 minutos.",
-		HTMLBody: buildRegisterOTPHTML(code),
-	}); err != nil {
-		slog.Warn("mobile register OTP email failed", "error", err)
-		writeJSON(w, http.StatusBadGateway, map[string]any{"error": "falha ao enviar codigo por email"})
-		return
-	}
-
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":                   true,
 		"expires_in_seconds":   600,
 		"resend_after_seconds": 30,
 	})
+
+	go func() {
+		if err := mailer.Send(email.Message{
+			To:       to,
+			Subject:  "ChainFX - codigo de verificacao",
+			TextBody: "Seu codigo de verificacao ChainFX e: " + code + "\n\nEle expira em 10 minutos.",
+			HTMLBody: buildRegisterOTPHTML(code),
+		}); err != nil {
+			slog.Warn("mobile register OTP email failed", "email_domain", emailDomainForLog(to), "error", err)
+		}
+	}()
+}
+
+func emailDomainForLog(emailAddress string) string {
+	parts := strings.Split(strings.TrimSpace(strings.ToLower(emailAddress)), "@")
+	if len(parts) != 2 || parts[1] == "" {
+		return "invalid"
+	}
+	return parts[1]
 }
 
 func (s *Server) handleRegisterVerifyCode(w http.ResponseWriter, r *http.Request) {
@@ -285,6 +293,7 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		AddressCity            string `json:"address_city"`
 		AddressState           string `json:"address_state"`
 		AddressCountry         string `json:"address_country"`
+		DeviceID               string `json:"device_id"`
 	}
 	if err := decodeJSON(r, &req); err != nil || req.Email == "" || req.Password == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "email e password obrigatórios"})
@@ -329,7 +338,7 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusConflict, map[string]any{"error": "email já cadastrado"})
 			return
 		}
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	user, err = s.ensureUserWallet(r.Context(), user)
@@ -339,7 +348,7 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	access, _ := s.newAccessToken(user.ID)
 	refresh, _ := s.newRefreshToken(user.ID)
-	if err := mobileDB(s.db).SaveRefreshToken(r.Context(), user.ID, refresh); err != nil {
+	if err := mobileDB(s.db).SaveRefreshTokenForDevice(r.Context(), user.ID, refresh, req.DeviceID); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro ao criar sessao"})
 		return
 	}
@@ -348,12 +357,35 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		"accessToken":  access,
 		"refreshToken": refresh,
 	})
+	s.sendRegisterCompletedEmailAsync(user.Email, user.ID)
+}
+
+func (s *Server) handleCheckEmail(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email string `json:"email"`
+	}
+	if err := decodeJSON(r, &req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "payload invalido"})
+		return
+	}
+	to := strings.TrimSpace(strings.ToLower(req.Email))
+	if to == "" || !strings.Contains(to, "@") {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "email invalido"})
+		return
+	}
+	user, err := mobileDB(s.db).GetUserByEmail(r.Context(), to)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro ao verificar email"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"exists": user != nil})
 }
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
+		DeviceID string `json:"device_id"`
 	}
 	if err := decodeJSON(r, &req); err != nil || req.Email == "" || req.Password == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "email e password obrigatórios"})
@@ -375,7 +407,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	access, _ := s.newAccessToken(user.ID)
 	refresh, _ := s.newRefreshToken(user.ID)
-	if err := mobileDB(s.db).SaveRefreshToken(r.Context(), user.ID, refresh); err != nil {
+	if err := mobileDB(s.db).SaveRefreshTokenForDevice(r.Context(), user.ID, refresh, req.DeviceID); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro ao criar sessao"})
 		return
 	}
@@ -389,6 +421,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		RefreshToken string `json:"refreshToken"`
+		DeviceID     string `json:"device_id"`
 	}
 	if err := decodeJSON(r, &req); err != nil || req.RefreshToken == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "refreshToken obrigatório"})
@@ -419,9 +452,15 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]any{"error": "sessão inválida — faça login novamente"})
 		return
 	}
+	if storedDeviceID, err := mobileDB(s.db).GetRefreshTokenDeviceID(r.Context(), user.ID); err == nil && storedDeviceID != "" {
+		if strings.TrimSpace(req.DeviceID) == "" || storedDeviceID != strings.TrimSpace(req.DeviceID) {
+			writeJSON(w, http.StatusUnauthorized, map[string]any{"error": "device revogado ou invalido"})
+			return
+		}
+	}
 	access, _ := s.newAccessToken(user.ID)
 	newRefresh, _ := s.newRefreshToken(user.ID)
-	if err := mobileDB(s.db).SaveRefreshToken(r.Context(), user.ID, newRefresh); err != nil {
+	if err := mobileDB(s.db).SaveRefreshTokenForDevice(r.Context(), user.ID, newRefresh, req.DeviceID); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro ao renovar sessao"})
 		return
 	}
@@ -510,6 +549,30 @@ func buildRegisterOTPHTML(code string) string {
 <div style="font-size:32px;letter-spacing:6px;font-weight:800;background:#1c1c1f;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:18px;text-align:center;">` + code + `</div>
 <p style="color:#777c7f;font-size:13px;margin-top:20px;">Este codigo expira em 10 minutos. Se voce nao solicitou este cadastro, ignore este email.</p>
 </div></body></html>`
+}
+
+func (s *Server) sendRegisterCompletedEmailAsync(to, userID string) {
+	if strings.TrimSpace(to) == "" || s == nil || s.cfg == nil {
+		return
+	}
+	go func() {
+		mailer := email.NewService(s.cfg)
+		if !mailer.Enabled() {
+			return
+		}
+		if err := mailer.SendTransaction(to, "Conta criada na ChainFX", email.TransactionReceipt{
+			Title: "Conta criada",
+			Intro: "Seu cadastro foi concluido com sucesso. A carteira ChainFX ja esta pronta para uso.",
+			CTA:   "Abrir ChainFX",
+			Details: []email.TransactionDetail{
+				{Label: "E-mail", Value: strings.TrimSpace(strings.ToLower(to))},
+				{Label: "Conta", Value: userID, CopyHint: true},
+				{Label: "Criada em", Value: time.Now().Format("02/01/2006 15:04 MST")},
+			},
+		}); err != nil {
+			slog.Warn("mobile register completed email failed", "email_domain", emailDomainForLog(to), "error", err)
+		}
+	}()
 }
 
 func isMobileLoadTestUser(email string) bool {
