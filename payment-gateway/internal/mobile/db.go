@@ -18,6 +18,8 @@ type mobileWalletKey struct {
 	UserID              string
 	WalletAddress       string
 	EncryptedPrivateKey string
+	EncryptionKeyID     string
+	EncryptionVersion   int
 	CustodyMode         string
 	Network             string
 }
@@ -158,6 +160,9 @@ func (q *mobileQueries) GetUserWalletAndName(ctx context.Context, userID string)
 // InitSchema runs all one-time DDL migrations for the mobile package.
 // Call this once at server startup instead of on every query.
 func (q *mobileQueries) InitSchema(ctx context.Context) error {
+	if err := q.ensureMobileIdempotencySchema(ctx); err != nil {
+		return err
+	}
 	if err := q.ensureMobileMediaSchema(ctx); err != nil {
 		return err
 	}
@@ -180,6 +185,34 @@ func (q *mobileQueries) InitSchema(ctx context.Context) error {
 		return err
 	}
 	return q.ensureMobileEmailOTPSchema(ctx)
+}
+
+func (q *mobileQueries) ensureMobileIdempotencySchema(ctx context.Context) error {
+	if _, err := q.sql.ExecContext(ctx, `
+CREATE TABLE IF NOT EXISTS operation_ids (
+  operation_id   TEXT        NOT NULL,
+  user_id        UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  operation_type TEXT        NOT NULL,
+  request_hash   TEXT,
+  status         TEXT        NOT NULL DEFAULT 'pending',
+  result_ref     TEXT,
+  completed_at   TIMESTAMPTZ,
+  expires_at     TIMESTAMPTZ NOT NULL DEFAULT now() + INTERVAL '24 hours',
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (operation_id, user_id)
+)`); err != nil {
+		return err
+	}
+	for _, stmt := range []string{
+		`ALTER TABLE operation_ids ADD COLUMN IF NOT EXISTS request_hash TEXT`,
+		`CREATE INDEX IF NOT EXISTS idx_operation_ids_expires_at ON operation_ids(expires_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_operation_ids_status ON operation_ids(status)`,
+	} {
+		if _, err := q.sql.ExecContext(ctx, stmt); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (q *mobileQueries) scanUser(row *sql.Row) (*models.User, error) {
@@ -230,6 +263,94 @@ func (q *mobileQueries) ensureMobileDCASchema(ctx context.Context) error {
                 ALTER TABLE dca_strategies
                   ADD COLUMN IF NOT EXISTS network TEXT NOT NULL DEFAULT 'BSC'`)
 	if err != nil {
+		return err
+	}
+	if _, err := q.sql.ExecContext(ctx, `
+                ALTER TABLE dca_strategies
+                  ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ`); err != nil {
+		return err
+	}
+	if _, err := q.sql.ExecContext(ctx, `
+                ALTER TABLE dca_strategies
+                  ADD COLUMN IF NOT EXISTS reconciliation_hold_at TIMESTAMPTZ,
+                  ADD COLUMN IF NOT EXISTS reconciliation_reason TEXT,
+                  ADD COLUMN IF NOT EXISTS canonical_strategy_id UUID REFERENCES dca_strategies(id)`); err != nil {
+		return err
+	}
+	if _, err := q.sql.ExecContext(ctx, `
+                CREATE TABLE IF NOT EXISTS dca_executions (
+                  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                  strategy_id UUID NOT NULL REFERENCES dca_strategies(id),
+                  buy_order_id UUID REFERENCES buy_orders(id) ON DELETE SET NULL,
+                  status TEXT NOT NULL DEFAULT 'claimed',
+                  amount_brl NUMERIC(38,18) NOT NULL,
+                  crypto_amount NUMERIC(38,18),
+                  rate_brl NUMERIC(38,18),
+                  error_message TEXT,
+                  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )`); err != nil {
+		return err
+	}
+	if _, err := q.sql.ExecContext(ctx, `
+                CREATE TABLE IF NOT EXISTS mobile_wallet_ledger_entries (
+                  id TEXT PRIMARY KEY,
+                  wallet_address TEXT NOT NULL,
+                  network TEXT NOT NULL DEFAULT 'BSC',
+                  asset TEXT NOT NULL DEFAULT 'USDT',
+                  source TEXT NOT NULL,
+                  reference_id TEXT NOT NULL,
+                  available_delta_micro BIGINT NOT NULL DEFAULT 0,
+                  locked_delta_micro BIGINT NOT NULL DEFAULT 0,
+                  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )`); err != nil {
+		return err
+	}
+	if _, err := q.sql.ExecContext(ctx, `
+                CREATE INDEX IF NOT EXISTS idx_mobile_wallet_ledger_reference
+                  ON mobile_wallet_ledger_entries(source, reference_id)`); err != nil {
+		return err
+	}
+	if _, err := q.sql.ExecContext(ctx, `
+                ALTER TABLE dca_executions
+                  ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ,
+                  ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id),
+                  ADD COLUMN IF NOT EXISTS token_symbol TEXT,
+                  ADD COLUMN IF NOT EXISTS network TEXT,
+                  ADD COLUMN IF NOT EXISTS frequency TEXT,
+                  ADD COLUMN IF NOT EXISTS operation_id TEXT,
+                  ADD COLUMN IF NOT EXISTS quote_expires_at TIMESTAMPTZ,
+                  ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ,
+                  ADD COLUMN IF NOT EXISTS processing_at TIMESTAMPTZ,
+                  ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ,
+				  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ,
+				  ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0,
+				  ADD COLUMN IF NOT EXISTS next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				  ADD COLUMN IF NOT EXISTS provider_status TEXT,
+				  ADD COLUMN IF NOT EXISTS funding_wallet_address TEXT,
+				  ADD COLUMN IF NOT EXISTS required_usdt_micro BIGINT,
+				  ADD COLUMN IF NOT EXISTS reserved_at TIMESTAMPTZ,
+				  ADD COLUMN IF NOT EXISTS captured_at TIMESTAMPTZ,
+				  ADD COLUMN IF NOT EXISTS released_at TIMESTAMPTZ`); err != nil {
+		return err
+	}
+	if _, err := q.sql.ExecContext(ctx, `
+                CREATE UNIQUE INDEX IF NOT EXISTS uq_dca_executions_strategy_scheduled
+                  ON dca_executions(strategy_id, scheduled_at)`); err != nil {
+		return err
+	}
+	if _, err := q.sql.ExecContext(ctx, `
+                CREATE UNIQUE INDEX IF NOT EXISTS uq_dca_executions_operation_id
+                  ON dca_executions(operation_id)`); err != nil {
+		return err
+	}
+	if _, err := q.sql.ExecContext(ctx, `DROP INDEX IF EXISTS uq_dca_active_strategy_config`); err != nil {
+		return err
+	}
+	if _, err := q.sql.ExecContext(ctx, `
+                CREATE UNIQUE INDEX IF NOT EXISTS uq_dca_active_strategy_config
+                  ON dca_strategies(user_id, token_symbol, network, amount_brl, frequency)
+                  WHERE cancelled_at IS NULL AND reconciliation_hold_at IS NULL`); err != nil {
 		return err
 	}
 	_, err = q.sql.ExecContext(ctx, `
@@ -332,9 +453,13 @@ func (q *mobileQueries) UpdateUser(ctx context.Context, id string, fields map[st
 	return err
 }
 
-func (q *mobileQueries) AttachSystemWallet(ctx context.Context, userID, walletAddress, encryptedPrivateKey string) (*models.User, error) {
+func (q *mobileQueries) AttachSystemWallet(ctx context.Context, userID, walletAddress, encryptedPrivateKey, encryptionKeyID string, encryptionVersion int) (*models.User, error) {
 	if err := q.ensureMobileWalletKeySchema(ctx); err != nil {
 		return nil, err
+	}
+	encryptionKeyID = firstNonEmptyStr(strings.TrimSpace(encryptionKeyID), "legacy")
+	if encryptionVersion <= 0 {
+		encryptionVersion = 1
 	}
 
 	tx, err := q.sql.BeginTx(ctx, nil)
@@ -344,10 +469,10 @@ func (q *mobileQueries) AttachSystemWallet(ctx context.Context, userID, walletAd
 	defer tx.Rollback()
 
 	_, err = tx.ExecContext(ctx, `
-                INSERT INTO mobile_wallet_keys (user_id, wallet_address, encrypted_private_key)
-                VALUES ($1::uuid, $2, $3)
+                INSERT INTO mobile_wallet_keys (user_id, wallet_address, encrypted_private_key, encryption_key_id, encryption_version)
+                VALUES ($1::uuid, $2, $3, $4, $5)
                 ON CONFLICT (user_id) DO NOTHING`,
-		userID, walletAddress, encryptedPrivateKey)
+		userID, walletAddress, encryptedPrivateKey, encryptionKeyID, encryptionVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -379,20 +504,26 @@ func (q *mobileQueries) AttachSystemWallet(ctx context.Context, userID, walletAd
 	return q.GetUserByID(ctx, userID)
 }
 
-func (q *mobileQueries) UpsertCustodialWalletKey(ctx context.Context, userID, walletAddress, encryptedPrivateKey string) error {
+func (q *mobileQueries) UpsertCustodialWalletKey(ctx context.Context, userID, walletAddress, encryptedPrivateKey, encryptionKeyID string, encryptionVersion int) error {
 	if err := q.ensureMobileWalletKeySchema(ctx); err != nil {
 		return err
 	}
+	encryptionKeyID = firstNonEmptyStr(strings.TrimSpace(encryptionKeyID), "legacy")
+	if encryptionVersion <= 0 {
+		encryptionVersion = 1
+	}
 	_, err := q.sql.ExecContext(ctx, `
-                INSERT INTO mobile_wallet_keys (user_id, wallet_address, encrypted_private_key)
-                VALUES ($1::uuid, $2, $3)
+                INSERT INTO mobile_wallet_keys (user_id, wallet_address, encrypted_private_key, encryption_key_id, encryption_version)
+                VALUES ($1::uuid, $2, $3, $4, $5)
                 ON CONFLICT (user_id) DO UPDATE SET
                   wallet_address=EXCLUDED.wallet_address,
                   encrypted_private_key=EXCLUDED.encrypted_private_key,
+                  encryption_key_id=EXCLUDED.encryption_key_id,
+                  encryption_version=EXCLUDED.encryption_version,
                   custody_mode='system_custody',
                   network='EVM',
                   updated_at=NOW()`,
-		userID, walletAddress, encryptedPrivateKey)
+		userID, walletAddress, encryptedPrivateKey, encryptionKeyID, encryptionVersion)
 	return err
 }
 
@@ -402,11 +533,17 @@ func (q *mobileQueries) GetCustodialWalletKey(ctx context.Context, userID, walle
 	}
 	k := &mobileWalletKey{}
 	err := q.sql.QueryRowContext(ctx, `
-                SELECT user_id::text, wallet_address, encrypted_private_key, custody_mode, network
+                SELECT user_id::text,
+                       wallet_address,
+                       encrypted_private_key,
+                       COALESCE(NULLIF(encryption_key_id, ''), 'legacy'),
+                       COALESCE(NULLIF(encryption_version, 0), 1),
+                       custody_mode,
+                       network
                   FROM mobile_wallet_keys
                  WHERE user_id=$1::uuid
                    AND lower(wallet_address)=lower($2)`,
-		userID, walletAddress).Scan(&k.UserID, &k.WalletAddress, &k.EncryptedPrivateKey, &k.CustodyMode, &k.Network)
+		userID, walletAddress).Scan(&k.UserID, &k.WalletAddress, &k.EncryptedPrivateKey, &k.EncryptionKeyID, &k.EncryptionVersion, &k.CustodyMode, &k.Network)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -487,11 +624,25 @@ func (q *mobileQueries) ensureMobileWalletKeySchema(ctx context.Context) error {
                   user_id               UUID        PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
                   wallet_address        TEXT        NOT NULL UNIQUE,
                   encrypted_private_key TEXT        NOT NULL,
+                  encryption_key_id     TEXT        NOT NULL DEFAULT 'legacy',
+                  encryption_version    INTEGER     NOT NULL DEFAULT 1,
                   custody_mode          TEXT        NOT NULL DEFAULT 'system_custody',
                   network               TEXT        NOT NULL DEFAULT 'EVM',
                   created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
                   updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
                 )`)
+	if err != nil {
+		return err
+	}
+	_, err = q.sql.ExecContext(ctx, `
+                ALTER TABLE mobile_wallet_keys
+                  ADD COLUMN IF NOT EXISTS encryption_key_id TEXT NOT NULL DEFAULT 'legacy'`)
+	if err != nil {
+		return err
+	}
+	_, err = q.sql.ExecContext(ctx, `
+                ALTER TABLE mobile_wallet_keys
+                  ADD COLUMN IF NOT EXISTS encryption_version INTEGER NOT NULL DEFAULT 1`)
 	if err != nil {
 		return err
 	}
@@ -585,9 +736,245 @@ func (q *mobileQueries) ensureMobilePaySchema(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	for _, stmt := range []string{
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS quote_id TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS total_brl NUMERIC(18,2) NOT NULL DEFAULT 0`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS funding_asset TEXT NOT NULL DEFAULT 'USDT'`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS funding_network TEXT NOT NULL DEFAULT 'BSC'`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS funding_token_contract TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS funding_token_decimals INTEGER NOT NULL DEFAULT 18`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS treasury_address TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS funding_tx_hash TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS funding_amount_raw TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS funding_block_number BIGINT`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS funding_confirmations BIGINT NOT NULL DEFAULT 0`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS funding_confirmed_at TIMESTAMPTZ`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS quote_expires_at TIMESTAMPTZ`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS failed_at TIMESTAMPTZ`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS provider_transaction_id TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS product_id TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS provider_product_id TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS quantity INTEGER NOT NULL DEFAULT 1`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS refund_reason TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS refund_amount_micro BIGINT NOT NULL DEFAULT 0`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS refund_wallet_address TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS refund_tx_hash TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE mobile_payment_intents ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMPTZ`,
+	} {
+		if _, err := q.sql.ExecContext(ctx, stmt); err != nil {
+			return err
+		}
+	}
+	if _, err := q.sql.ExecContext(ctx, `
+                CREATE TABLE IF NOT EXISTS mobile_payment_quotes (
+                  quote_id            TEXT        PRIMARY KEY,
+                  user_id             UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                  wallet_address      TEXT        NOT NULL,
+                  parsed_payment_id   TEXT        NOT NULL,
+                  raw_code_hash       TEXT        NOT NULL,
+                  payment_type        TEXT        NOT NULL,
+                  beneficiary_name    TEXT        NOT NULL DEFAULT '',
+                  document            TEXT        NOT NULL DEFAULT '',
+                  description         TEXT        NOT NULL DEFAULT '',
+                  amount_brl          NUMERIC(18,2) NOT NULL,
+                  fee_brl             NUMERIC(18,2) NOT NULL DEFAULT 0,
+                  total_brl           NUMERIC(18,2) NOT NULL,
+                  usdt_rate           NUMERIC(20,8) NOT NULL,
+                  required_usdt_micro BIGINT      NOT NULL,
+                  funding_asset       TEXT        NOT NULL DEFAULT 'USDT',
+                  funding_network     TEXT        NOT NULL DEFAULT 'BSC',
+                  funding_token_contract TEXT     NOT NULL DEFAULT '',
+                  funding_token_decimals INTEGER  NOT NULL DEFAULT 18,
+                  treasury_address    TEXT        NOT NULL DEFAULT '',
+                  product_id          TEXT        NOT NULL DEFAULT '',
+                  provider            TEXT        NOT NULL DEFAULT '',
+                  provider_product_id TEXT        NOT NULL DEFAULT '',
+                  quantity            INTEGER     NOT NULL DEFAULT 1,
+                  recipient_phone     TEXT        NOT NULL DEFAULT '',
+                  metadata            JSONB       NOT NULL DEFAULT '{}'::jsonb,
+                  status              TEXT        NOT NULL DEFAULT 'quoted',
+                  expires_at          TIMESTAMPTZ NOT NULL,
+                  consumed_at         TIMESTAMPTZ,
+                  consumed_intent_id  TEXT        NOT NULL DEFAULT '',
+                  created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+                  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+                )`); err != nil {
+		return err
+	}
+	if _, err := q.sql.ExecContext(ctx, `ALTER TABLE mobile_payment_quotes ADD COLUMN IF NOT EXISTS recipient_phone TEXT NOT NULL DEFAULT ''`); err != nil {
+		return err
+	}
+	if _, err := q.sql.ExecContext(ctx, `
+                CREATE TABLE IF NOT EXISTS mobile_payment_funding_transactions (
+                  id                    TEXT        PRIMARY KEY,
+                  payment_intent_id     TEXT        NOT NULL REFERENCES mobile_payment_intents(id) ON DELETE CASCADE,
+                  user_id               UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                  tx_hash               TEXT        NOT NULL UNIQUE,
+                  network               TEXT        NOT NULL,
+                  asset                 TEXT        NOT NULL DEFAULT 'USDT',
+                  token_contract        TEXT        NOT NULL,
+                  token_decimals        INTEGER     NOT NULL,
+                  from_address          TEXT        NOT NULL,
+                  to_address            TEXT        NOT NULL,
+                  amount_raw            TEXT        NOT NULL,
+                  required_amount_raw   TEXT        NOT NULL,
+                  block_number          BIGINT      NOT NULL,
+                  block_hash            TEXT        NOT NULL,
+                  log_index             INTEGER     NOT NULL,
+                  confirmations         BIGINT      NOT NULL,
+                  status                TEXT        NOT NULL,
+                  created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+                  updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+                )`); err != nil {
+		return err
+	}
+	if _, err := q.sql.ExecContext(ctx, `
+                CREATE TABLE IF NOT EXISTS mobile_payment_executions (
+                  id                       TEXT        PRIMARY KEY,
+                  payment_intent_id        TEXT        NOT NULL REFERENCES mobile_payment_intents(id) ON DELETE CASCADE,
+                  user_id                  UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                  provider                 TEXT        NOT NULL,
+                  provider_idempotency_key TEXT        NOT NULL UNIQUE,
+                  status                   TEXT        NOT NULL DEFAULT 'pending',
+                  attempt_count            INTEGER     NOT NULL DEFAULT 0,
+                  next_attempt_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+                  provider_reference       TEXT        NOT NULL DEFAULT '',
+                  provider_transaction_id  TEXT        NOT NULL DEFAULT '',
+                  provider_status          TEXT        NOT NULL DEFAULT '',
+                  error_message            TEXT        NOT NULL DEFAULT '',
+                  started_at               TIMESTAMPTZ,
+                  last_attempt_at          TIMESTAMPTZ,
+                  completed_at             TIMESTAMPTZ,
+                  failed_at                TIMESTAMPTZ,
+                  created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+                  updated_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+                  UNIQUE (payment_intent_id, provider)
+                )`); err != nil {
+		return err
+	}
+	for _, stmt := range []string{
+		`ALTER TABLE mobile_payment_executions ADD COLUMN IF NOT EXISTS provider_transaction_id TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE mobile_payment_executions ADD COLUMN IF NOT EXISTS provider_status TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE mobile_payment_executions ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ`,
+		`ALTER TABLE mobile_payment_executions ADD COLUMN IF NOT EXISTS last_attempt_at TIMESTAMPTZ`,
+		`ALTER TABLE mobile_payment_executions ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ`,
+		`ALTER TABLE mobile_payment_executions ADD COLUMN IF NOT EXISTS failed_at TIMESTAMPTZ`,
+		`ALTER TABLE mobile_payment_executions ADD COLUMN IF NOT EXISTS reconciliation_attempt_count INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE mobile_payment_executions ADD COLUMN IF NOT EXISTS first_ambiguous_at TIMESTAMPTZ`,
+		`ALTER TABLE mobile_payment_executions ADD COLUMN IF NOT EXISTS last_reconciled_at TIMESTAMPTZ`,
+		`ALTER TABLE mobile_payment_executions ADD COLUMN IF NOT EXISTS consecutive_not_found INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE mobile_payment_executions ADD COLUMN IF NOT EXISTS submit_started_at TIMESTAMPTZ`,
+		`ALTER TABLE mobile_payment_executions ADD COLUMN IF NOT EXISTS submit_completed_at TIMESTAMPTZ`,
+		`ALTER TABLE mobile_payment_executions ADD COLUMN IF NOT EXISTS submit_outcome TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE mobile_payment_executions ADD COLUMN IF NOT EXISTS ambiguous_submit BOOLEAN NOT NULL DEFAULT FALSE`,
+	} {
+		if _, err := q.sql.ExecContext(ctx, stmt); err != nil {
+			return err
+		}
+	}
+	if _, err := q.sql.ExecContext(ctx, `
+                CREATE TABLE IF NOT EXISTS mobile_payment_ledger_entries (
+                  id                TEXT        PRIMARY KEY,
+                  payment_intent_id TEXT        NOT NULL REFERENCES mobile_payment_intents(id) ON DELETE CASCADE,
+                  user_id           UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                  entry_type        TEXT        NOT NULL,
+                  asset             TEXT        NOT NULL,
+                  network           TEXT        NOT NULL,
+                  amount_micro      BIGINT      NOT NULL,
+                  tx_hash           TEXT        NOT NULL DEFAULT '',
+                  provider          TEXT        NOT NULL DEFAULT '',
+                  provider_reference TEXT       NOT NULL DEFAULT '',
+                  metadata          JSONB       NOT NULL DEFAULT '{}'::jsonb,
+                  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+                  UNIQUE (payment_intent_id, entry_type)
+                )`); err != nil {
+		return err
+	}
+	if _, err := q.sql.ExecContext(ctx, `
+                CREATE TABLE IF NOT EXISTS mobile_payment_refunds (
+                  id                    TEXT        PRIMARY KEY,
+                  payment_id            TEXT        NOT NULL REFERENCES mobile_payment_intents(id) ON DELETE CASCADE,
+                  execution_id          TEXT        NOT NULL REFERENCES mobile_payment_executions(id) ON DELETE CASCADE,
+                  user_id               UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                  wallet_address        TEXT        NOT NULL,
+                  asset                 TEXT        NOT NULL DEFAULT 'USDT',
+                  network               TEXT        NOT NULL DEFAULT 'BSC',
+                  token_contract        TEXT        NOT NULL DEFAULT '',
+                  token_decimals        INTEGER     NOT NULL DEFAULT 18,
+                  amount_micro          BIGINT      NOT NULL,
+                  amount_raw            TEXT        NOT NULL DEFAULT '',
+                  status                TEXT        NOT NULL DEFAULT 'pending',
+                  refund_reason         TEXT        NOT NULL DEFAULT '',
+                  idempotency_key       TEXT        NOT NULL UNIQUE,
+                  signer_operation_id   TEXT        NOT NULL DEFAULT '',
+                  tx_hash               TEXT        NOT NULL DEFAULT '',
+                  attempt_count         INTEGER     NOT NULL DEFAULT 0,
+                  last_error            TEXT        NOT NULL DEFAULT '',
+                  next_attempt_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+                  created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+                  started_at            TIMESTAMPTZ,
+                  broadcast_at          TIMESTAMPTZ,
+                  confirmed_at          TIMESTAMPTZ,
+                  updated_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+                  UNIQUE(payment_id)
+                )`); err != nil {
+		return err
+	}
+	if _, err := q.sql.ExecContext(ctx, `
+                CREATE TABLE IF NOT EXISTS mobile_payment_provider_events (
+                  id                  TEXT        PRIMARY KEY,
+                  provider            TEXT        NOT NULL,
+                  provider_event_hash TEXT        NOT NULL UNIQUE,
+                  provider_reference  TEXT        NOT NULL DEFAULT '',
+                  provider_transaction_id TEXT     NOT NULL DEFAULT '',
+                  provider_status     TEXT        NOT NULL DEFAULT '',
+                  payment_id          TEXT        NOT NULL DEFAULT '',
+                  execution_id        TEXT        NOT NULL DEFAULT '',
+                  raw_payload         JSONB       NOT NULL DEFAULT '{}'::jsonb,
+                  applied             BOOLEAN     NOT NULL DEFAULT FALSE,
+                  duplicate           BOOLEAN     NOT NULL DEFAULT FALSE,
+                  created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+                )`); err != nil {
+		return err
+	}
 	_, err = q.sql.ExecContext(ctx, `
                 CREATE INDEX IF NOT EXISTS idx_mobile_payment_intents_user_created
                   ON mobile_payment_intents (user_id, created_at DESC)`)
+	if err != nil {
+		return err
+	}
+	if _, err := q.sql.ExecContext(ctx, `
+                CREATE INDEX IF NOT EXISTS idx_mobile_payment_quotes_user_created
+                  ON mobile_payment_quotes (user_id, created_at DESC)`); err != nil {
+		return err
+	}
+	if _, err := q.sql.ExecContext(ctx, `
+                CREATE INDEX IF NOT EXISTS idx_mobile_payment_quotes_expiry
+                  ON mobile_payment_quotes (status, expires_at)`); err != nil {
+		return err
+	}
+	if _, err := q.sql.ExecContext(ctx, `
+                CREATE INDEX IF NOT EXISTS idx_mobile_payment_executions_queue
+                  ON mobile_payment_executions (status, next_attempt_at, created_at)`); err != nil {
+		return err
+	}
+	if _, err := q.sql.ExecContext(ctx, `
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_mobile_payment_executions_provider_ref
+                  ON mobile_payment_executions (provider, provider_reference)
+                  WHERE provider_reference <> ''`); err != nil {
+		return err
+	}
+	if _, err := q.sql.ExecContext(ctx, `
+                CREATE INDEX IF NOT EXISTS idx_mobile_payment_refunds_queue
+                  ON mobile_payment_refunds (status, next_attempt_at, created_at)`); err != nil {
+		return err
+	}
+	_, err = q.sql.ExecContext(ctx, `
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_mobile_payment_intents_funding_tx
+                  ON mobile_payment_intents (lower(funding_tx_hash))
+                  WHERE funding_tx_hash <> ''`)
 	return err
 }
 
@@ -866,10 +1253,32 @@ func execIfTableExists(ctx context.Context, tx *sql.Tx, tableName, query string,
 }
 
 func (q *mobileQueries) SaveRefreshToken(ctx context.Context, userID, token string) error {
+	return q.SaveRefreshTokenForDevice(ctx, userID, token, "")
+}
+
+func (q *mobileQueries) ensureMobileRefreshDeviceSchema(ctx context.Context) error {
+	_, err := q.sql.ExecContext(ctx, `ALTER TABLE users ADD COLUMN IF NOT EXISTS refresh_token_device_id TEXT`)
+	return err
+}
+
+func (q *mobileQueries) SaveRefreshTokenForDevice(ctx context.Context, userID, token, deviceID string) error {
+	if err := q.ensureMobileRefreshDeviceSchema(ctx); err != nil {
+		return err
+	}
 	hash := refreshTokenDigest(token)
 	_, err := q.sql.ExecContext(ctx,
-		"UPDATE users SET refresh_token_hash=$1 WHERE id=$2", hash, userID)
+		"UPDATE users SET refresh_token_hash=$1, refresh_token_device_id=NULLIF($2,'') WHERE id=$3", hash, strings.TrimSpace(deviceID), userID)
 	return err
+}
+
+func (q *mobileQueries) GetRefreshTokenDeviceID(ctx context.Context, userID string) (string, error) {
+	if err := q.ensureMobileRefreshDeviceSchema(ctx); err != nil {
+		return "", err
+	}
+	var deviceID sql.NullString
+	err := q.sql.QueryRowContext(ctx,
+		"SELECT refresh_token_device_id FROM users WHERE id=$1", userID).Scan(&deviceID)
+	return strings.TrimSpace(deviceID.String), err
 }
 
 func refreshTokenDigest(token string) string {
@@ -878,8 +1287,9 @@ func refreshTokenDigest(token string) string {
 }
 
 func (q *mobileQueries) ClearRefreshToken(ctx context.Context, userID string) error {
+	_ = q.ensureMobileRefreshDeviceSchema(ctx)
 	_, err := q.sql.ExecContext(ctx,
-		"UPDATE users SET refresh_token_hash=NULL WHERE id=$1", userID)
+		"UPDATE users SET refresh_token_hash=NULL, refresh_token_device_id=NULL WHERE id=$1", userID)
 	return err
 }
 
@@ -927,12 +1337,15 @@ func (q *mobileQueries) DeleteDevice(ctx context.Context, userID, deviceID strin
 
 // ─── DCA ─────────────────────────────────────────────────────────────────────
 
-func (q *mobileQueries) CreateDCA(ctx context.Context, userID, symbol, network string, amount float64, freq models.DCAFrequency) (*models.DCAStrategy, error) {
+func (q *mobileQueries) CreateDCA(ctx context.Context, userID, symbol, network, amount string, freq models.DCAFrequency) (*models.DCAStrategy, error) {
 	next := nextDCAExecution(freq)
 	d := &models.DCAStrategy{}
 	err := q.sql.QueryRowContext(ctx, `
                 INSERT INTO dca_strategies (user_id, token_symbol, network, amount_brl, frequency, next_execution)
                 VALUES ($1,$2,$3,$4,$5,$6)
+                ON CONFLICT (user_id, token_symbol, network, amount_brl, frequency)
+                WHERE cancelled_at IS NULL AND reconciliation_hold_at IS NULL
+                DO UPDATE SET updated_at=NOW()
                 RETURNING id,user_id,token_symbol,network,amount_brl,frequency,active,
                           total_invested,total_tokens,next_execution,created_at`,
 		userID, symbol, network, amount, string(freq), next).Scan(
@@ -945,7 +1358,7 @@ func (q *mobileQueries) GetDCA(ctx context.Context, id string) (*models.DCAStrat
 	row := q.sql.QueryRowContext(ctx, `
                 SELECT id,user_id,token_symbol,network,amount_brl,frequency,active,
                        total_invested,total_tokens,next_execution,created_at
-                FROM dca_strategies WHERE id=$1`, id)
+                FROM dca_strategies WHERE id=$1 AND cancelled_at IS NULL AND reconciliation_hold_at IS NULL`, id)
 	return q.scanDCA(row)
 }
 
@@ -953,7 +1366,7 @@ func (q *mobileQueries) GetDCAByUser(ctx context.Context, id, userID string) (*m
 	row := q.sql.QueryRowContext(ctx, `
                 SELECT id,user_id,token_symbol,network,amount_brl,frequency,active,
                        total_invested,total_tokens,next_execution,created_at
-                FROM dca_strategies WHERE id=$1 AND user_id=$2`, id, userID)
+                FROM dca_strategies WHERE id=$1 AND user_id=$2 AND cancelled_at IS NULL AND reconciliation_hold_at IS NULL`, id, userID)
 	return q.scanDCA(row)
 }
 
@@ -961,7 +1374,7 @@ func (q *mobileQueries) ListDCA(ctx context.Context, userID string) ([]models.DC
 	rows, err := q.sql.QueryContext(ctx, `
                 SELECT id,user_id,token_symbol,network,amount_brl,frequency,active,
                        total_invested,total_tokens,next_execution,created_at
-                FROM dca_strategies WHERE user_id=$1 ORDER BY created_at DESC`, userID)
+                FROM dca_strategies WHERE user_id=$1 AND cancelled_at IS NULL AND reconciliation_hold_at IS NULL ORDER BY created_at DESC`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -976,21 +1389,27 @@ func (q *mobileQueries) ListDCA(ctx context.Context, userID string) ([]models.DC
 	return out, rows.Err()
 }
 
-func (q *mobileQueries) UpdateDCA(ctx context.Context, id, userID string, active *bool, amount *float64, freq *models.DCAFrequency) error {
+func (q *mobileQueries) UpdateDCA(ctx context.Context, id, userID string, active *bool, amount *string, freq *models.DCAFrequency) error {
+	if amount != nil && strings.TrimSpace(*amount) == "" {
+		return errors.New("amount_brl deve ser positivo")
+	}
+	if freq != nil && *freq != models.DCADaily && *freq != models.DCAWeekly && *freq != models.DCAMonthly {
+		return errors.New("frequency deve ser daily, weekly ou monthly")
+	}
 	if active != nil {
-		_, err := q.sql.ExecContext(ctx, "UPDATE dca_strategies SET active=$1 WHERE id=$2 AND user_id=$3", *active, id, userID)
+		_, err := q.sql.ExecContext(ctx, "UPDATE dca_strategies SET active=$1, updated_at=NOW() WHERE id=$2 AND user_id=$3 AND cancelled_at IS NULL AND reconciliation_hold_at IS NULL", *active, id, userID)
 		if err != nil {
 			return err
 		}
 	}
 	if amount != nil {
-		_, err := q.sql.ExecContext(ctx, "UPDATE dca_strategies SET amount_brl=$1 WHERE id=$2 AND user_id=$3", *amount, id, userID)
+		_, err := q.sql.ExecContext(ctx, "UPDATE dca_strategies SET amount_brl=$1, updated_at=NOW() WHERE id=$2 AND user_id=$3 AND cancelled_at IS NULL AND reconciliation_hold_at IS NULL", strings.TrimSpace(*amount), id, userID)
 		if err != nil {
 			return err
 		}
 	}
 	if freq != nil {
-		_, err := q.sql.ExecContext(ctx, "UPDATE dca_strategies SET frequency=$1, next_execution=$2 WHERE id=$3 AND user_id=$4",
+		_, err := q.sql.ExecContext(ctx, "UPDATE dca_strategies SET frequency=$1, next_execution=$2, updated_at=NOW() WHERE id=$3 AND user_id=$4 AND cancelled_at IS NULL AND reconciliation_hold_at IS NULL",
 			string(*freq), nextDCAExecution(*freq), id, userID)
 		if err != nil {
 			return err
@@ -1000,8 +1419,66 @@ func (q *mobileQueries) UpdateDCA(ctx context.Context, id, userID string, active
 }
 
 func (q *mobileQueries) DeleteDCA(ctx context.Context, id, userID string) error {
-	_, err := q.sql.ExecContext(ctx, "DELETE FROM dca_strategies WHERE id=$1 AND user_id=$2", id, userID)
-	return err
+	res, err := q.sql.ExecContext(ctx, "UPDATE dca_strategies SET active=false, cancelled_at=COALESCE(cancelled_at, NOW()), updated_at=NOW() WHERE id=$1 AND user_id=$2 AND cancelled_at IS NULL AND reconciliation_hold_at IS NULL", id, userID)
+	if err != nil {
+		return err
+	}
+	if rows, _ := res.RowsAffected(); rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (q *mobileQueries) ListDCAExecutionsByUser(ctx context.Context, strategyID, userID string, limit int) ([]map[string]any, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+	rows, err := q.sql.QueryContext(ctx, `
+                SELECT e.id::text, e.strategy_id::text, e.user_id::text, e.scheduled_at,
+                       e.token_symbol, e.network, e.frequency, e.amount_brl::float8,
+                       COALESCE(e.crypto_amount,0)::float8, COALESCE(e.rate_brl,0)::float8,
+                       e.status, COALESCE(e.operation_id,''), e.buy_order_id::text,
+                       e.quote_expires_at, e.error_message, e.created_at, e.updated_at, e.completed_at
+                FROM dca_executions e
+                JOIN dca_strategies s ON s.id=e.strategy_id
+                WHERE e.strategy_id=$1::uuid AND e.user_id=$2::uuid AND s.user_id=$2::uuid
+                ORDER BY e.scheduled_at DESC
+                LIMIT $3`, strategyID, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []map[string]any
+	for rows.Next() {
+		var id, sid, uid, token, network, freq, status, operationID string
+		var buyOrderID, errMsg sql.NullString
+		var scheduledAt, createdAt, updatedAt time.Time
+		var quoteExpiresAt, completedAt sql.NullTime
+		var amountBRL, cryptoAmount, rateBRL float64
+		if err := rows.Scan(&id, &sid, &uid, &scheduledAt, &token, &network, &freq, &amountBRL, &cryptoAmount, &rateBRL, &status, &operationID, &buyOrderID, &quoteExpiresAt, &errMsg, &createdAt, &updatedAt, &completedAt); err != nil {
+			return nil, err
+		}
+		item := map[string]any{
+			"id": id, "strategy_id": sid, "user_id": uid, "scheduled_at": scheduledAt,
+			"token_symbol": token, "network": network, "frequency": freq,
+			"amount_brl": amountBRL, "crypto_amount": cryptoAmount, "rate_brl": rateBRL,
+			"status": status, "operation_id": operationID, "created_at": createdAt, "updated_at": updatedAt,
+		}
+		if buyOrderID.Valid {
+			item["buy_order_id"] = buyOrderID.String
+		}
+		if quoteExpiresAt.Valid {
+			item["quote_expires_at"] = quoteExpiresAt.Time
+		}
+		if errMsg.Valid {
+			item["error_message"] = errMsg.String
+		}
+		if completedAt.Valid {
+			item["completed_at"] = completedAt.Time
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
 }
 
 func (q *mobileQueries) scanDCA(row *sql.Row) (*models.DCAStrategy, error) {
@@ -1125,6 +1602,9 @@ func (q *mobileQueries) UpsertSettings(ctx context.Context, s *models.UserSettin
 // ─── Orders (read-only — write goes through existing server) ──────────────────
 
 func (q *mobileQueries) ListOrdersByUser(ctx context.Context, userID string, limit int) ([]map[string]any, error) {
+	if err := q.ensureMobilePaySchema(ctx); err != nil {
+		return nil, err
+	}
 	if err := q.ensureMobileGiftCardSchema(ctx); err != nil {
 		return nil, err
 	}
@@ -1179,9 +1659,9 @@ func (q *mobileQueries) ListOrdersByUser(ctx context.Context, userID string, lim
                                0::float8 AS payout_brl,
                                status,
                                'USDT'::text AS asset,
-                               'INTERNAL'::text AS network,
+                               COALESCE(NULLIF(funding_network, ''), 'BSC') AS network,
                                usdt_rate::float8 AS rate_locked,
-                               provider_reference AS tx_hash,
+                               COALESCE(NULLIF(funding_tx_hash, ''), provider_reference) AS tx_hash,
                                created_at,
                                updated_at
                         FROM mobile_payment_intents
