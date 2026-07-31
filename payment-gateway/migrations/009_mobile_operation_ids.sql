@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS operation_ids (
   operation_id   TEXT        NOT NULL,
   user_id        UUID        NOT NULL,
   operation_type TEXT        NOT NULL,
+  request_hash   TEXT,
   status         TEXT        NOT NULL DEFAULT 'pending',
   result_ref     TEXT,
   completed_at   TIMESTAMPTZ,
@@ -15,3 +16,4 @@ CREATE TABLE IF NOT EXISTS operation_ids (
 
 CREATE INDEX IF NOT EXISTS idx_operation_ids_expires_at ON operation_ids(expires_at);
 CREATE INDEX IF NOT EXISTS idx_operation_ids_status ON operation_ids(status);
+ALTER TABLE operation_ids ADD COLUMN IF NOT EXISTS request_hash TEXT;
