@@ -11,7 +11,7 @@
  *   CAPABILITY_OCR_URL in .env or environment
  *
  * Optional exact assertions:
- *   EXPECTED_FULL_NAME="Nome Completo"
+ *   EXPECTED_FULL_NAME="Full name"
  *   EXPECTED_CPF="12345678909"
  *   EXPECTED_BIRTH_DATE="1990-01-31"
  */
