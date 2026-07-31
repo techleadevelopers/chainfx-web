@@ -6,7 +6,9 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/url"
 	pathpkg "path"
 	"strconv"
 	"strings"
@@ -268,13 +270,18 @@ func cors(cfg *config.Config, next http.Handler) http.Handler {
 		allowedOrigins = cfg.AllowedOrigins
 	}
 	allowed := strings.Split(allowedOrigins, ",")
-	allowed = append(allowed, "http://localhost:5173", "http://127.0.0.1:5173", "https://swapped-cryptocurrensy.vercel.app", "https://www.chainfx.store", "https://chainfx.store", "https://chatgpt.com", "https://chat.openai.com", "https://codex.openai.com")
-	allowedHeaders := "Content-Type, Authorization, PAYMENT, Payment, PAYMENT-SIGNATURE, X-Payment, X-Api-Key, X-Admin-Console-Key, X-Request-Id, X-Correlation-Id, X-Trace-Id, X-Agent-ID, X-Agent-Id, X-Client-Agent, X-Agent-Signature, X-Agent-Card-Signature, MCP-Agent-ID, MCP-Agent-Signature, x-internal-hmac, x-idempotency-key, x-efi-signature, x-chainfx-signature"
+	allowed = append(allowed, "http://localhost:5173", "http://127.0.0.1:5173", "http://192.168.249.53:8081", "https://swapped-cryptocurrensy.vercel.app", "https://chainfx-mobile.vercel.app", "https://www.chainfx.store", "https://chainfx.store", "https://chatgpt.com", "https://chat.openai.com", "https://codex.openai.com")
+	allowedHeaders := "Content-Type, Authorization, PAYMENT, Payment, PAYMENT-SIGNATURE, X-Payment, X-Api-Key, X-Admin-Console-Key, Idempotency-Key, X-Idempotency-Key, X-Request-Id, X-Correlation-Id, X-Trace-Id, X-Agent-ID, X-Agent-Id, X-Client-Agent, X-Agent-Signature, X-Agent-Card-Signature, MCP-Agent-ID, MCP-Agent-Signature, x-internal-hmac, x-idempotency-key, x-efi-signature, x-chainfx-signature"
 	allowedMethods := "GET, POST, PATCH, DELETE, OPTIONS"
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		w.Header().Add("Vary", "Origin")
 		w.Header().Set("Access-Control-Expose-Headers", "X-Request-Id, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, Retry-After, Server-Timing, X-Route-Class, X-MCP-Tool-Class, X-Payment-Required, PAYMENT-RESPONSE")
+		if strings.HasPrefix(r.URL.Path, "/api/mobile/") && isServerMobileLocalDevOrigin(origin) {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Headers", allowedHeaders)
+			w.Header().Set("Access-Control-Allow-Methods", allowedMethods)
+		}
 		for _, item := range allowed {
 			item = strings.TrimSpace(item)
 			if item == "" {
@@ -299,6 +306,23 @@ func cors(cfg *config.Config, next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func isServerMobileLocalDevOrigin(origin string) bool {
+	origin = strings.TrimSpace(strings.TrimSuffix(strings.ToLower(origin), "/"))
+	if origin == "" {
+		return false
+	}
+	u, err := url.Parse(origin)
+	if err != nil || u.Scheme != "http" {
+		return false
+	}
+	host := strings.TrimSpace(u.Hostname())
+	if host == "localhost" || host == "127.0.0.1" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsPrivate()
 }
 
 func securityHeaders(cfg *config.Config, next http.Handler) http.Handler {
