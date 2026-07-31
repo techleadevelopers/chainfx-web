@@ -9,6 +9,7 @@ const state = {
   exchangeRate: 0, // Will be fetched
   currentStep: 5,
   cardCheckoutStep: 1,
+  buyPayerSubStep: 1, // 1=email, 2=nome, 3=cpf (all shown, Buy Now active)
   walletAddress: '', // Will be updated from input
   connected: false, // Simulated wallet connection state
   transactionFee: 0.015,
@@ -1452,6 +1453,19 @@ const syncBuyPixDetailsStep = () => {
   if (walletSummary) walletSummary.textContent = formatWalletSummary(state.walletAddress || document.getElementById('walletAddress')?.value?.trim() || '');
   const isPixDetails = state.action === 'buy' && state.currentStep === 3 && selectedPaymentRail().method === 'pix';
   if (buyPayerInfo) buyPayerInfo.classList.toggle('hidden', !isPixDetails);
+
+  // Progressive payer form: show exactly one field per sub-step, update button label
+  if (isPixDetails) {
+    const sub = state.buyPayerSubStep || 1;
+    const emailGroup = document.getElementById('buyCustomerEmail')?.closest('.wallet-input');
+    const nameGroup  = document.getElementById('buyCustomerName')?.closest('.wallet-input');
+    const cpfGroup   = document.getElementById('buyCustomerCpf')?.closest('.wallet-input');
+    if (emailGroup) emailGroup.classList.toggle('hidden', sub !== 1);
+    if (nameGroup)  nameGroup.classList.toggle('hidden',  sub !== 2);
+    if (cpfGroup)   cpfGroup.classList.toggle('hidden',   sub !== 3);
+    const btn = document.getElementById('continueBtn');
+    if (btn) btn.textContent = sub >= 3 ? 'Buy Now' : 'Next';
+  }
 };
 
 const syncBuyPayerInfo = () => {
@@ -1514,7 +1528,10 @@ const updateStep = (step) => {
 
 
   if (continueBtn && step === 3 && selectedPaymentRail().paymentMethod !== 'credit_card') {
-      continueBtn.innerText = state.action === 'sell' ? 'Sell Now' : 'Buy Now';
+      // For buy+PIX, syncBuyPayerSubStepUI controls the label (Next vs Buy Now)
+      if (!(state.action === 'buy' && selectedPaymentRail().method === 'pix')) {
+          continueBtn.innerText = state.action === 'sell' ? 'Sell Now' : 'Buy Now';
+      }
   }
 
   // Manage card header visibility - Hide it on the confirmation step (step 4)
@@ -1542,6 +1559,7 @@ const updateStep = (step) => {
             // Or update UI to show 'Connect Wallet' button if not connected
        }
   } else if (step === 3) {
+      state.buyPayerSubStep = 1; // reset progressive form on every entry
       updateOrderSummaries();
       syncBuyWalletInputHint();
       syncBuyPixDetailsStep();
@@ -1714,6 +1732,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (walletSummary) walletSummary.textContent = formatWalletSummary(state.walletAddress || walletAddressInput?.value?.trim() || '');
     const isPixDetails = state.action === 'buy' && state.currentStep === 3 && selectedPaymentRail().method === 'pix';
     if (buyPayerInfo) buyPayerInfo.classList.toggle('hidden', !isPixDetails);
+    // Progressive payer form: one field per sub-step
+    if (isPixDetails) {
+      const sub = state.buyPayerSubStep || 1;
+      const emailGroup = buyCustomerEmailInput?.closest('.wallet-input');
+      const nameGroup  = buyCustomerNameInput?.closest('.wallet-input');
+      const cpfGroup   = buyCustomerCpfInput?.closest('.wallet-input');
+      if (emailGroup) emailGroup.classList.toggle('hidden', sub !== 1);
+      if (nameGroup)  nameGroup.classList.toggle('hidden',  sub !== 2);
+      if (cpfGroup)   cpfGroup.classList.toggle('hidden',   sub !== 3);
+      if (continueBtn) continueBtn.textContent = sub >= 3 ? 'Buy Now' : 'Next';
+    }
   }
 
   function renderBuyNetworkOptions() {
@@ -1825,6 +1854,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     const hint = buyWalletHint();
     if (walletAddressLabel) walletAddressLabel.textContent = hint.label;
     if (walletAddressInput) walletAddressInput.placeholder = hint.placeholder;
+  }
+
+  function syncBuyPayerSubStepUI() {
+    const isPixDetails = state.action === 'buy' && state.currentStep === 3 && selectedPaymentRail().method === 'pix';
+    if (!isPixDetails || !buyPayerInfo) return;
+
+    const emailGroup = buyCustomerEmailInput?.closest('.wallet-input');
+    const nameGroup  = buyCustomerNameInput?.closest('.wallet-input');
+    const cpfGroup   = buyCustomerCpfInput?.closest('.wallet-input');
+
+    // Email always visible once payer form is shown; nome/cpf revealed progressively
+    if (emailGroup) emailGroup.classList.remove('hidden');
+    if (nameGroup)  nameGroup.classList.toggle('hidden',  state.buyPayerSubStep < 2);
+    if (cpfGroup)   cpfGroup.classList.toggle('hidden',   state.buyPayerSubStep < 3);
+
+    // Button label: "Continuar" until CPF step is reached, then "Buy Now"
+    if (continueBtn && selectedPaymentRail().paymentMethod !== 'credit_card') {
+      continueBtn.textContent = state.buyPayerSubStep >= 3 ? 'Buy Now' : 'Next';
+    }
   }
 
   function syncBuyPayerInfo() {
@@ -2356,6 +2404,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     state.platformFee = 0;
     state.selectedPaymentMethod = null;
     state.cardCheckoutStep = 1;
+    state.buyPayerSubStep = 1;
     state.walletAddress = '';
     state.connected = false;
     currentBuyId = null;
@@ -3269,6 +3318,30 @@ document.addEventListener('DOMContentLoaded', async () => {
                       return;
                   }
                   if (state.selectedPaymentMethod.dataset.method === 'pix') {
+                      // Progressive payer form: advance Email → Nome → CPF before creating order
+                      if (state.buyPayerSubStep < 3) {
+                          if (state.buyPayerSubStep === 1) {
+                              const email = (buyCustomerEmailInput?.value || '').trim();
+                              if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+                                  showUxMessage('card_email_invalid', 'warning');
+                                  buyCustomerEmailInput?.focus();
+                                  return;
+                              }
+                          } else if (state.buyPayerSubStep === 2) {
+                              const name = (buyCustomerNameInput?.value || '').trim();
+                              if (!name || name.length < 3) {
+                                  showUxMessage('payer_name_required', 'warning');
+                                  buyCustomerNameInput?.focus();
+                                  return;
+                              }
+                          }
+                          state.buyPayerSubStep++;
+                          syncBuyPayerSubStepUI();
+                          if (state.buyPayerSubStep === 2) buyCustomerNameInput?.focus();
+                          else if (state.buyPayerSubStep === 3) buyCustomerCpfInput?.focus();
+                          return;
+                      }
+                      // All payer fields revealed — validate everything and create order
                       if (!validateBuyPixCustomer()) return;
                       const buyOrder = await createBuyOrder();
                       if (buyOrder) updateStep(4);
