@@ -148,7 +148,7 @@ func (s *Server) handleWalletBalance(w http.ResponseWriter, r *http.Request) {
 	seen := map[string]bool{"USDT": true, "BNB": true, "MATIC": true, "USDC": true, "ETH": true}
 	imported, err := mobileDB(s.db).ListWalletTokens(r.Context(), uid)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	for _, token := range imported {
@@ -443,7 +443,7 @@ func (s *Server) handleWalletTokens(w http.ResponseWriter, r *http.Request) {
 	seen := map[string]bool{"USDT": true, "BNB": true, "MATIC": true, "USDC": true, "ETH": true}
 	imported, err := mobileDB(s.db).ListWalletTokens(r.Context(), userIDFromCtx(r))
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	for _, token := range imported {
@@ -545,10 +545,6 @@ func (s *Server) handleWalletGenerate(w http.ResponseWriter, r *http.Request) {
 
 	uid := userIDFromCtx(r)
 	user, _ := mobileDB(s.db).GetUserByID(r.Context(), uid)
-	if user != nil && user.WalletAddress != nil && *user.WalletAddress != "" {
-		writeJSON(w, http.StatusConflict, map[string]any{"error": "carteira ja registrada", "wallet_address": *user.WalletAddress})
-		return
-	}
 
 	address := strings.TrimSpace(req.WalletAddress)
 	if address == "" {
@@ -559,9 +555,22 @@ func (s *Server) handleWalletGenerate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	checksummed := common.HexToAddress(address).Hex()
+	if user != nil && user.WalletAddress != nil && strings.TrimSpace(*user.WalletAddress) != "" {
+		if strings.EqualFold(strings.TrimSpace(*user.WalletAddress), checksummed) {
+			writeJSON(w, http.StatusOK, map[string]any{
+				"wallet_address": *user.WalletAddress,
+				"networks":       s.mobileEVMNetworks(),
+				"custody":        "client",
+				"message":        "wallet ja registrada",
+			})
+			return
+		}
+		writeJSON(w, http.StatusConflict, map[string]any{"error": "carteira ja registrada", "wallet_address": *user.WalletAddress})
+		return
+	}
 
 	if err := mobileDB(s.db).UpdateUser(r.Context(), uid, map[string]any{"wallet_address": checksummed}); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{
@@ -589,7 +598,7 @@ func (s *Server) handleWalletHistory(w http.ResponseWriter, r *http.Request) {
 	uid := userIDFromCtx(r)
 	orders, err := mobileDB(s.db).ListOrdersByUser(r.Context(), uid, 50)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"history": orders, "count": len(orders)})
