@@ -79,7 +79,7 @@ type cachedMCPBuild struct {
 //
 //	"live" keys  (sk_live_*) : 2000/min
 //	"test" keys  (sk_test_*) :  600/min
-//	anonymous / no key       :   60/min
+//	anonymous / no key       :   class-specific; abuse probes are capped at 5/min
 type mcpRateLimiter struct {
 	mu      sync.Mutex
 	buckets map[string]*mcpBucket
@@ -143,7 +143,7 @@ func tierLimit(apiKey, toolClass string) int {
 			"mcp_tool_write":   30,
 			"mcp_ai_expensive": 120,
 			"mcp_financial":    30,
-			"mcp_abuse":        10,
+			"mcp_abuse":        5,
 		},
 		"test": {
 			"mcp_tool_read":    900,
