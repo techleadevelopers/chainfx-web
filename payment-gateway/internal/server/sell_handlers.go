@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -30,6 +31,7 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		PixPhone     string  `json:"pixPhone"`
 		Email        string  `json:"email"`
 		RateLocked   float64 `json:"rateLocked"`
+		QuoteID      string  `json:"quoteId"`
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "JSON inválido"})
@@ -56,11 +58,37 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var idx *int
 	var depositAddress string
+	var btcFunding *database.BTCSellFundingInput
 	if network == "BITCOIN" {
 		depositAddress = strings.TrimSpace(s.cfg.SellBTCWalletAddress)
 		if depositAddress == "" {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "carteira BTC de deposito nao configurada"})
 			return
+		}
+		if s.workers == nil || s.workers.BTCSvc == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "scanner BTC nao esta habilitado"})
+			return
+		}
+		btcNetwork := string(s.workers.BTCSvc.Config().Network)
+		walletAddress, err := s.db.FindBTCWalletAddressByAddress(ctx, btcNetwork, depositAddress)
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+		if walletAddress == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+				"error":   "wallet BTC de SELL nao esta cadastrada no scanner",
+				"address": depositAddress,
+				"network": btcNetwork,
+			})
+			return
+		}
+		btcFunding = &database.BTCSellFundingInput{
+			UserID:          walletAddress.UserID,
+			WalletAddressID: walletAddress.ID,
+			BTCAddress:      walletAddress.Address,
+			BTCNetwork:      walletAddress.Network,
+			QuoteID:         req.QuoteID,
 		}
 	} else {
 		depositAddress = strings.TrimSpace(firstNonEmpty(s.cfg.SellWalletAddress, req.Address))
@@ -75,7 +103,11 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	rate := req.RateLocked
 	if rate <= 0 {
-		rate = s.workers.PriceWorker.GetCurrentPrice()
+		if asset == "BTC" {
+			rate = s.buyAssetMarketRate("BRL", "BTC")
+		} else {
+			rate = s.workers.PriceWorker.GetCurrentPrice()
+		}
 	}
 	if rate <= 0 {
 		if req.AmountBRL > 0 && req.AmountUSDT > 0 {
@@ -94,7 +126,17 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	quoteAmountUSDT := sourceAmount
-	if asset != "USDT" {
+	if asset == "BTC" {
+		expectedSats, err := btcSatsFromAmount(sourceAmount)
+		if err != nil || expectedSats <= 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "valor BTC invalido"})
+			return
+		}
+		if btcFunding != nil {
+			btcFunding.ExpectedSats = expectedSats
+		}
+		quoteAmountUSDT = sourceAmount
+	} else if asset != "USDT" {
 		if req.AmountBRL <= 0 {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "amountBRL deve ser maior que zero para sell BTC/ETH"})
 			return
@@ -103,7 +145,7 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 	} else if quoteAmountUSDT <= 0 && req.AmountBRL > 0 {
 		quoteAmountUSDT = req.AmountBRL / s.sellRate(marketRate)
 	}
-	rate, payout, spread := s.sellQuote(quoteAmountUSDT, marketRate)
+	rate, payout, spread := s.sellQuoteForAsset(asset, quoteAmountUSDT, marketRate)
 	fee := spread
 	totalBRL := payout
 	order, err := s.db.CreateOrder(ctx, database.OrderInput{
@@ -126,6 +168,13 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, err)
 		return
+	}
+	if btcFunding != nil {
+		btcFunding.OrderID = order.ID
+		if err := s.db.CreateBTCSellFunding(ctx, *btcFunding); err != nil {
+			writeError(w, err)
+			return
+		}
 	}
 	_ = s.db.AddEvent(ctx, order.ID, "order.meta", map[string]any{"requestId": requestID(r), "ip": clientIP(r), "userAgent": r.UserAgent()})
 	s.workers.Bus.Publish(workers.Event{Type: "order.created", OrderID: order.ID, Payload: map[string]any{"requestId": requestID(r), "amountBRL": totalBRL}})
@@ -165,6 +214,31 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		"statusUrl":          fmt.Sprintf("/api/order/%s?accessToken=%s", order.ID, order.AccessToken),
 		"streamUrl":          fmt.Sprintf("/api/order/%s/stream?accessToken=%s", order.ID, order.AccessToken),
 	})
+}
+
+func btcSatsFromAmount(amount float64) (int64, error) {
+	if amount <= 0 {
+		return 0, fmt.Errorf("valor BTC invalido")
+	}
+	value := strconv.FormatFloat(amount, 'f', 8, 64)
+	parts := strings.SplitN(value, ".", 2)
+	whole, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	frac := ""
+	if len(parts) == 2 {
+		frac = parts[1]
+	}
+	if len(frac) > 8 {
+		frac = frac[:8]
+	}
+	frac += strings.Repeat("0", 8-len(frac))
+	fracSats, err := strconv.ParseInt(frac, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return whole*100000000 + fracSats, nil
 }
 
 func sellAssetNetworkAllowed(asset, network string) bool {
