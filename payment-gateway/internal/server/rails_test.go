@@ -63,6 +63,21 @@ func TestPixBuyWebhookRequiresProviderID(t *testing.T) {
 	}
 }
 
+func TestEfiPixSendWebhookRejectsQueryHMACByDefault(t *testing.T) {
+	t.Setenv("EFI_PIX_SEND_WEBHOOK_ALLOW_QUERY_HMAC", "")
+	secret := "pix-secret"
+	body := []byte(`{"idEnvio":"mpay-efi-test","status":"REALIZADO"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/efi/pix/send/webhook?hmac="+secret, strings.NewReader(string(body)))
+	rec := httptest.NewRecorder()
+
+	s := &Server{cfg: &config.Config{PixWebhookSecret: secret}}
+	s.handleEfiPixSendWebhook(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected query hmac to be rejected by default, got %d", rec.Code)
+	}
+}
+
 func TestEmailTestRequiresInternalHMAC(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/internal/email/test", strings.NewReader(`{"to":"ops@example.com"}`))
 	rec := httptest.NewRecorder()
@@ -155,6 +170,42 @@ func TestCORSPreflightAllowsTraceHeaders(t *testing.T) {
 		if !strings.Contains(exposeHeaders, header) {
 			t.Fatalf("expected %s in Access-Control-Expose-Headers, got %q", header, exposeHeaders)
 		}
+	}
+}
+
+func TestCORSPreflightAllowsMobileCloudOriginAndIdempotencyHeaders(t *testing.T) {
+	for _, origin := range []string{
+		"https://chainfx-mobile.vercel.app",
+		"http://localhost:8081",
+		"http://127.0.0.1:8081",
+		"http://192.168.249.53:8081",
+		"http://10.10.10.15:8081",
+	} {
+		t.Run(origin, func(t *testing.T) {
+			cfg := &config.Config{}
+			req := httptest.NewRequest(http.MethodOptions, "/api/mobile/order/sell/quote", nil)
+			req.Header.Set("Origin", origin)
+			req.Header.Set("Access-Control-Request-Method", "POST")
+			req.Header.Set("Access-Control-Request-Headers", "Content-Type, Authorization, Idempotency-Key, X-Request-Id, X-Correlation-Id")
+			rec := httptest.NewRecorder()
+
+			cors(cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				t.Fatal("preflight should not reach next handler")
+			})).ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusNoContent {
+				t.Fatalf("expected 204 preflight, got %d", rec.Code)
+			}
+			if got := rec.Header().Get("Access-Control-Allow-Origin"); got != origin {
+				t.Fatalf("expected mobile origin to be reflected, got %q", got)
+			}
+			allowHeaders := rec.Header().Get("Access-Control-Allow-Headers")
+			for _, header := range []string{"Content-Type", "Authorization", "Idempotency-Key", "X-Request-Id", "X-Correlation-Id"} {
+				if !strings.Contains(allowHeaders, header) {
+					t.Fatalf("expected %s in Access-Control-Allow-Headers, got %q", header, allowHeaders)
+				}
+			}
+		})
 	}
 }
 
