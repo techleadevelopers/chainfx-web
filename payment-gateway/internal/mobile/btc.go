@@ -2,6 +2,7 @@ package mobile
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -34,7 +35,7 @@ func (s *Server) handleBTCAddress(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{
 			"code":    "BTC_ADDRESS_ERROR",
-			"message": "erro ao obter endereço Bitcoin: " + err.Error(),
+			"message": "Nao foi possivel obter o endereco Bitcoin agora.",
 		})
 		return
 	}
@@ -65,7 +66,7 @@ func (s *Server) handleBTCBalance(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{
 			"code":    "BTC_BALANCE_ERROR",
-			"message": "erro ao buscar saldo Bitcoin: " + err.Error(),
+			"message": "Nao foi possivel buscar o saldo Bitcoin agora.",
 		})
 		return
 	}
@@ -95,7 +96,7 @@ func (s *Server) handleBTCFeeEstimate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{
 			"code":    "BTC_FEE_ERROR",
-			"message": "erro ao estimar fee: " + err.Error(),
+			"message": "Nao foi possivel estimar a fee Bitcoin agora.",
 		})
 		return
 	}
@@ -121,7 +122,7 @@ func (s *Server) handleBTCTransactions(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{
 			"code":    "BTC_TX_LIST_ERROR",
-			"message": "erro ao listar transações: " + err.Error(),
+			"message": "Nao foi possivel listar transacoes Bitcoin agora.",
 		})
 		return
 	}
@@ -152,7 +153,7 @@ func (s *Server) handleBTCGetTransaction(w http.ResponseWriter, r *http.Request)
 	tx, err := svc.GetTransactionByTxid(r.Context(), txid)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{
-			"code": "BTC_TX_ERROR", "message": err.Error(),
+			"code": "BTC_TX_ERROR", "message": "Nao foi possivel buscar a transacao Bitcoin agora.",
 		})
 		return
 	}
@@ -206,7 +207,7 @@ func (s *Server) handleBTCSend(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
-			"code": "INVALID_BODY", "message": "corpo inválido: " + err.Error(),
+			"code": "INVALID_BODY", "message": "corpo invalido",
 		})
 		return
 	}
@@ -263,12 +264,34 @@ func (s *Server) handleBTCSend(w http.ResponseWriter, r *http.Request) {
 			status = http.StatusConflict
 			code = "IDEMPOTENCY_CONFLICT"
 		}
+		slog.Warn("BTC send rejected", "code", code, "err", err)
 		writeJSON(w, status, map[string]any{
 			"code":    code,
-			"message": err.Error(),
+			"message": btcUserMessage(code),
 		})
 		return
 	}
 
 	writeJSON(w, http.StatusOK, result)
+}
+
+func btcUserMessage(code string) string {
+	switch code {
+	case "INSUFFICIENT_FUNDS":
+		return "Saldo insuficiente."
+	case "DUST_OUTPUT":
+		return "Valor abaixo do minimo para envio Bitcoin."
+	case "INVALID_ADDRESS":
+		return "Endereco Bitcoin invalido para esta rede."
+	case "SIGNING_NOT_CONFIGURED":
+		return "Envio Bitcoin indisponivel no momento."
+	case "MAX_SEND_EXCEEDED":
+		return "Valor acima do limite por transacao."
+	case "DAILY_LIMIT_EXCEEDED":
+		return "Limite diario excedido."
+	case "IDEMPOTENCY_CONFLICT":
+		return "Esta operacao ja foi enviada com dados diferentes."
+	default:
+		return "Nao foi possivel enviar Bitcoin agora."
+	}
 }
