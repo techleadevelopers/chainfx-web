@@ -447,6 +447,45 @@ func (s *Server) sellQuote(amountUSDT, marketRate float64) (sellRate, payoutBRL,
 	return roundRate(sellRateDecimal.Float64()), payout.Float64(), spread.Float64()
 }
 
+func (s *Server) sellQuoteForAsset(asset string, amount, marketRate float64) (sellRate, payoutBRL, spreadBRL float64) {
+	if strings.EqualFold(strings.TrimSpace(asset), "USDT") {
+		return s.sellQuote(amount, marketRate)
+	}
+	sellRate = roundRate(s.nonUSDSellRateForAmount(amount, marketRate))
+	amountUnits := money.TokenFromFloat(amount)
+	rateUnits := money.RateFromFloat(sellRate)
+	payout := money.FiatFromTokens(amountUnits, rateUnits)
+	marketValue := money.FiatFromTokens(amountUnits, money.RateFromFloat(marketRate))
+	spread := money.MoneyMinor(0)
+	if marketValue > payout {
+		spread = marketValue - payout
+	}
+	return sellRate, payout.Float64(), spread.Float64()
+}
+
+func (s *Server) nonUSDSellRateForAmount(amount, marketRate float64) float64 {
+	if s.cfg.SellRateBps > 0 {
+		bps := s.cfg.SellRateBps
+		if bps > 10000 {
+			bps = 10000
+		}
+		return marketRate * float64(bps) / 10000
+	}
+	minBps := s.cfg.SellSpreadMinBps
+	maxBps := s.cfg.SellSpreadMaxBps
+	if minBps < 0 {
+		minBps = 0
+	}
+	if maxBps < minBps {
+		maxBps = minBps
+	}
+	spreadBps := maxBps
+	if s.cfg.SellSpreadHighValueBrl > 0 && amount*marketRate >= s.cfg.SellSpreadHighValueBrl {
+		spreadBps = minBps
+	}
+	return money.SubtractBps(money.RateFromFloat(marketRate), spreadBps).Float64()
+}
+
 func (s *Server) sellQuoteUnits(amount money.TokenUnits, marketRate money.RateDecimal) (money.RateDecimal, money.MoneyMinor, money.MoneyMinor) {
 	sellRate := money.RateFromFloat(s.sellRateForAmount(amount.Float64(), marketRate.Float64()))
 	payout := money.FiatFromTokens(amount, sellRate)
