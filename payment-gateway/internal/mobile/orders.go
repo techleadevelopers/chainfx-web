@@ -15,12 +15,14 @@ import (
 	"payment-gateway/internal/database"
 	"payment-gateway/internal/liquidity"
 	"payment-gateway/internal/metrics"
+	"payment-gateway/internal/models"
 	"payment-gateway/internal/transactions"
 )
 
 // handleMobileBuy — POST /api/mobile/order/buy
 // Delegates to the existing POST /api/buy handler internally.
 func (s *Server) handleMobileBuyQuote(w http.ResponseWriter, r *http.Request) {
+	uid := userIDFromCtx(r)
 	var req struct {
 		AmountBRL float64 `json:"amount_brl"`
 		Asset     string  `json:"asset"`
@@ -110,7 +112,7 @@ func (s *Server) handleMobileBuyQuote(w http.ResponseWriter, r *http.Request) {
 	feeBreakdown["total_margin_brl"] = totalMargin
 	feeBreakdown["provider_withdrawal_fee"] = withdrawal
 	expiresAt := time.Now().UTC().Add(time.Duration(s.mobileRateLockSec()) * time.Second)
-	quoteID, err := s.issueMobileQuote(mobileQuoteClaims{
+	quoteID, err := s.issueMobileTradeQuote(r.Context(), uid, mobileQuoteClaims{
 		Side:      "buy",
 		Asset:     asset,
 		Network:   network,
@@ -217,9 +219,9 @@ func (s *Server) handleMobileBuy(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "par asset/network nao suportado para compra"})
 		return
 	}
-	claims, err := s.verifyMobileQuote(req.QuoteID, "buy", req.Asset, req.AmountBRL, time.Now(), network)
+	claims, err := s.consumeMobileTradeQuote(r.Context(), uid, req.QuoteID, "buy", req.Asset, network, req.AmountBRL, idempotencyKeyFromCtx(r.Context()), time.Now())
 	if err != nil {
-		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "code": "MOBILE_QUOTE_INVALID"})
+		writeJSON(w, http.StatusConflict, mobileProductError("QUOTE_EXPIRED", "Cotacao expirada ou invalida."))
 		return
 	}
 
@@ -304,7 +306,7 @@ func (s *Server) handleMobileBuy(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		writeJSON(w, http.StatusBadGateway, map[string]any{"error": "erro ao criar ordem: " + err.Error()})
+		writeJSON(w, http.StatusBadGateway, mobileProductError("NETWORK_UNAVAILABLE", "Nao foi possivel criar a ordem agora."))
 		return
 	}
 	defer resp.Body.Close()
@@ -314,12 +316,17 @@ func (s *Server) handleMobileBuy(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if resp.StatusCode >= 500 {
+		writeJSON(w, http.StatusBadGateway, mobileProductError("PROVIDER_PENDING", "Ordem em processamento. Tente acompanhar o status em instantes."))
+		return
+	}
 
 	// Tag order with user_id if we got an id back
 	var result map[string]any
 	if json.Unmarshal(body, &result) == nil {
 		if id, ok := result["id"].(string); ok && id != "" {
 			_ = mobileDB(s.db).TagBuyOrderUser(r.Context(), id, uid)
+			s.attachMobileTradeQuoteOrder(r.Context(), claims.QuoteID, uid, id)
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -462,13 +469,17 @@ func (s *Server) writeDegradedMobileBuy(w http.ResponseWriter, r *http.Request, 
 // handleMobileSell — POST /api/mobile/order/sell
 // Delegates to existing POST /api/order handler.
 func (s *Server) handleMobileSellQuote(w http.ResponseWriter, r *http.Request) {
+	uid := userIDFromCtx(r)
 	var req struct {
 		AmountUSDT float64 `json:"amount_usdt"`
+		AmountBTC  float64 `json:"amount_btc"`
+		AmountSats int64   `json:"amount_sats"`
 		Asset      string  `json:"asset"`
+		Network    string  `json:"network"`
 		QuoteID    string  `json:"quote_id"`
 	}
-	if err := decodeJSON(r, &req); err != nil || req.AmountUSDT <= 0 {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "amount_usdt obrigatorio"})
+	if err := decodeJSON(r, &req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "amount obrigatorio"})
 		return
 	}
 	asset := strings.ToUpper(firstNonEmptyStr(req.Asset, "USDT"))
@@ -476,12 +487,29 @@ func (s *Server) handleMobileSellQuote(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "asset nao suportado nesta fase"})
 		return
 	}
+	amountCrypto, amountSats := mobileSellRequestAmount(asset, req.AmountUSDT, req.AmountBTC, req.AmountSats)
+	if amountCrypto <= 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "amount invalido"})
+		return
+	}
+	if asset == "BTC" && s.btcSvc == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"code": "BTC_DISABLED", "error": "rail BTC nativa desabilitada"})
+		return
+	}
+	network := normalizeSellNetworkMobile(firstNonEmptyStr(req.Network, "BSC"))
+	if asset == "BTC" {
+		network = "BITCOIN"
+	}
+	if network == "" || !mobileSellAssetNetworkAllowed(asset, network) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "rede invalida para asset de sell", "asset": asset, "network": network})
+		return
+	}
 	marketRate := mobileAssetPriceBRL(s.PriceCache(), asset)
 	if marketRate <= 0 {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "cotacao indisponivel"})
 		return
 	}
-	rate, payoutBRL, spreadBRL, spreadBps := s.mobileSellQuote(req.AmountUSDT, marketRate)
+	rate, payoutBRL, spreadBRL, spreadBps := s.mobileSellQuote(amountCrypto, marketRate)
 	if s != nil && s.cfg != nil && (payoutBRL < s.cfg.OrderMinBrl || payoutBRL > s.cfg.OrderMaxBrl) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"error": fmt.Sprintf("valor fora dos limites (%.2f - %.2f BRL)", s.cfg.OrderMinBrl, s.cfg.OrderMaxBrl),
@@ -489,10 +517,11 @@ func (s *Server) handleMobileSellQuote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	expiresAt := time.Now().UTC().Add(time.Duration(s.mobileRateLockSec()) * time.Second)
-	quoteID, err := s.issueMobileQuote(mobileQuoteClaims{
+	quoteID, err := s.issueMobileTradeQuote(r.Context(), uid, mobileQuoteClaims{
 		Side:      "sell",
 		Asset:     asset,
-		Amount:    req.AmountUSDT,
+		Network:   network,
+		Amount:    amountCrypto,
 		Rate:      rate,
 		Fee:       spreadBRL,
 		Total:     payoutBRL,
@@ -506,10 +535,15 @@ func (s *Server) handleMobileSellQuote(w http.ResponseWriter, r *http.Request) {
 		"quote_id":      quoteID,
 		"side":          "sell",
 		"asset":         asset,
+		"network":       network,
+		"btc_network":   mobileBTCNetwork(s),
+		"funding_mode":  mobileSellFundingMode(asset),
 		"fiat":          "BRL",
-		"amount_usdt":   req.AmountUSDT,
-		"amount_crypto": req.AmountUSDT,
-		"cryptoAmount":  req.AmountUSDT,
+		"amount_usdt":   amountCrypto,
+		"amount_btc":    amountCrypto,
+		"amount_sats":   amountSats,
+		"amount_crypto": amountCrypto,
+		"cryptoAmount":  amountCrypto,
 		"rate":          rate,
 		"market_rate":   roundRateLocal(marketRate),
 		"marketRate":    roundRateLocal(marketRate),
@@ -531,13 +565,16 @@ func (s *Server) handleMobileSell(w http.ResponseWriter, r *http.Request) {
 	uid := userIDFromCtx(r)
 	var req struct {
 		AmountUSDT float64 `json:"amount_usdt"`
+		AmountBTC  float64 `json:"amount_btc"`
+		AmountSats int64   `json:"amount_sats"`
 		PixKey     string  `json:"pix_key"`
 		PixCpf     string  `json:"pix_cpf"`
 		PixPhone   string  `json:"pix_phone"`
 		Asset      string  `json:"asset"`
+		Network    string  `json:"network"`
 		QuoteID    string  `json:"quote_id"`
 	}
-	if err := decodeJSON(r, &req); err != nil || req.AmountUSDT <= 0 {
+	if err := decodeJSON(r, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "amount_usdt obrigatório"})
 		return
 	}
@@ -546,9 +583,26 @@ func (s *Server) handleMobileSell(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "asset nao suportado nesta fase"})
 		return
 	}
-	claims, err := s.verifyMobileQuote(req.QuoteID, "sell", req.Asset, req.AmountUSDT, time.Now())
+	amountCrypto, amountSats := mobileSellRequestAmount(req.Asset, req.AmountUSDT, req.AmountBTC, req.AmountSats)
+	if amountCrypto <= 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "amount invalido"})
+		return
+	}
+	if req.Asset == "BTC" && s.btcSvc == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"code": "BTC_DISABLED", "error": "rail BTC nativa desabilitada"})
+		return
+	}
+	network := normalizeSellNetworkMobile(firstNonEmptyStr(req.Network, "BSC"))
+	if req.Asset == "BTC" {
+		network = "BITCOIN"
+	}
+	if network == "" || !mobileSellAssetNetworkAllowed(req.Asset, network) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "rede invalida para asset de sell", "asset": req.Asset, "network": network})
+		return
+	}
+	claims, err := s.consumeMobileTradeQuote(r.Context(), uid, req.QuoteID, "sell", req.Asset, network, amountCrypto, idempotencyKeyFromCtx(r.Context()), time.Now())
 	if err != nil {
-		writeJSON(w, http.StatusConflict, map[string]any{"error": err.Error(), "code": "MOBILE_QUOTE_INVALID"})
+		writeJSON(w, http.StatusConflict, mobileProductError("QUOTE_EXPIRED", "Cotacao expirada ou invalida."))
 		return
 	}
 	user, err := mobileDB(s.db).GetUserByID(r.Context(), uid)
@@ -571,25 +625,35 @@ func (s *Server) handleMobileSell(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "pix_key ou pix_phone obrigatório"})
 		return
 	}
+	if req.Asset == "BTC" {
+		s.handleMobileBTCSellCreate(w, r, uid, claims, amountCrypto, amountSats, pixKey, req.PixCpf)
+		return
+	}
 	payload := map[string]any{
-		"amountUSDT": req.AmountUSDT,
+		"amountUSDT": amountCrypto,
 		"pixPhone":   pixKey,
 		"pixCpf":     req.PixCpf,
 		"asset":      req.Asset,
+		"network":    network,
 		"quoteId":    req.QuoteID,
 		"rateLocked": claims.Rate,
 	}
 	resp, err := forwardToInternal(r, "POST", s.internalBase(r)+"/api/order", payload, s.internalAPIKey())
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusBadGateway, mobileProductError("NETWORK_UNAVAILABLE", "Nao foi possivel criar a ordem agora."))
 		return
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 500 {
+		writeJSON(w, http.StatusBadGateway, mobileProductError("NETWORK_UNAVAILABLE", "Nao foi possivel criar a ordem agora."))
+		return
+	}
 	var result map[string]any
 	if json.Unmarshal(body, &result) == nil {
 		if id, ok := result["id"].(string); ok && id != "" {
 			_ = mobileDB(s.db).TagOrderUser(r.Context(), id, uid)
+			s.attachMobileTradeQuoteOrder(r.Context(), claims.QuoteID, uid, id)
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -597,10 +661,164 @@ func (s *Server) handleMobileSell(w http.ResponseWriter, r *http.Request) {
 	w.Write(body)
 }
 
+func (s *Server) handleMobileBTCSellCreate(w http.ResponseWriter, r *http.Request, uid string, claims *mobileQuoteClaims, amountBTC float64, amountSats int64, pixKey, pixCPF string) {
+	if s.btcSvc == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"code": "BTC_DISABLED", "error": "rail BTC nativa desabilitada"})
+		return
+	}
+	if claims == nil || !strings.EqualFold(claims.Asset, "BTC") || !strings.EqualFold(claims.Network, "BITCOIN") {
+		writeJSON(w, http.StatusConflict, mobileProductError("QUOTE_EXPIRED", "Cotacao BTC invalida."))
+		return
+	}
+	if amountSats <= 0 {
+		amountSats = btcToSats(amountBTC)
+	}
+	if existingID, err := s.db.ActiveBTCSellFundingOrderForQuote(r.Context(), claims.QuoteID, uid); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro ao verificar ordem BTC"})
+		return
+	} else if existingID != "" {
+		if existing, err := s.db.GetOrder(r.Context(), existingID); err == nil && existing != nil {
+			writeJSON(w, http.StatusOK, mobileBTCSellOrderResponse(existing, s, amountSats, "idempotent_replay"))
+			return
+		}
+	}
+
+	addr, err := s.btcSvc.GetOrCreateAddress(r.Context(), uid)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"code": "BTC_ADDRESS_ERROR", "error": "nao foi possivel obter endereco BTC"})
+		return
+	}
+	cfg := s.btcSvc.Config()
+	orderID := database.NewID()
+	order, err := s.db.CreateOrder(r.Context(), database.OrderInput{
+		ID:                orderID,
+		Status:            "aguardando_deposito",
+		AmountBRL:         claims.Total,
+		AmountUSDT:        amountBTC,
+		FeeBRL:            claims.Fee,
+		PayoutBRL:         claims.Total,
+		PixKey:            pixKey,
+		Address:           addr.Address,
+		Asset:             "BTC",
+		Network:           "BITCOIN",
+		RateLocked:        claims.Rate,
+		RateLockExpiresAt: time.Unix(claims.ExpiresAt, 0).UTC(),
+		RequestID:         idempotencyKeyFromCtx(r.Context()),
+		PixCpf:            pixCPF,
+		PixPhone:          pixKey,
+	})
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro ao criar ordem BTC"})
+		return
+	}
+	if err := s.db.CreateBTCSellFunding(r.Context(), database.BTCSellFundingInput{
+		OrderID:         order.ID,
+		UserID:          uid,
+		WalletAddressID: addr.ID,
+		BTCAddress:      addr.Address,
+		BTCNetwork:      string(cfg.Network),
+		ExpectedSats:    amountSats,
+		QuoteID:         claims.QuoteID,
+	}); err != nil {
+		_ = s.db.UpdateOrderStatus(r.Context(), order.ID, "incidente_validacao", map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro ao preparar funding BTC"})
+		return
+	}
+	_ = mobileDB(s.db).TagOrderUser(r.Context(), order.ID, uid)
+	s.attachMobileTradeQuoteOrder(r.Context(), claims.QuoteID, uid, order.ID)
+	writeJSON(w, http.StatusAccepted, mobileBTCSellOrderResponse(order, s, amountSats, "created"))
+}
+
+func mobileBTCSellOrderResponse(order *models.Order, s *Server, amountSats int64, result string) map[string]any {
+	cfg := s.btcSvc.Config()
+	return map[string]any{
+		"id":                    order.ID,
+		"order_id":              order.ID,
+		"accessToken":           order.AccessToken,
+		"status":                order.Status,
+		"side":                  "sell",
+		"asset":                 "BTC",
+		"network":               "BITCOIN",
+		"btc_network":           string(cfg.Network),
+		"funding_mode":          "external_deposit",
+		"amount_btc":            satsToBTCFloat(amountSats),
+		"amount_sats":           amountSats,
+		"cryptoAmount":          satsToBTCFloat(amountSats),
+		"amount_brl":            order.AmountBRL,
+		"payout_brl":            order.PayoutBRL,
+		"payoutFiat":            order.PayoutBRL,
+		"rate":                  order.RateLocked,
+		"funding_address":       order.Address,
+		"btc_funding_address":   order.Address,
+		"minimum_confirmations": cfg.MinConfirmations,
+		"funding_status":        "awaiting_deposit",
+		"rate_lock_expires_at":  order.RateLockExpiresAt,
+		"result":                result,
+	}
+}
+
+func mobileSellRequestAmount(asset string, amountUSDT, amountBTC float64, amountSats int64) (float64, int64) {
+	if strings.EqualFold(asset, "BTC") {
+		if amountSats > 0 {
+			return satsToBTCFloat(amountSats), amountSats
+		}
+		if amountBTC <= 0 {
+			amountBTC = amountUSDT
+		}
+		sats := btcToSats(amountBTC)
+		return satsToBTCFloat(sats), sats
+	}
+	return amountUSDT, 0
+}
+
+func mobileBTCNetwork(s *Server) string {
+	if s != nil && s.btcSvc != nil && s.btcSvc.Config() != nil {
+		return string(s.btcSvc.Config().Network)
+	}
+	return ""
+}
+
+func mobileSellFundingMode(asset string) string {
+	if strings.EqualFold(asset, "BTC") {
+		return "external_deposit"
+	}
+	return "external_deposit"
+}
+
 func mobileTradeAssetSupported(asset string) bool {
 	switch strings.ToUpper(strings.TrimSpace(asset)) {
 	case "USDT", "BTC", "BNB", "ETH", "LINK", "AVAX":
 		return true
+	default:
+		return false
+	}
+}
+
+func normalizeSellNetworkMobile(network string) string {
+	switch strings.ToUpper(strings.TrimSpace(network)) {
+	case "", "BSC", "BEP20", "BNB", "BINANCE":
+		return "BSC"
+	case "POLYGON", "MATIC":
+		return "POLYGON"
+	case "ETH", "ETHEREUM", "ERC20":
+		return "ETHEREUM"
+	case "BTC", "BITCOIN":
+		return "BITCOIN"
+	default:
+		return strings.ToUpper(strings.TrimSpace(network))
+	}
+}
+
+func mobileSellAssetNetworkAllowed(asset, network string) bool {
+	switch strings.ToUpper(strings.TrimSpace(asset)) {
+	case "BTC":
+		return normalizeSellNetworkMobile(network) == "BITCOIN"
+	case "ETH":
+		network = normalizeSellNetworkMobile(network)
+		return network == "ETHEREUM" || network == "BSC"
+	case "USDT", "BNB":
+		network = normalizeSellNetworkMobile(network)
+		return network == "BSC" || network == "POLYGON"
 	default:
 		return false
 	}
@@ -635,14 +853,16 @@ func (s *Server) handleMobileGetOrder(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	uid := userIDFromCtx(r)
 	if buy, err := mobileDB(s.db).GetBuyOrderByUser(r.Context(), id, uid); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		slog.Error("erro interno", "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro interno"})
 		return
 	} else if buy != nil {
 		writeJSON(w, http.StatusOK, buy)
 		return
 	}
 	if sell, err := mobileDB(s.db).GetSellOrderByUser(r.Context(), id, uid); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		slog.Error("erro interno", "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro interno"})
 		return
 	} else if sell != nil {
 		writeJSON(w, http.StatusOK, sell)
@@ -674,7 +894,8 @@ func (s *Server) handleMobileCancelOrder(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if err := mobileDB(s.db).CancelOrder(r.Context(), req.OrderID, uid); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+		slog.Warn("mobile cancel order rejected", "order_id", req.OrderID, "err", err)
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "ordem nao pode ser cancelada"})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
