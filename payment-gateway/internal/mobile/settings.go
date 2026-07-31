@@ -11,7 +11,7 @@ func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
 	uid := userIDFromCtx(r)
 	settings, err := mobileDB(s.db).GetSettings(r.Context(), uid)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	writeJSON(w, http.StatusOK, settings)
@@ -33,7 +33,7 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 	uid := userIDFromCtx(r)
 	settings, err := mobileDB(s.db).GetSettings(r.Context(), uid)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	if settings == nil {
@@ -66,7 +66,7 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := mobileDB(s.db).UpsertSettings(r.Context(), settings); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	writeJSON(w, http.StatusOK, settings)
@@ -76,7 +76,7 @@ func (s *Server) handleGetPreferences(w http.ResponseWriter, r *http.Request) {
 	uid := userIDFromCtx(r)
 	settings, err := mobileDB(s.db).GetSettings(r.Context(), uid)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	writeJSON(w, http.StatusOK, mobilePreferencesView(settings))
@@ -100,7 +100,7 @@ func (s *Server) handleUpdatePreferences(w http.ResponseWriter, r *http.Request)
 	uid := userIDFromCtx(r)
 	settings, err := mobileDB(s.db).GetSettings(r.Context(), uid)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	if settings == nil {
@@ -139,7 +139,7 @@ func (s *Server) handleUpdatePreferences(w http.ResponseWriter, r *http.Request)
 		_ = mobileDB(s.db).UpdateUser(r.Context(), uid, map[string]any{"biometry_enabled": *req.BiometryEnabled})
 	}
 	if err := mobileDB(s.db).UpsertSettings(r.Context(), settings); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	out := mobilePreferencesView(settings)
@@ -178,7 +178,7 @@ func (s *Server) handleGetLimits(w http.ResponseWriter, r *http.Request) {
 	uid := userIDFromCtx(r)
 	settings, err := mobileDB(s.db).GetSettings(r.Context(), uid)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 
