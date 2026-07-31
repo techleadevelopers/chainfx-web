@@ -116,10 +116,11 @@ type KYCRequest struct {
 type SwapStatus string
 
 const (
-	SwapPending   SwapStatus = "pending"
-	SwapExecuting SwapStatus = "executing"
-	SwapCompleted SwapStatus = "completed"
-	SwapFailed    SwapStatus = "failed"
+	SwapPending          SwapStatus = "pending"
+	SwapExecuting        SwapStatus = "executing"
+	SwapCompleted        SwapStatus = "completed"
+	SwapFailed           SwapStatus = "failed"
+	SwapRouteUnavailable SwapStatus = "route_unavailable"
 )
 
 // Swap is a direct crypto-to-crypto exchange (e.g. USDT→BTCB).
