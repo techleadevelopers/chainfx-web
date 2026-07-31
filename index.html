@@ -247,7 +247,6 @@ void main() {
                 <a href="#trade" class="active" data-view="trade">Trade</a>
                 <a href="#markets" data-view="markets">Markets</a>
                 <a href="#developers" data-view="developers">Developers</a>
-                <a href="#contact" data-view="contact">Contact</a>
             </div>
         </div>
     </nav>
@@ -383,31 +382,90 @@ void main() {
               </div>
 
               <div class="sell-info hidden" id="sellInfo">
-                  <div class="wallet-input sell-network-input" id="sellAssetSection">
-                      <label>Cripto para vender</label>
-                      <div class="sell-network-options" id="sellAssetOptions" role="radiogroup" aria-label="Escolha o ativo para vender">
-                          <!-- populated by renderSellAssetSelector() -->
-                      </div>
-                  </div>
-                  <div class="wallet-input sell-network-input" id="sellNetworkSection">
-                      <label id="sellNetworkLabel">Rede para envio</label>
-                      <div class="sell-network-options" id="sellNetworkOptions" role="radiogroup" aria-label="Escolha a rede de envio">
-                          <!-- populated by renderSellNetworkOptions() -->
-                      </div>
-                  </div>
-                  <div class="wallet-input">
-                      <label for="pixCpf">Seu CPF (para PIX)</label>
-                      <div class="input-group">
-                          <input type="text" id="pixCpf" placeholder="000.000.000-00" />
-                      </div>
-                  </div>
-                  <div class="wallet-input">
-                      <label for="pixPhone">Chave PIX para receber</label>
-                      <div class="input-group">
-                          <input type="text" id="pixPhone" placeholder="CPF, telefone, email ou chave aleatoria" />
-                      </div>
-                  </div>
-              </div>
+
+    <!-- REDE -->
+    <div class="wallet-input sell-network-input hidden" id="sellNetworkSection">
+        <label id="sellNetworkLabel">Rede para envio</label>
+
+        <div
+            class="sell-network-options"
+            id="sellNetworkOptions"
+            role="radiogroup"
+            aria-label="Escolha a rede de envio">
+        </div>
+    </div>
+
+    <!-- WALLET CHAINFX -->
+    <div class="wallet-input hidden" id="sellWalletStep">
+        <label for="sellWalletAddress">Wallet para depósito:</label>
+
+        <div class="input-group sell-wallet-address-group">
+
+    <img
+        class="sell-wallet-prefix-icon"
+        src="https://res.cloudinary.com/limpeja/image/upload/v1785517224/image-Photoroom_16_chv3uo.png"
+        alt=""
+        aria-hidden="true"
+    />
+
+    <input
+        type="text"
+        id="sellWalletAddress"
+        readonly
+    />
+
+    <button
+        type="button"
+        class="sell-wallet-copy-btn"
+        id="sellWalletCopyBtn"
+        aria-label="Copiar endereço da wallet"
+        title="Copiar endereço"
+    >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 7a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-1v1a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3h1V7Zm3-1a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-6Zm-4 4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-1h-3a3 3 0 0 1-3-3v-3H7Z"/>
+        </svg>
+    </button>
+
+</div>
+
+<!-- COLOCA EXATAMENTE AQUI -->
+<div class="sell-order-timer hidden" id="sellOrderTimer">
+    <span class="sell-order-timer-dot"></span>
+
+    <div>
+        <strong id="sellOrderCountdown">15:00</strong>
+        <small>Tempo para envio do BTC</small>
+    </div>
+</div>
+    </div>
+
+    <!-- CPF começa escondido -->
+    <div class="wallet-input" id="sellCpfStep">
+        <label for="pixCpf">Seu CPF (para PIX)</label>
+
+        <div class="input-group">
+            <input
+                type="text"
+                id="pixCpf"
+                placeholder="000.000.000-00"
+            />
+        </div>
+    </div>
+
+    <!-- PIX começa escondido -->
+    <div class="wallet-input" id="sellPixStep">
+        <label for="pixPhone">Chave PIX para receber</label>
+
+        <div class="input-group">
+            <input
+                type="text"
+                id="pixPhone"
+                placeholder="Chave pix"
+            />
+        </div>
+    </div>
+
+</div>
 
               <div class="payment-methods" id="paymentMethodsSection">
                   <h3>Choose payment method</h3>
