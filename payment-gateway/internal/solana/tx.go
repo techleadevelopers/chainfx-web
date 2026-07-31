@@ -31,6 +31,13 @@ func BuildSOLTransfer(privateKey ed25519.PrivateKey, toAddress, recentBlockhash 
 	return tx, message, nil
 }
 
+func SignatureFromSignedTransaction(tx []byte) (string, error) {
+	if len(tx) < 65 || tx[0] != 1 {
+		return "", fmt.Errorf("solana: signed transaction invalida")
+	}
+	return base58Encode(tx[1:65]), nil
+}
+
 func BuildUnsignedSOLTransferMessage(fromAddress, toAddress, recentBlockhash string, lamports int64) ([]byte, error) {
 	from, err := base58Decode(fromAddress)
 	if err != nil || len(from) != 32 {
