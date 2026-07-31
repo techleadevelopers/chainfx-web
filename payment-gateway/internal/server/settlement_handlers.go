@@ -8,10 +8,12 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 
 	"payment-gateway/internal/database"
+	mobilepay "payment-gateway/internal/mobile"
 	"payment-gateway/internal/models"
 	"payment-gateway/internal/settlement"
 	"payment-gateway/internal/workers"
@@ -281,13 +283,20 @@ func (s *Server) handleEfiPixSendWebhook(w http.ResponseWriter, r *http.Request)
 	}
 	signature := firstNonEmpty(r.Header.Get("x-efi-signature"), r.Header.Get("x-chainfx-signature"))
 	queryHMAC := r.URL.Query().Get("hmac")
+	allowQueryHMAC := strings.EqualFold(strings.TrimSpace(os.Getenv("EFI_PIX_SEND_WEBHOOK_ALLOW_QUERY_HMAC")), "true")
 	if signature != "" && !validHMAC(secret, raw, signature) {
 		writeJSON(w, http.StatusUnauthorized, map[string]any{"error": "assinatura invalida"})
 		return
 	}
-	if signature == "" && queryHMAC != "" && !hmac.Equal([]byte(queryHMAC), []byte(secret)) {
-		writeJSON(w, http.StatusUnauthorized, map[string]any{"error": "hmac invalido"})
+	if signature == "" && queryHMAC != "" && !allowQueryHMAC {
+		writeJSON(w, http.StatusUnauthorized, map[string]any{"error": "hmac por query desabilitado"})
 		return
+	}
+	if signature == "" && queryHMAC != "" {
+		if !hmac.Equal([]byte(queryHMAC), []byte(secret)) {
+			writeJSON(w, http.StatusUnauthorized, map[string]any{"error": "hmac invalido"})
+			return
+		}
 	}
 	if signature == "" && queryHMAC == "" {
 		writeJSON(w, http.StatusUnauthorized, map[string]any{"error": "webhook sem autenticacao adicional"})
@@ -336,16 +345,26 @@ func (s *Server) handleEfiPixSendWebhook(w http.ResponseWriter, r *http.Request)
 	if amountMinor := parseWebhookBRLMinor(req.Valor); amountMinor > 0 {
 		eventPayload["amount_brl_minor"] = amountMinor
 	}
+	mobileResult, mobileErr := mobilepay.ApplyEfiMobileWebhook(r.Context(), s.db.SQL, mobilepay.EfiMobileWebhookEvent{
+		IDEnvio: req.IDEnvio,
+		E2EID:   req.E2EID,
+		Status:  req.Status,
+		Raw:     raw,
+	})
+	if mobileErr != nil {
+		writeError(w, mobileErr)
+		return
+	}
 	duplicate, settlement, err := s.db.ApplyMerchantSettlementProviderEvent(r.Context(), "efi", req.IDEnvio, req.E2EID, req.Status, eventPayload)
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-	if settlement == nil {
+	if settlement == nil && !mobileResult.Matched {
 		writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "unmatched": true})
 		return
 	}
-	if settlement.Status == database.MerchantSettlementStatusConfirmed && s.workers != nil && s.workers.Bus != nil {
+	if settlement != nil && settlement.Status == database.MerchantSettlementStatusConfirmed && s.workers != nil && s.workers.Bus != nil {
 		s.workers.Bus.Publish(workers.Event{Type: "nfc.settlement.confirmed", OrderID: settlement.AuthorizationID, Payload: map[string]any{
 			"settlement_id":      settlement.ID,
 			"provider_reference": settlement.ProviderReference,
@@ -354,7 +373,18 @@ func (s *Server) handleEfiPixSendWebhook(w http.ResponseWriter, r *http.Request)
 			"source":             "webhook",
 		}})
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "duplicate": duplicate, "settlement_id": settlement.ID, "status": settlement.Status})
+	resp := map[string]any{"ok": true, "duplicate": duplicate}
+	if settlement != nil {
+		resp["settlement_id"] = settlement.ID
+		resp["status"] = settlement.Status
+	}
+	if mobileResult.Matched || mobileResult.Duplicate {
+		resp["mobile_payment_id"] = mobileResult.PaymentID
+		resp["mobile_execution_id"] = mobileResult.ExecutionID
+		resp["mobile_applied"] = mobileResult.Applied
+		resp["mobile_duplicate"] = mobileResult.Duplicate
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func parseWebhookBRLMinor(value string) int64 {
