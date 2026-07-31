@@ -6,24 +6,31 @@ import "time"
 
 // UTXOStatus representa o ciclo de vida de um UTXO.
 const (
-	UTXOStatusPending   = "pending"
-	UTXOStatusConfirmed = "confirmed"
-	UTXOStatusReserved  = "reserved"
-	UTXOStatusSpent     = "spent"
-	UTXOStatusOrphaned  = "orphaned"
+	UTXOStatusPending      = "pending"
+	UTXOStatusReorgPending = "reorg_pending"
+	UTXOStatusConfirmed    = "confirmed"
+	UTXOStatusReserved     = "reserved"
+	UTXOStatusSpent        = "spent"
+	UTXOStatusOrphaned     = "orphaned"
+	UTXOStatusManualReview = "manual_review"
 )
 
 // TxStatus representa o ciclo de vida de uma transação BTC.
 const (
-	TxStatusCreated   = "created"
-	TxStatusBuilding  = "building"
-	TxStatusSigned    = "signed"
-	TxStatusBroadcast = "broadcast"
-	TxStatusPending   = "pending"
-	TxStatusConfirmed = "confirmed"
-	TxStatusFailed    = "failed"
-	TxStatusReplaced  = "replaced"
-	TxStatusDropped   = "dropped"
+	TxStatusCreated               = "created"
+	TxStatusBuilding              = "building"
+	TxStatusSigned                = "signed"
+	TxStatusBroadcast             = "broadcast"
+	TxStatusBroadcastUnknown      = "broadcast_unknown"
+	TxStatusPending               = "pending"
+	TxStatusConfirmed             = "confirmed"
+	TxStatusFailed                = "failed"
+	TxStatusFailedBeforeSign      = "failed_before_sign"
+	TxStatusFailedBeforeBroadcast = "failed_before_broadcast"
+	TxStatusManualReview          = "manual_review"
+	TxStatusConflicted            = "conflicted"
+	TxStatusReplaced              = "replaced"
+	TxStatusDropped               = "dropped"
 )
 
 // TxDirection indica se a transação é depósito, saque ou interna.
@@ -78,27 +85,28 @@ type UTXO struct {
 
 // BTCTransaction representa uma transação BTC rastreada (depósito ou saque).
 type BTCTransaction struct {
-	ID               string
-	UserID           string
-	Network          string
-	Direction        string
-	Txid             string
-	RawTxHash        string
-	DestinationAddr  string
-	AmountSats       int64
-	FeeSats          int64
-	FeeRateSatVByte  int64
-	Status           string
-	Confirmations    int
-	BlockHeight      int64
-	IdempotencyKey   string
-	RequestHash      string
-	ErrorCode        string
-	ErrorMessage     string
-	BroadcastAt      *time.Time
-	ConfirmedAt      *time.Time
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	ID              string
+	UserID          string
+	Network         string
+	Direction       string
+	Txid            string
+	RawTxHash       string
+	DestinationAddr string
+	AmountSats      int64
+	FeeSats         int64
+	FeeRateSatVByte int64
+	Status          string
+	Confirmations   int
+	BlockHeight     int64
+	IdempotencyKey  string
+	RequestHash     string
+	ErrorCode       string
+	ErrorMessage    string
+	SignedAt        *time.Time
+	BroadcastAt     *time.Time
+	ConfirmedAt     *time.Time
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 // Balance representa o saldo BTC de um usuário.
@@ -107,7 +115,7 @@ type Balance struct {
 	ConfirmedSats int64 `json:"confirmed_sats"`
 	PendingSats   int64 `json:"pending_sats"`
 	ReservedSats  int64 `json:"reserved_sats"`  // UTXOs reservados para saques em andamento
-	AvailableSats int64 `json:"available_sats"`  // confirmed - reserved
+	AvailableSats int64 `json:"available_sats"` // confirmed - reserved
 	TotalSats     int64 `json:"total_sats"`
 	// Representação em BTC — string com 8 casas decimais, nunca float para cálculo
 	ConfirmedBTC string `json:"confirmed_btc"`
@@ -139,17 +147,44 @@ type SendRequest struct {
 	UserID         string
 	ToAddress      string
 	AmountSats     int64
-	FeeRateSatVB   int64  // 0 = usar estimativa automática
+	FeeRateSatVB   int64 // 0 = usar estimativa automática
 	IdempotencyKey string
 	RequestHash    string
 }
 
+// BTCTransactionInput registra um UTXO usado por uma transaÃ§Ã£o BTC.
+type BTCTransactionInput struct {
+	ID              string
+	TransactionID   string
+	UTXOID          string
+	UserID          string
+	WalletAddressID string
+	Address         string
+	DerivationPath  string
+	DerivationIndex int
+	Txid            string
+	Vout            uint32
+	ValueSats       int64
+	ScriptPubKey    string
+}
+
+// BTCTransactionOutput registra um output de uma transaÃ§Ã£o BTC.
+type BTCTransactionOutput struct {
+	ID            string
+	TransactionID string
+	Vout          int
+	Address       string
+	ValueSats     int64
+	OutputType    string
+	ScriptPubKey  string
+}
+
 // SendResult é o resultado de um saque BTC.
 type SendResult struct {
-	TxID        string `json:"txid"`
-	FeeSats     int64  `json:"fee_sats"`
-	AmountSats  int64  `json:"amount_sats"`
-	Status      string `json:"status"`
+	TxID       string `json:"txid"`
+	FeeSats    int64  `json:"fee_sats"`
+	AmountSats int64  `json:"amount_sats"`
+	Status     string `json:"status"`
 }
 
 // ProviderUTXO é o formato bruto retornado pela API do provider.
