@@ -17,6 +17,7 @@ type mobileQuoteClaims struct {
 	Side           string   `json:"side"`
 	Asset          string   `json:"asset"`
 	Network        string   `json:"network,omitempty"`
+	SellSource     string   `json:"sell_source,omitempty"` // "internal" | "external"
 	Provider       string   `json:"provider,omitempty"`
 	Router         string   `json:"router,omitempty"`
 	Path           []string `json:"path,omitempty"`
