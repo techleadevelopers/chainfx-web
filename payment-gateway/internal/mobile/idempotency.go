@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -66,8 +69,15 @@ func (s *Server) requireIdempotency(opType string, next http.HandlerFunc) http.H
 		}
 
 		uid := resolvedUID(userIDFromCtx(r))
+		requestHash, err := mobileIdempotencyRequestHash(r, opType)
+		if err != nil {
+			writeJSON(w, http.StatusRequestEntityTooLarge, map[string]any{
+				"error": "payload muito grande para idempotencia",
+			})
+			return
+		}
 
-		if err := s.runIdempotencyTransaction(r.Context(), w, key, uid, opType); err != nil {
+		if err := s.runIdempotencyTransaction(r.Context(), w, key, uid, opType, requestHash); err != nil {
 			if errors.Is(err, errProceed) {
 				// Transaction committed — call the real handler
 				w.Header().Set("Idempotency-Key", key)
@@ -114,7 +124,7 @@ var errProceed = errors.New("proceed")
 
 func (s *Server) runIdempotencyTransaction(
 	ctx context.Context, w http.ResponseWriter,
-	key, uid, opType string,
+	key, uid, opType, requestHash string,
 ) error {
 	tx, err := s.db.SQL.BeginTx(ctx, nil)
 	if err != nil {
@@ -133,10 +143,10 @@ func (s *Server) runIdempotencyTransaction(
 	// Upsert the (key, user_id) pair — ON CONFLICT DO NOTHING to handle duplicates
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO operation_ids
-		    (operation_id, user_id, operation_type, status, expires_at)
-		VALUES ($1, $2::uuid, $3, 'pending', NOW() + INTERVAL '24 hours')
+		    (operation_id, user_id, operation_type, request_hash, status, expires_at)
+		VALUES ($1, $2::uuid, $3, $4, 'pending', NOW() + INTERVAL '24 hours')
 		ON CONFLICT (operation_id, user_id) DO NOTHING`,
-		key, uid, opType)
+		key, uid, opType, requestHash)
 	if err != nil {
 		// Table missing or other DB error — fail safe
 		_ = tx.Rollback()
@@ -148,22 +158,62 @@ func (s *Server) runIdempotencyTransaction(
 	}
 
 	// Lock the row for this (key, user_id) — prevents concurrent state changes
-	var status, resultRef string
+	var status, resultRef, storedRequestHash string
 	var completedAt *time.Time
 	row := tx.QueryRowContext(ctx, `
-		SELECT status, COALESCE(result_ref,''), completed_at
+		SELECT status, COALESCE(result_ref,''), completed_at, COALESCE(request_hash,'')
 		  FROM operation_ids
 		 WHERE operation_id=$1 AND user_id=$2::uuid
 		FOR UPDATE`,
 		key, uid)
 
-	if err := row.Scan(&status, &resultRef, &completedAt); err != nil {
+	if err := row.Scan(&status, &resultRef, &completedAt, &storedRequestHash); err != nil {
 		_ = tx.Rollback()
 		committed = true
 		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
 			"error": "serviço de idempotência indisponível, tente novamente",
 		})
 		return err
+	}
+	if storedRequestHash != "" && requestHash != "" && storedRequestHash != requestHash {
+		if err := tx.Commit(); err != nil {
+			committed = true
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "erro interno"})
+			return err
+		}
+		committed = true
+		writeJSON(w, http.StatusConflict, map[string]any{
+			"error":        "Idempotency-Key reutilizada com payload diferente",
+			"operation_id": key,
+		})
+		return nil
+	}
+	if storedRequestHash == "" && requestHash != "" {
+		if status == "completed" {
+			if err := tx.Commit(); err != nil {
+				committed = true
+				writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "erro interno"})
+				return err
+			}
+			committed = true
+			writeJSON(w, http.StatusConflict, map[string]any{
+				"error":        "Idempotency-Key antiga sem payload vinculado; gere uma nova operação",
+				"operation_id": key,
+			})
+			return nil
+		}
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE operation_ids
+			   SET request_hash=$3
+			 WHERE operation_id=$1 AND user_id=$2::uuid AND COALESCE(request_hash,'')=''`,
+			key, uid, requestHash); err != nil {
+			_ = tx.Rollback()
+			committed = true
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+				"error": "serviço de idempotência indisponível, tente novamente",
+			})
+			return err
+		}
 	}
 
 	switch status {
@@ -258,6 +308,40 @@ func newIdempotencyKey() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+func mobileIdempotencyRequestHash(r *http.Request, opType string) (string, error) {
+	if r == nil {
+		return "", nil
+	}
+	const maxIdempotencyBodyBytes = 1 << 20
+	var body []byte
+	if r.Body != nil {
+		limited := io.LimitReader(r.Body, maxIdempotencyBodyBytes+1)
+		read, err := io.ReadAll(limited)
+		if err != nil {
+			return "", err
+		}
+		if len(read) > maxIdempotencyBodyBytes {
+			return "", fmt.Errorf("idempotency payload too large")
+		}
+		body = read
+		r.Body = io.NopCloser(bytes.NewReader(body))
+	}
+	path := ""
+	rawQuery := ""
+	if r.URL != nil {
+		path = r.URL.EscapedPath()
+		rawQuery = r.URL.RawQuery
+	}
+	sum := sha256.Sum256([]byte(strings.Join([]string{
+		strings.TrimSpace(opType),
+		r.Method,
+		path,
+		rawQuery,
+		string(body),
+	}, "\x00")))
+	return hex.EncodeToString(sum[:]), nil
 }
 
 func resolvedUID(uid string) string {
