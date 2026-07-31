@@ -71,7 +71,7 @@ func (s *Server) handleImportWalletToken(w http.ResponseWriter, r *http.Request)
 
 	token, err := mobileDB(s.db).UpsertWalletToken(r.Context(), userIDFromCtx(r), req.Network, req.Contract, req.Symbol, req.Name, req.Decimals)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{
