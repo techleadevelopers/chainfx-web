@@ -55,7 +55,7 @@ func (s *Server) handleWebhookSubscribe(w http.ResponseWriter, r *http.Request) 
 	secret := generateWebhookSecret()
 	sub, err := mobileDB(s.db).CreateWebhookSubscription(r.Context(), uid, req.TargetURL, secret, req.Events)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 
@@ -71,7 +71,7 @@ func (s *Server) handleListWebhooks(w http.ResponseWriter, r *http.Request) {
 	uid := userIDFromCtx(r)
 	subs, err := mobileDB(s.db).ListWebhooksByUser(r.Context(), uid)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	// Never return the secret in list responses
@@ -100,7 +100,7 @@ func (s *Server) handleDeleteWebhook(w http.ResponseWriter, r *http.Request) {
 	uid := userIDFromCtx(r)
 	id := r.PathValue("id")
 	if err := mobileDB(s.db).DeleteWebhookSubscription(r.Context(), id, uid); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusBadRequest, mobileProductError("INVALID_AMOUNT", "Requisicao invalida."))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
@@ -118,7 +118,7 @@ func (s *Server) handleToggleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := mobileDB(s.db).ToggleWebhookSubscription(r.Context(), id, uid, req.Active); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "active": req.Active})
