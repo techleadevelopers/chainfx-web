@@ -2,15 +2,100 @@ package bitcoin
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/binary"
 	"fmt"
 	"time"
 )
 
-// repository implementa todas as operações de banco de dados da rail BTC.
-// Acessa db.SQL diretamente — mesmo padrão do mobile.mobileQueries.
+// repository implementa todas as operacoes de banco de dados da rail BTC.
+// Acessa db.SQL diretamente, mesmo padrao do mobile.mobileQueries.
 type repository struct {
 	sql *sql.DB
+}
+
+func (r *repository) GetOrCreateUserAddress(ctx context.Context, userID, network string, derive func(index int) (BTCAddress, error)) (*BTCAddress, error) {
+	tx, err := r.sql.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock($1)`, btcAddressProvisioningLockKey(userID, network)); err != nil {
+		return nil, err
+	}
+
+	if addr, err := getUserAddressTx(ctx, tx, userID, network); err != nil || addr != nil {
+		return addr, err
+	}
+
+	var idx int
+	if err := tx.QueryRowContext(ctx, `
+		UPDATE btc_wallet_state
+		SET next_derivation_index = next_derivation_index + 1,
+		    updated_at = now()
+		WHERE network = $1
+		RETURNING next_derivation_index - 1`,
+		network,
+	).Scan(&idx); err != nil {
+		return nil, fmt.Errorf("btc: erro ao alocar indice de derivacao (rede %s): %w", network, err)
+	}
+
+	newAddr, err := derive(idx)
+	if err != nil {
+		return nil, err
+	}
+	addr := &BTCAddress{}
+	err = tx.QueryRowContext(ctx, `
+		INSERT INTO btc_wallet_addresses
+		  (id, user_id, network, address, derivation_path, derivation_index, address_type, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, 'active')
+		ON CONFLICT DO NOTHING
+		RETURNING id, user_id, network, address, derivation_path, derivation_index,
+		          address_type, status, created_at, updated_at`,
+		newAddr.ID, newAddr.UserID, newAddr.Network, newAddr.Address,
+		newAddr.DerivationPath, newAddr.DerivationIndex, newAddr.AddressType,
+	).Scan(&addr.ID, &addr.UserID, &addr.Network, &addr.Address, &addr.DerivationPath, &addr.DerivationIndex, &addr.AddressType, &addr.Status, &addr.CreatedAt, &addr.UpdatedAt)
+	if err == nil {
+		if err := tx.Commit(); err != nil {
+			return nil, err
+		}
+		return addr, nil
+	}
+	if err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	existing, err := getUserAddressTx(ctx, tx, userID, network)
+	if err != nil {
+		return nil, err
+	}
+	if existing == nil {
+		return nil, fmt.Errorf("btc: conflito ao salvar endereco sem endereco ativo persistido para user=%s network=%s", userID, network)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return existing, nil
+}
+
+func getUserAddressTx(ctx context.Context, tx *sql.Tx, userID, network string) (*BTCAddress, error) {
+	row := tx.QueryRowContext(ctx, `
+		SELECT id, user_id, network, address, derivation_path, derivation_index,
+		       address_type, status, created_at, updated_at
+		FROM btc_wallet_addresses
+		WHERE user_id = $1 AND network = $2 AND status = 'active'
+		ORDER BY derivation_index ASC
+		LIMIT 1`,
+		userID, network,
+	)
+	return scanAddress(row)
+}
+
+func btcAddressProvisioningLockKey(userID, network string) int64 {
+	sum := sha256.Sum256([]byte(userID + "|" + network))
+	return int64(binary.BigEndian.Uint64(sum[:8]))
 }
 
 // ─── Endereços ────────────────────────────────────────────────────────────────
@@ -91,31 +176,49 @@ func (r *repository) GetAllActiveAddresses(ctx context.Context, network string) 
 // ─── UTXOs ────────────────────────────────────────────────────────────────────
 
 // UpsertUTXO insere ou atualiza um UTXO. Nunca regride status para pending se já estiver confirmed.
-func (r *repository) UpsertUTXO(ctx context.Context, u UTXO) error {
+func (r *repository) UpsertUTXO(ctx context.Context, u UTXO, minConfirmations int) error {
 	_, err := r.sql.ExecContext(ctx, `
 		INSERT INTO btc_utxos
 		  (id, network, user_id, wallet_address_id, txid, vout, value_sats,
 		   script_pub_key, block_height, confirmations, status, detected_at)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,now())
 		ON CONFLICT (network, txid, vout) DO UPDATE SET
-		  confirmations   = GREATEST(btc_utxos.confirmations, EXCLUDED.confirmations),
+		  confirmations   = CASE
+		                      WHEN btc_utxos.status IN ('spent','reserved') AND EXCLUDED.confirmations < $13
+		                      THEN btc_utxos.confirmations
+		                      ELSE EXCLUDED.confirmations
+		                    END,
 		  block_height    = COALESCE(NULLIF(EXCLUDED.block_height,0), btc_utxos.block_height),
 		  status          = CASE
+		                      WHEN btc_utxos.status IN ('spent','reserved') AND EXCLUDED.confirmations < $13 THEN 'manual_review'
 		                      WHEN btc_utxos.status IN ('spent','reserved') THEN btc_utxos.status
-		                      WHEN EXCLUDED.confirmations >= 1 THEN 'confirmed'
-		                      ELSE btc_utxos.status
+		                      WHEN EXCLUDED.confirmations >= $13 THEN 'confirmed'
+		                      WHEN btc_utxos.status = 'confirmed' AND EXCLUDED.confirmations < $13 THEN 'reorg_pending'
+		                      ELSE 'pending'
 		                    END,
 		  confirmed_at    = CASE
-		                      WHEN btc_utxos.confirmed_at IS NULL AND EXCLUDED.confirmations >= 1
+		                      WHEN btc_utxos.confirmed_at IS NULL AND EXCLUDED.confirmations >= $13
 		                      THEN now()
 		                      ELSE btc_utxos.confirmed_at
 		                    END,
 		  updated_at      = now()`,
 		u.ID, u.Network, u.UserID, u.WalletAddressID,
 		u.Txid, u.Vout, u.ValueSats,
-		u.ScriptPubKey, u.BlockHeight, u.Confirmations, u.Status,
+		u.ScriptPubKey, u.BlockHeight, u.Confirmations, u.Status, minConfirmations,
 	)
 	return err
+}
+
+func (r *repository) GetAddressByID(ctx context.Context, id, network string) (*BTCAddress, error) {
+	row := r.sql.QueryRowContext(ctx, `
+		SELECT id, user_id, network, address, derivation_path, derivation_index,
+		       address_type, status, created_at, updated_at
+		FROM btc_wallet_addresses
+		WHERE id = $1 AND network = $2
+		LIMIT 1`,
+		id, network,
+	)
+	return scanAddress(row)
 }
 
 // GetConfirmedUTXOs retorna UTXOs confirmados e não-reservados do usuário.
@@ -252,7 +355,174 @@ func (r *repository) MarkUTXOsSpent(ctx context.Context, spentByTxid string, ids
 	return err
 }
 
+func (r *repository) MarkTransactionUTXOsSpent(ctx context.Context, txID, spentByTxid string) error {
+	_, err := r.sql.ExecContext(ctx, `
+		UPDATE btc_utxos u
+		SET status='spent', spent_by_txid=$2, spent_at=COALESCE(spent_at, now()), updated_at=now()
+		FROM btc_transaction_inputs i
+		WHERE i.transaction_id=$1 AND i.utxo_id=u.id
+		  AND i.active_spend=true AND u.status IN ('reserved','confirmed')`,
+		txID, spentByTxid,
+	)
+	return err
+}
+
 // ─── Transações ───────────────────────────────────────────────────────────────
+
+// ClaimTransaction cria a operação idempotente antes de qualquer efeito econômico.
+// Se a chave já existir, retorna a operação existente e created=false.
+func (r *repository) ClaimTransaction(ctx context.Context, t BTCTransaction) (*BTCTransaction, bool, error) {
+	result, err := r.sql.ExecContext(ctx, `
+		INSERT INTO btc_transactions
+		  (id, user_id, network, direction, txid, raw_tx_hash, destination_address,
+		   amount_sats, fee_sats, fee_rate_sat_vbyte, status, confirmations,
+		   block_height, idempotency_key, request_hash)
+		VALUES ($1,$2,$3,$4,'','',$5,$6,0,0,'created',0,0,$7,$8)
+		ON CONFLICT (user_id, idempotency_key) DO NOTHING`,
+		t.ID, t.UserID, t.Network, t.Direction, t.DestinationAddr,
+		t.AmountSats, t.IdempotencyKey, t.RequestHash,
+	)
+	if err != nil {
+		return nil, false, err
+	}
+	n, _ := result.RowsAffected()
+	if n == 1 {
+		claimed, err := r.GetTransactionByIdempotencyKey(ctx, t.UserID, t.IdempotencyKey)
+		return claimed, true, err
+	}
+	existing, err := r.GetTransactionByIdempotencyKey(ctx, t.UserID, t.IdempotencyKey)
+	return existing, false, err
+}
+
+// PersistSpendPlan reserva UTXOs e grava inputs/outputs em uma transação DB única.
+func (r *repository) PersistSpendPlan(ctx context.Context, txID string, inputs []BTCTransactionInput, outputs []BTCTransactionOutput, feeSats, feeRate int64) error {
+	tx, err := r.sql.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	ids := make([]string, len(inputs))
+	for i, in := range inputs {
+		ids[i] = in.UTXOID
+	}
+	if err := reserveUTXOsTx(ctx, tx, ids); err != nil {
+		return err
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE btc_transactions
+		SET status='building', fee_sats=$2, fee_rate_sat_vbyte=$3, updated_at=now()
+		WHERE id=$1 AND status='created'`,
+		txID, feeSats, feeRate,
+	); err != nil {
+		return err
+	}
+
+	for _, in := range inputs {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO btc_transaction_inputs
+			  (id, transaction_id, utxo_id, txid, vout, value_sats, user_id,
+			   wallet_address_id, address, derivation_path, derivation_index,
+			   script_pub_key, active_spend)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,true)`,
+			in.ID, txID, in.UTXOID, in.Txid, in.Vout, in.ValueSats, in.UserID,
+			in.WalletAddressID, in.Address, in.DerivationPath, in.DerivationIndex,
+			in.ScriptPubKey,
+		); err != nil {
+			return err
+		}
+	}
+
+	for _, out := range outputs {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO btc_transaction_outputs
+			  (id, transaction_id, vout, address, value_sats, output_type, script_pub_key)
+			VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+			out.ID, txID, out.Vout, out.Address, out.ValueSats, out.OutputType, out.ScriptPubKey,
+		); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+func reserveUTXOsTx(ctx context.Context, tx *sql.Tx, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	ph := make([]interface{}, len(ids))
+	placeholders := ""
+	for i, id := range ids {
+		ph[i] = id
+		if i > 0 {
+			placeholders += ","
+		}
+		placeholders += fmt.Sprintf("$%d", i+1)
+	}
+	result, err := tx.ExecContext(ctx,
+		`UPDATE btc_utxos SET status='reserved', updated_at=now()
+		 WHERE id IN (`+placeholders+`) AND status='confirmed'`,
+		ph...,
+	)
+	if err != nil {
+		return err
+	}
+	n, _ := result.RowsAffected()
+	if int(n) != len(ids) {
+		return ErrDoubleSpend
+	}
+	return nil
+}
+
+func (r *repository) UpdateTransactionSigned(ctx context.Context, id, txid, rawHex string, feeSats, feeRate int64) error {
+	_, err := r.sql.ExecContext(ctx, `
+		UPDATE btc_transactions
+		SET status='signed', txid=$2, raw_tx_hash=$3, fee_sats=$4,
+		    fee_rate_sat_vbyte=$5, signed_at=now(), updated_at=now()
+		WHERE id=$1 AND status IN ('building','signed')`,
+		id, txid, rawHex, feeSats, feeRate,
+	)
+	return err
+}
+
+func (r *repository) UpdateTransactionStatus(ctx context.Context, id, status, code, message string) error {
+	_, err := r.sql.ExecContext(ctx, `
+		UPDATE btc_transactions
+		SET status=$2, error_code=NULLIF($3,''), error_message=NULLIF($4,''), updated_at=now()
+		WHERE id=$1 AND status <> 'confirmed'`,
+		id, status, code, message,
+	)
+	return err
+}
+
+func (r *repository) ReleaseSpend(ctx context.Context, txID string) error {
+	tx, err := r.sql.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE btc_utxos u
+		SET status='confirmed', updated_at=now()
+		FROM btc_transaction_inputs i
+		WHERE i.transaction_id=$1 AND i.utxo_id=u.id
+		  AND i.active_spend=true AND u.status='reserved'`,
+		txID,
+	); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE btc_transaction_inputs
+		SET active_spend=false
+		WHERE transaction_id=$1 AND active_spend=true`,
+		txID,
+	); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
 
 // SaveTransaction persiste uma transação BTC nova.
 func (r *repository) SaveTransaction(ctx context.Context, t BTCTransaction) error {
@@ -279,7 +549,7 @@ func (r *repository) GetTransactionByIdempotencyKey(ctx context.Context, userID,
 		       fee_rate_sat_vbyte, status, confirmations, block_height,
 		       idempotency_key, COALESCE(request_hash,''),
 		       COALESCE(error_code,''), COALESCE(error_message,''),
-		       broadcast_at, confirmed_at, created_at, updated_at
+		       signed_at, broadcast_at, confirmed_at, created_at, updated_at
 		FROM btc_transactions
 		WHERE user_id=$1 AND idempotency_key=$2`,
 		userID, key,
@@ -295,7 +565,7 @@ func (r *repository) GetTransactionByTxid(ctx context.Context, txid, network str
 		       fee_rate_sat_vbyte, status, confirmations, block_height,
 		       idempotency_key, COALESCE(request_hash,''),
 		       COALESCE(error_code,''), COALESCE(error_message,''),
-		       broadcast_at, confirmed_at, created_at, updated_at
+		       signed_at, broadcast_at, confirmed_at, created_at, updated_at
 		FROM btc_transactions
 		WHERE txid=$1 AND network=$2
 		LIMIT 1`,
@@ -315,7 +585,7 @@ func (r *repository) ListUserTransactions(ctx context.Context, userID, network s
 		       fee_rate_sat_vbyte, status, confirmations, block_height,
 		       idempotency_key, COALESCE(request_hash,''),
 		       COALESCE(error_code,''), COALESCE(error_message,''),
-		       broadcast_at, confirmed_at, created_at, updated_at
+		       signed_at, broadcast_at, confirmed_at, created_at, updated_at
 		FROM btc_transactions
 		WHERE user_id=$1 AND network=$2
 		ORDER BY created_at DESC
@@ -346,9 +616,9 @@ func (r *repository) GetPendingTransactions(ctx context.Context, network string)
 		       fee_rate_sat_vbyte, status, confirmations, block_height,
 		       idempotency_key, COALESCE(request_hash,''),
 		       COALESCE(error_code,''), COALESCE(error_message,''),
-		       broadcast_at, confirmed_at, created_at, updated_at
+		       signed_at, broadcast_at, confirmed_at, created_at, updated_at
 		FROM btc_transactions
-		WHERE network=$1 AND status IN ('broadcast','pending')
+		WHERE network=$1 AND status IN ('signed','broadcast_unknown','broadcast','pending')
 		ORDER BY created_at ASC`,
 		network,
 	)
@@ -380,7 +650,7 @@ func (r *repository) UpdateTransactionConfirmations(ctx context.Context, id, sta
 		  status=$2, confirmations=$3, block_height=$4,
 		  confirmed_at=COALESCE($5, confirmed_at),
 		  updated_at=now()
-		WHERE id=$1`,
+		WHERE id=$1 AND status <> 'confirmed'`,
 		id, status, confs, blockHeight, confirmedAt,
 	)
 	return err
@@ -433,7 +703,7 @@ func (r *repository) GetActiveUTXOsByAddress(ctx context.Context, walletAddressI
 		FROM btc_utxos u
 		JOIN btc_wallet_addresses a ON a.id = u.wallet_address_id
 		WHERE u.wallet_address_id = $1 AND u.network = $2
-		  AND u.status IN ('pending','confirmed')`,
+		  AND u.status IN ('pending','reorg_pending','confirmed')`,
 		walletAddressID, network,
 	)
 	if err != nil {
@@ -449,7 +719,7 @@ func (r *repository) MarkUTXOOrphaned(ctx context.Context, id string) error {
 	_, err := r.sql.ExecContext(ctx, `
 		UPDATE btc_utxos
 		SET status = 'orphaned', updated_at = now()
-		WHERE id = $1 AND status IN ('pending','confirmed')`,
+		WHERE id = $1 AND status IN ('pending','reorg_pending','confirmed')`,
 		id,
 	)
 	return err
@@ -515,6 +785,7 @@ func scanUTXOs(rows *sql.Rows) ([]UTXO, error) {
 
 func scanTransaction(row scannable) (*BTCTransaction, error) {
 	var t BTCTransaction
+	var signedAt, broadcastAt, confirmedAt sql.NullTime
 	err := row.Scan(
 		&t.ID, &t.UserID, &t.Network, &t.Direction,
 		&t.Txid, &t.RawTxHash, &t.DestinationAddr,
@@ -522,11 +793,23 @@ func scanTransaction(row scannable) (*BTCTransaction, error) {
 		&t.Status, &t.Confirmations, &t.BlockHeight,
 		&t.IdempotencyKey, &t.RequestHash,
 		&t.ErrorCode, &t.ErrorMessage,
-		&t.BroadcastAt, &t.ConfirmedAt,
+		&signedAt, &broadcastAt, &confirmedAt,
 		&t.CreatedAt, &t.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if signedAt.Valid {
+		t.SignedAt = &signedAt.Time
+	}
+	if broadcastAt.Valid {
+		t.BroadcastAt = &broadcastAt.Time
+	}
+	if confirmedAt.Valid {
+		t.ConfirmedAt = &confirmedAt.Time
 	}
 	return &t, err
 }
