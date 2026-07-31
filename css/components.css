@@ -124,11 +124,13 @@
   margin-bottom: 4px;
   font-weight: 600; /* Deixa os valores em negrito */
   
+  
 }
 .wallet-input label {
   font-size: 0.95rem;
   margin-bottom: 6px;
   display: inline-block;
+  
 }
 
 .input-group {
@@ -206,24 +208,30 @@
   border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 1.05rem;
+  
 }
 
 .wallet-input input:focus {
   border-color: var(--primary-color);
+  
   outline: none;
 }
 
 #walletGroup .input-group {
   min-height: 37px;
   padding: 5px 9px;
+  
   align-items: center;
 }
+
 
 #walletAddress {
   height: 29px;
   min-height: 29px;
   padding: 0 !important;
-  font-size: 0.95rem;
+  font-size: 0.99rem;
+  color: #0a3d6f;
+  font-weight: 500;
   line-height: 29px;
 }
 
@@ -247,18 +255,26 @@
   align-items: center;
   border-radius: 10px;
 }
+#buyCustomerEmail {
+    height: 32px !important;
+    min-height: 32px !important;
+    padding: 0 2px !important;
+}
+#buyPayerInfo .input-group {
+  margin-left: 15px;
+  margin-right: 15px;
+  width: calc(100% - 20px);
+}
 
 #pixCpf,
 #pixPhone,
 #buyCustomerName,
 #buyCustomerCpf {
-  min-height: 26px;
-  height: 26px;
-  padding: 0 4px !important;
+  min-height: 32px;
+  height: 32px;
+  padding: 0 2px !important;
   font-size: 0.94rem;
   line-height: 26px;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.04) 0%, rgba(255, 255, 255, 0.0) 100%);
-  box-shadow: inset 0 2px 4px rgba(15, 23, 42, 0.10), inset 0 1px 2px rgba(15, 23, 42, 0.06);
   border-radius: 6px;
 }
 
@@ -266,6 +282,119 @@
   display: grid;
   gap: 12px;
 }
+
+/* ==================================================
+   BUY PAYER — PROGRESSIVE UX
+   Email → Nome → CPF
+   ================================================== */
+
+#buyPayerInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Reordena sem alterar o HTML */
+#buyPayerInfo .wallet-input:has(#buyCustomerEmail) {
+  order: 1;
+}
+
+#buyPayerInfo .wallet-input:has(#buyCustomerName) {
+  order: 2;
+}
+
+#buyPayerInfo .wallet-input:has(#buyCustomerCpf) {
+  order: 3;
+}
+
+
+/* --------------------------------------------------
+   Estado inicial
+   -------------------------------------------------- */
+
+/* Email sempre aparece primeiro */
+#buyPayerInfo .wallet-input:has(#buyCustomerEmail) {
+  opacity: 1;
+  max-height: 90px;
+  transform: translateY(0);
+}
+
+
+/* Nome e CPF começam escondidos */
+#buyPayerInfo .wallet-input:has(#buyCustomerName),
+#buyPayerInfo .wallet-input:has(#buyCustomerCpf) {
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  margin: 0;
+  pointer-events: none;
+
+  transform: translateY(-6px);
+
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    max-height 220ms ease,
+    margin 220ms ease;
+}
+
+
+/* --------------------------------------------------
+   Email válido → mostra Nome
+   -------------------------------------------------- */
+
+#buyPayerInfo:has(
+  #buyCustomerEmail:not(:placeholder-shown):valid
+)
+.wallet-input:has(#buyCustomerName) {
+  opacity: 1;
+  max-height: 90px;
+  overflow: visible;
+  margin: 0;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+
+/* --------------------------------------------------
+   Email válido + Nome preenchido → mostra CPF
+   -------------------------------------------------- */
+
+#buyPayerInfo:has(
+  #buyCustomerEmail:not(:placeholder-shown):valid
+):has(
+  #buyCustomerName:not(:placeholder-shown)
+)
+.wallet-input:has(#buyCustomerCpf) {
+  opacity: 1;
+  max-height: 90px;
+  overflow: visible;
+  margin: 0;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+
+/* --------------------------------------------------
+   Campo atual ganha destaque sutil
+   -------------------------------------------------- */
+
+#buyPayerInfo .wallet-input:focus-within label {
+  color: #357fca;
+}
+
+#buyPayerInfo .wallet-input:focus-within .input-group {
+  border-color: rgba(53, 127, 202, 0.45);
+}
+
+#buyPayerInfo .wallet-input label {
+    color: #1d63a9;
+    padding-right: 10px;
+    padding-left: 10px;
+}
+
+
+
 
 .currency-input label {
   display: block;
@@ -335,7 +464,7 @@
 
 .payment-methods h3 {
   margin-bottom: 16px;
-  color: var(--text-color);
+  color: #232323;
 }
 
 .methods-grid {
