@@ -5,11 +5,12 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,7 +23,35 @@ import (
 type Service struct {
 	cfg      *Config
 	provider Provider
-	repo     *repository
+	repo     btcStore
+}
+
+type btcStore interface {
+	GetOrCreateUserAddress(ctx context.Context, userID, network string, derive func(index int) (BTCAddress, error)) (*BTCAddress, error)
+	GetUserAddress(ctx context.Context, userID, network string) (*BTCAddress, error)
+	GetAddressByID(ctx context.Context, id, network string) (*BTCAddress, error)
+	GetNextDerivationIndex(ctx context.Context, network string) (int, error)
+	AllocateAddress(ctx context.Context, a BTCAddress) error
+	GetActiveUTXOsByAddress(ctx context.Context, walletAddressID, network string) ([]UTXO, error)
+	UpsertUTXO(ctx context.Context, u UTXO, minConfirmations int) error
+	MarkUTXOOrphaned(ctx context.Context, id string) error
+	GetBalance(ctx context.Context, userID, network string) (Balance, error)
+	GetTodayWithdrawalSats(ctx context.Context, userID, network string) (int64, error)
+	GetConfirmedUTXOs(ctx context.Context, userID, network string) ([]UTXO, error)
+	ClaimTransaction(ctx context.Context, t BTCTransaction) (*BTCTransaction, bool, error)
+	PersistSpendPlan(ctx context.Context, txID string, inputs []BTCTransactionInput, outputs []BTCTransactionOutput, feeSats, feeRate int64) error
+	UpdateTransactionSigned(ctx context.Context, id, txid, rawHex string, feeSats, feeRate int64) error
+	UpdateTransactionStatus(ctx context.Context, id, status, code, message string) error
+	UpdateTransactionError(ctx context.Context, id, code, message, status string) error
+	UpdateTransactionConfirmations(ctx context.Context, id, status string, confs int, blockHeight int64) error
+	ReleaseSpend(ctx context.Context, txID string) error
+	MarkUTXOsSpent(ctx context.Context, spentByTxid string, ids []string) error
+	MarkTransactionUTXOsSpent(ctx context.Context, txID, spentByTxid string) error
+	GetPendingTransactions(ctx context.Context, network string) ([]BTCTransaction, error)
+	GetAllActiveAddresses(ctx context.Context, network string) ([]BTCAddress, error)
+	ListUserTransactions(ctx context.Context, userID, network string, limit int) ([]BTCTransaction, error)
+	GetTransactionByTxid(ctx context.Context, txid, network string) (*BTCTransaction, error)
+	UpdateWalletState(ctx context.Context, network string, lastScannedBlock int64) error
 }
 
 // NewService cria o Service BTC se BTC_ENABLED=true; retorna (nil, nil) se desabilitado.
@@ -49,43 +78,22 @@ func (s *Service) Config() *Config { return s.cfg }
 // A alocação de índice é atômica via UPDATE btc_wallet_state RETURNING — sem races.
 func (s *Service) GetOrCreateAddress(ctx context.Context, userID string) (*BTCAddress, error) {
 	network := string(s.cfg.Network)
-
-	// Verificar se já existe
-	addr, err := s.repo.GetUserAddress(ctx, userID, network)
-	if err != nil {
-		return nil, fmt.Errorf("btc: erro ao buscar endereço: %w", err)
-	}
-	if addr != nil {
-		return addr, nil
-	}
-
-	// Alocar próximo índice de derivação de forma atômica
-	index, err := s.repo.GetNextDerivationIndex(ctx, network)
-	if err != nil {
-		return nil, fmt.Errorf("btc: erro ao alocar índice: %w", err)
-	}
-
-	address, _, derivPath, err := DeriveReceiveAddress(s.cfg, uint32(index))
-	if err != nil {
-		return nil, fmt.Errorf("btc: erro ao derivar endereço: %w", err)
-	}
-
-	newAddr := BTCAddress{
-		ID:              uuid.New().String(),
-		UserID:          userID,
-		Network:         network,
-		Address:         address,
-		DerivationPath:  derivPath,
-		DerivationIndex: index,
-		AddressType:     AddressTypeP2WPKH,
-		Status:          "active",
-	}
-
-	if err := s.repo.AllocateAddress(ctx, newAddr); err != nil {
-		return nil, fmt.Errorf("btc: erro ao salvar endereço: %w", err)
-	}
-
-	return &newAddr, nil
+	return s.repo.GetOrCreateUserAddress(ctx, userID, network, func(index int) (BTCAddress, error) {
+		address, _, derivPath, err := DeriveReceiveAddress(s.cfg, uint32(index))
+		if err != nil {
+			return BTCAddress{}, fmt.Errorf("btc: erro ao derivar endereco: %w", err)
+		}
+		return BTCAddress{
+			ID:              uuid.New().String(),
+			UserID:          userID,
+			Network:         network,
+			Address:         address,
+			DerivationPath:  derivPath,
+			DerivationIndex: index,
+			AddressType:     AddressTypeP2WPKH,
+			Status:          "active",
+		}, nil
+	})
 }
 
 // ─── Fase 3 & 4: Detecção de depósitos + saldo ───────────────────────────────
@@ -165,7 +173,7 @@ func (s *Service) SyncAddressUTXOsWithEvents(ctx context.Context, addr BTCAddres
 
 		prev, wasKnown := existingByKey[key]
 
-		if err := s.repo.UpsertUTXO(ctx, u); err != nil {
+		if err := s.repo.UpsertUTXO(ctx, u, s.cfg.MinConfirmations); err != nil {
 			slog.Error("btc: erro ao upsert UTXO",
 				"address", addr.Address, "txid", pu.Txid, "err", err)
 			continue
@@ -265,26 +273,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (SendResult, error)
 		req.RequestHash = reqHash
 	}
 
-	// 1. Idempotência: verificar se já foi processada
-	existing, err := s.repo.GetTransactionByIdempotencyKey(ctx, req.UserID, req.IdempotencyKey)
-	if err != nil && err != sql.ErrNoRows {
-		return SendResult{}, fmt.Errorf("btc: erro ao checar idempotência: %w", err)
-	}
-	if existing != nil {
-		// Detectar conflito: mesma chave de idempotência, payload diferente
-		if existing.RequestHash != "" && existing.RequestHash != reqHash {
-			return SendResult{}, ErrIdempotencyConflict
-		}
-		// Mesmo payload → retornar resultado cacheado
-		return SendResult{
-			TxID:       existing.Txid,
-			FeeSats:    existing.FeeSats,
-			AmountSats: existing.AmountSats,
-			Status:     existing.Status,
-		}, nil
-	}
-
-	// 2. Validações
+	// 1. Validações sem efeito econômico
 	if req.AmountSats <= 0 {
 		return SendResult{}, fmt.Errorf("btc: amountSats deve ser > 0")
 	}
@@ -311,12 +300,47 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (SendResult, error)
 		return SendResult{}, fmt.Errorf("%w: %s", ErrInvalidAddress, req.ToAddress)
 	}
 
-	// 3. Buscar seed/xpriv para assinar
+	// 2. Claim idempotente antes de reservar UTXO, assinar ou broadcastar.
+	now := time.Now()
+	claimed := BTCTransaction{
+		ID:              uuid.New().String(),
+		UserID:          req.UserID,
+		Network:         network,
+		Direction:       TxDirectionWithdrawal,
+		DestinationAddr: req.ToAddress,
+		AmountSats:      req.AmountSats,
+		Status:          TxStatusCreated,
+		IdempotencyKey:  req.IdempotencyKey,
+		RequestHash:     req.RequestHash,
+		CreatedAt:       now,
+	}
+	btcTx, created, err := s.repo.ClaimTransaction(ctx, claimed)
+	if err != nil {
+		return SendResult{}, fmt.Errorf("btc: erro ao criar claim idempotente: %w", err)
+	}
+	if btcTx == nil {
+		return SendResult{}, fmt.Errorf("btc: claim idempotente não retornou operação")
+	}
+	if btcTx.RequestHash != "" && btcTx.RequestHash != reqHash {
+		return SendResult{}, ErrIdempotencyConflict
+	}
+	if !created {
+		return SendResult{
+			TxID:       btcTx.Txid,
+			FeeSats:    btcTx.FeeSats,
+			AmountSats: btcTx.AmountSats,
+			Status:     btcTx.Status,
+		}, nil
+	}
+
+	// 3. Buscar seed/xpriv para assinar. Falha aqui não reserva UTXO.
 	if s.cfg.EncryptedSeed == "" || s.cfg.EncryptionKey == "" {
+		_ = s.repo.UpdateTransactionStatus(ctx, btcTx.ID, TxStatusFailedBeforeSign, "SIGNING_NOT_CONFIGURED", ErrNoSeed.Error())
 		return SendResult{}, ErrNoSeed
 	}
 	accountXpriv, err := s.decryptAndParseXpriv()
 	if err != nil {
+		_ = s.repo.UpdateTransactionStatus(ctx, btcTx.ID, TxStatusFailedBeforeSign, "SIGNING_CONFIG_INVALID", err.Error())
 		return SendResult{}, fmt.Errorf("btc: erro ao decifrar seed: %w", err)
 	}
 
@@ -332,101 +356,117 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (SendResult, error)
 		feeRate = s.cfg.MinFeeRateSatVB
 	}
 	if feeRate > s.cfg.MaxFeeRateSatVB {
+		_ = s.repo.UpdateTransactionStatus(ctx, btcTx.ID, TxStatusFailedBeforeSign, "FEE_TOO_HIGH", ErrFeeTooHigh.Error())
 		return SendResult{}, ErrFeeTooHigh
 	}
 
 	// 5. Buscar UTXOs confirmados com SELECT FOR UPDATE SKIP LOCKED (via ReserveUTXOs atômico)
 	utxos, err := s.repo.GetConfirmedUTXOs(ctx, req.UserID, network)
 	if err != nil {
+		_ = s.repo.UpdateTransactionStatus(ctx, btcTx.ID, TxStatusFailedBeforeSign, "UTXO_QUERY_FAILED", err.Error())
 		return SendResult{}, fmt.Errorf("btc: erro ao buscar UTXOs: %w", err)
 	}
 
 	// 6. Seleção de moedas
 	selected, changeSats, feeSats, err := SelectUTXOs(utxos, req.AmountSats, feeRate, s.cfg.DustLimitSats)
 	if err != nil {
+		_ = s.repo.UpdateTransactionStatus(ctx, btcTx.ID, TxStatusFailedBeforeSign, "COIN_SELECT_FAILED", err.Error())
 		return SendResult{}, err
 	}
 
-	// 7. Reservar UTXOs atomicamente (UPDATE WHERE status='confirmed' evita double-spend)
-	utxoIDs := make([]string, len(selected))
-	for i, u := range selected {
-		utxoIDs[i] = u.ID
-	}
-	if err := s.repo.ReserveUTXOs(ctx, utxoIDs); err != nil {
-		return SendResult{}, fmt.Errorf("btc: erro ao reservar UTXOs: %w", err)
-	}
-
-	// 8. Construir inputs (derivar chave privada por índice)
-	txInputs, err := s.buildTxInputs(ctx, selected, accountXpriv)
-	if err != nil {
-		_ = s.repo.ReleaseUTXOs(ctx, utxoIDs)
-		return SendResult{}, fmt.Errorf("btc: erro ao construir inputs: %w", err)
-	}
-
-	// 9. Construir outputs
+	// 7. Construir plano persistível de outputs.
 	destScript, err := ScriptFromAddress(req.ToAddress, s.cfg.HRP())
 	if err != nil {
-		_ = s.repo.ReleaseUTXOs(ctx, utxoIDs)
 		return SendResult{}, fmt.Errorf("btc: endereço de destino inválido: %w", err)
 	}
 	txOutputs := []TxOutput{{ValueSats: req.AmountSats, ScriptPubKey: destScript}}
+	persistedOutputs := []BTCTransactionOutput{{
+		ID:            uuid.New().String(),
+		TransactionID: btcTx.ID,
+		Vout:          0,
+		Address:       req.ToAddress,
+		ValueSats:     req.AmountSats,
+		OutputType:    "destination",
+		ScriptPubKey:  hex.EncodeToString(destScript),
+	}}
 
 	// Troco
 	if changeSats > 0 {
 		changeAddr, err := s.repo.GetUserAddress(ctx, req.UserID, network)
 		if err != nil || changeAddr == nil {
-			_ = s.repo.ReleaseUTXOs(ctx, utxoIDs)
 			return SendResult{}, fmt.Errorf("btc: endereço de troco não encontrado")
 		}
 		changeScript, err := ScriptFromAddress(changeAddr.Address, s.cfg.HRP())
 		if err != nil {
-			_ = s.repo.ReleaseUTXOs(ctx, utxoIDs)
 			return SendResult{}, err
 		}
 		txOutputs = append(txOutputs, TxOutput{ValueSats: changeSats, ScriptPubKey: changeScript})
+		persistedOutputs = append(persistedOutputs, BTCTransactionOutput{
+			ID:            uuid.New().String(),
+			TransactionID: btcTx.ID,
+			Vout:          1,
+			Address:       changeAddr.Address,
+			ValueSats:     changeSats,
+			OutputType:    "change",
+			ScriptPubKey:  hex.EncodeToString(changeScript),
+		})
 	}
 
-	// 10. Assinar transação
+	persistedInputs, err := s.persistableInputs(ctx, selected)
+	if err != nil {
+		_ = s.repo.UpdateTransactionStatus(ctx, btcTx.ID, TxStatusFailedBeforeSign, "INPUT_BUILD_FAILED", err.Error())
+		return SendResult{}, fmt.Errorf("btc: erro ao montar inputs auditáveis: %w", err)
+	}
+	if err := validateSpendMath(persistedInputs, persistedOutputs, feeSats); err != nil {
+		_ = s.repo.UpdateTransactionStatus(ctx, btcTx.ID, TxStatusFailedBeforeSign, "SPEND_MATH_INVALID", err.Error())
+		return SendResult{}, err
+	}
+
+	// 8. Reservar UTXOs e persistir inputs/outputs atomicamente.
+	if err := s.repo.PersistSpendPlan(ctx, btcTx.ID, persistedInputs, persistedOutputs, feeSats, feeRate); err != nil {
+		_ = s.repo.UpdateTransactionStatus(ctx, btcTx.ID, TxStatusFailedBeforeSign, "UTXO_RESERVATION_FAILED", err.Error())
+		if errors.Is(err, ErrDoubleSpend) {
+			return SendResult{}, ErrDoubleSpend
+		}
+		return SendResult{}, fmt.Errorf("btc: erro ao reservar UTXOs: %w", err)
+	}
+
+	// 9. Construir inputs com chaves privadas e assinar.
+	txInputs, err := s.buildTxInputs(ctx, selected, accountXpriv)
+	if err != nil {
+		_ = s.repo.ReleaseSpend(ctx, btcTx.ID)
+		_ = s.repo.UpdateTransactionStatus(ctx, btcTx.ID, TxStatusFailedBeforeSign, "INPUT_SIGNING_FAILED", err.Error())
+		return SendResult{}, fmt.Errorf("btc: erro ao construir inputs: %w", err)
+	}
 	rawHex, txid, err := BuildAndSignTx(txInputs, txOutputs)
 	if err != nil {
-		_ = s.repo.ReleaseUTXOs(ctx, utxoIDs)
+		_ = s.repo.ReleaseSpend(ctx, btcTx.ID)
+		_ = s.repo.UpdateTransactionStatus(ctx, btcTx.ID, TxStatusFailedBeforeSign, "SIGN_FAILED", err.Error())
 		return SendResult{}, fmt.Errorf("btc: erro ao assinar transação: %w", err)
 	}
 
-	// 11. Persistir antes do broadcast (idempotência + auditoria)
-	now := time.Now()
-	btcTx := BTCTransaction{
-		ID:              uuid.New().String(),
-		UserID:          req.UserID,
-		Network:         network,
-		Direction:       TxDirectionWithdrawal,
-		Txid:            txid,
-		RawTxHash:       rawHex,
-		DestinationAddr: req.ToAddress,
-		AmountSats:      req.AmountSats,
-		FeeSats:         feeSats,
-		FeeRateSatVByte: feeRate,
-		Status:          TxStatusSigned,
-		Confirmations:   0,
-		IdempotencyKey:  req.IdempotencyKey,
-		RequestHash:     req.RequestHash, // sempre preenchido agora
-		BroadcastAt:     nil,
-	}
-	if err := s.repo.SaveTransaction(ctx, btcTx); err != nil {
-		_ = s.repo.ReleaseUTXOs(ctx, utxoIDs)
-		return SendResult{}, fmt.Errorf("btc: erro ao salvar transação: %w", err)
+	// 10. Persistir raw signed tx e txid antes do broadcast.
+	if err := s.repo.UpdateTransactionSigned(ctx, btcTx.ID, txid, rawHex, feeSats, feeRate); err != nil {
+		_ = s.repo.ReleaseSpend(ctx, btcTx.ID)
+		_ = s.repo.UpdateTransactionStatus(ctx, btcTx.ID, TxStatusFailedBeforeBroadcast, "SIGNED_PERSIST_FAILED", err.Error())
+		return SendResult{}, fmt.Errorf("btc: erro ao persistir transação assinada: %w", err)
 	}
 
-	// 12. Broadcast
+	// 11. Broadcast
 	broadcastedTxid, err := s.provider.BroadcastTransaction(ctx, rawHex)
 	if err != nil {
-		if err == ErrBroadcastUnknown {
-			_ = s.repo.UpdateTransactionConfirmations(ctx, btcTx.ID, TxStatusBroadcast, 0, 0)
+		if errors.Is(err, ErrBroadcastUnknown) {
+			_ = s.repo.UpdateTransactionStatus(ctx, btcTx.ID, TxStatusBroadcastUnknown, "BROADCAST_UNKNOWN", err.Error())
 			slog.Warn("btc: broadcast incerto — aguardando reconciliação", "txid", txid)
+			return SendResult{TxID: txid, FeeSats: feeSats, AmountSats: req.AmountSats, Status: TxStatusBroadcastUnknown}, nil
+		}
+		if isAlreadyKnownBroadcastError(err) {
+			_ = s.repo.UpdateTransactionConfirmations(ctx, btcTx.ID, TxStatusBroadcast, 0, 0)
+			_ = s.repo.MarkUTXOsSpent(ctx, txid, selectedUTXOIDs(selected))
 			return SendResult{TxID: txid, FeeSats: feeSats, AmountSats: req.AmountSats, Status: TxStatusBroadcast}, nil
 		}
-		_ = s.repo.ReleaseUTXOs(ctx, utxoIDs)
-		_ = s.repo.UpdateTransactionError(ctx, btcTx.ID, "BROADCAST_FAILED", err.Error(), TxStatusFailed)
+		_ = s.repo.ReleaseSpend(ctx, btcTx.ID)
+		_ = s.repo.UpdateTransactionError(ctx, btcTx.ID, "BROADCAST_FAILED", err.Error(), TxStatusFailedBeforeBroadcast)
 		return SendResult{}, fmt.Errorf("btc: broadcast falhou: %w", err)
 	}
 
@@ -437,7 +477,7 @@ func (s *Service) Send(ctx context.Context, req SendRequest) (SendResult, error)
 
 	// 13. Atualizar status e marcar UTXOs como gastos
 	_ = s.repo.UpdateTransactionConfirmations(ctx, btcTx.ID, TxStatusBroadcast, 0, 0)
-	_ = s.repo.MarkUTXOsSpent(ctx, finalTxid, utxoIDs)
+	_ = s.repo.MarkUTXOsSpent(ctx, finalTxid, selectedUTXOIDs(selected))
 
 	btcTx.BroadcastAt = &now
 	slog.Info("btc: transação broadcast com sucesso",
@@ -462,6 +502,9 @@ func (s *Service) UpdateTransactionConfirmation(ctx context.Context, btcTx BTCTr
 // UpdateTransactionConfirmationWithResult atualiza confirmações e retorna se a tx
 // acabou de ser confirmada neste ciclo (para o worker publicar eventos).
 func (s *Service) UpdateTransactionConfirmationWithResult(ctx context.Context, btcTx BTCTransaction) (wasConfirmed bool, err error) {
+	if btcTx.Status == TxStatusSigned || btcTx.Status == TxStatusBroadcastUnknown {
+		return s.ReconcileSignedOrBroadcastUnknown(ctx, btcTx)
+	}
 	status, provErr := s.provider.GetTransaction(ctx, btcTx.Txid)
 	if provErr != nil {
 		return false, provErr
@@ -489,6 +532,91 @@ func (s *Service) UpdateTransactionConfirmationWithResult(ctx context.Context, b
 	wasConfirmed = txStatus == TxStatusConfirmed &&
 		btcTx.Status != TxStatusConfirmed
 	return wasConfirmed, nil
+}
+
+// ReconcileSignedOrBroadcastUnknown recupera operações com raw tx persistida.
+// Nunca reconstrói transação, recalcula fee, troca change ou libera UTXO em
+// broadcast_unknown. O único broadcast feito aqui usa exatamente raw_tx_hash.
+func (s *Service) ReconcileSignedOrBroadcastUnknown(ctx context.Context, btcTx BTCTransaction) (bool, error) {
+	if btcTx.RawTxHash == "" || btcTx.Txid == "" {
+		_ = s.repo.UpdateTransactionStatus(ctx, btcTx.ID, TxStatusManualReview, "MISSING_SIGNED_TX", "tx assinada ausente para recovery")
+		return false, fmt.Errorf("btc: tx assinada ausente para recovery")
+	}
+	computed, err := TxIDFromRawSignedHex(btcTx.RawTxHash)
+	if err != nil || computed != btcTx.Txid {
+		msg := "raw tx não corresponde ao txid persistido"
+		if err != nil {
+			msg = err.Error()
+		}
+		_ = s.repo.UpdateTransactionStatus(ctx, btcTx.ID, TxStatusManualReview, "CORRUPT_SIGNED_TX", msg)
+		return false, fmt.Errorf("btc: raw tx corrupta ou divergente")
+	}
+
+	status, err := s.provider.GetTransaction(ctx, btcTx.Txid)
+	if err == nil {
+		return s.applyProviderTxStatus(ctx, btcTx, status)
+	}
+	if !isProviderNotFound(err) {
+		return false, err
+	}
+
+	if btcTx.Status == TxStatusSigned {
+		broadcastedTxid, err := s.provider.BroadcastTransaction(ctx, btcTx.RawTxHash)
+		if err != nil {
+			if errors.Is(err, ErrBroadcastUnknown) {
+				_ = s.repo.UpdateTransactionStatus(ctx, btcTx.ID, TxStatusBroadcastUnknown, "BROADCAST_UNKNOWN", err.Error())
+				return false, nil
+			}
+			if isAlreadyKnownBroadcastError(err) {
+				_ = s.repo.UpdateTransactionConfirmations(ctx, btcTx.ID, TxStatusBroadcast, 0, 0)
+				return false, nil
+			}
+			_ = s.repo.UpdateTransactionStatus(ctx, btcTx.ID, TxStatusManualReview, "REBROADCAST_FAILED", err.Error())
+			return false, err
+		}
+		if broadcastedTxid != "" && broadcastedTxid != btcTx.Txid {
+			_ = s.repo.UpdateTransactionStatus(ctx, btcTx.ID, TxStatusManualReview, "TXID_MISMATCH", "provider retornou txid diferente")
+			return false, fmt.Errorf("btc: provider retornou txid diferente")
+		}
+		_ = s.repo.UpdateTransactionConfirmations(ctx, btcTx.ID, TxStatusBroadcast, 0, 0)
+		return false, nil
+	}
+
+	// broadcast_unknown sem presença ainda é ambíguo: não libera nem reconstrói.
+	return false, nil
+}
+
+func (s *Service) applyProviderTxStatus(ctx context.Context, btcTx BTCTransaction, status *ProviderTxStatus) (bool, error) {
+	blockHeight, _ := s.provider.GetCurrentBlockHeight(ctx)
+	confs := 0
+	txStatus := TxStatusBroadcast
+	if status.Status.Confirmed {
+		if blockHeight > 0 && status.Status.BlockHeight > 0 {
+			confs = int(blockHeight - status.Status.BlockHeight + 1)
+		}
+		if confs >= s.cfg.MinConfirmations {
+			txStatus = TxStatusConfirmed
+		}
+	}
+	if err := s.repo.UpdateTransactionConfirmations(ctx, btcTx.ID, txStatus, confs, status.Status.BlockHeight); err != nil {
+		return false, err
+	}
+	wasConfirmed := txStatus == TxStatusConfirmed && btcTx.Status != TxStatusConfirmed
+	if wasConfirmed {
+		_ = s.repo.MarkTransactionUTXOsSpent(ctx, btcTx.ID, btcTx.Txid)
+	}
+	return wasConfirmed, nil
+}
+
+func isProviderNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "não encontrado") ||
+		strings.Contains(msg, "not found") ||
+		strings.Contains(msg, "retornou 404") ||
+		strings.Contains(msg, "404")
 }
 
 // ─── Queries para handlers ────────────────────────────────────────────────────
@@ -531,9 +659,12 @@ func (s *Service) buildTxInputs(ctx context.Context, utxos []UTXO, accountXpriv 
 	for _, u := range utxos {
 		addrInfo, ok := indexCache[u.WalletAddressID]
 		if !ok {
-			addr, err := s.repo.GetUserAddress(ctx, u.UserID, string(s.cfg.Network))
+			addr, err := s.repo.GetAddressByID(ctx, u.WalletAddressID, string(s.cfg.Network))
 			if err != nil || addr == nil {
 				return nil, fmt.Errorf("btc: endereço do UTXO não encontrado")
+			}
+			if addr.UserID != u.UserID {
+				return nil, fmt.Errorf("btc: UTXO pertence a outro usuário")
 			}
 			addrInfo = *addr
 			indexCache[u.WalletAddressID] = addrInfo
@@ -554,6 +685,75 @@ func (s *Service) buildTxInputs(ctx context.Context, utxos []UTXO, accountXpriv 
 		})
 	}
 	return inputs, nil
+}
+
+func (s *Service) persistableInputs(ctx context.Context, utxos []UTXO) ([]BTCTransactionInput, error) {
+	out := make([]BTCTransactionInput, 0, len(utxos))
+	for _, u := range utxos {
+		addr, err := s.repo.GetAddressByID(ctx, u.WalletAddressID, string(s.cfg.Network))
+		if err != nil || addr == nil {
+			return nil, fmt.Errorf("btc: endereço do UTXO não encontrado")
+		}
+		if addr.UserID != u.UserID {
+			return nil, fmt.Errorf("btc: UTXO pertence a outro usuário")
+		}
+		out = append(out, BTCTransactionInput{
+			ID:              uuid.New().String(),
+			UTXOID:          u.ID,
+			UserID:          u.UserID,
+			WalletAddressID: u.WalletAddressID,
+			Address:         addr.Address,
+			DerivationPath:  addr.DerivationPath,
+			DerivationIndex: addr.DerivationIndex,
+			Txid:            u.Txid,
+			Vout:            u.Vout,
+			ValueSats:       u.ValueSats,
+			ScriptPubKey:    u.ScriptPubKey,
+		})
+	}
+	return out, nil
+}
+
+func selectedUTXOIDs(utxos []UTXO) []string {
+	ids := make([]string, len(utxos))
+	for i, u := range utxos {
+		ids[i] = u.ID
+	}
+	return ids
+}
+
+func validateSpendMath(inputs []BTCTransactionInput, outputs []BTCTransactionOutput, feeSats int64) error {
+	if feeSats < 0 {
+		return fmt.Errorf("btc: fee negativa")
+	}
+	var inTotal, outTotal int64
+	for _, in := range inputs {
+		if in.ValueSats <= 0 {
+			return fmt.Errorf("btc: input inválido %s:%d", in.Txid, in.Vout)
+		}
+		inTotal += in.ValueSats
+	}
+	for _, out := range outputs {
+		if out.ValueSats <= 0 {
+			return fmt.Errorf("btc: output inválido vout=%d", out.Vout)
+		}
+		outTotal += out.ValueSats
+	}
+	if inTotal != outTotal+feeSats {
+		return fmt.Errorf("btc: matemática inválida inputs=%d outputs=%d fee=%d", inTotal, outTotal, feeSats)
+	}
+	return nil
+}
+
+func isAlreadyKnownBroadcastError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "already in mempool") ||
+		strings.Contains(msg, "already known") ||
+		strings.Contains(msg, "transaction already exists") ||
+		strings.Contains(msg, "txn-already-in-mempool")
 }
 
 // decryptAndParseXpriv decifra o xpriv com AES-GCM e o parseia.
