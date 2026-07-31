@@ -16,6 +16,7 @@ import (
 	"payment-gateway/internal/solana"
 )
 
+
 // pspHealthProbeInterval controls how often the PSP Router's providers are
 // health-checked when a Router is wired.
 const pspHealthProbeInterval = time.Minute
@@ -83,12 +84,42 @@ func NewWorkerManager(db *database.DB, cfg *config.Config, mailer *email.Service
 		solanaWorker.SetSink(&solanaEventSinkAdapter{bus: bus})
 	}
 
+	// BTC Treasury operacional — fonte PRIORITÁRIA de liquidez BTC para BUY BTC.
+	// Separado de btcSvc (wallets custodiais dos usuários) e do fluxo SELL.
+	// nil quando BTC_TREASURY_ENABLED=false ou config inválida.
+	var btcTreasurySvc *bitcoin.TreasuryService
+	if btcSvc != nil {
+		svc, treasuryErr := bitcoin.NewTreasuryService(btcSvc.Config(), db.SQL)
+		if treasuryErr != nil {
+			slog.Warn("btc/treasury: falha ao inicializar Treasury; BUY BTC usará BingX", "error", treasuryErr)
+		} else if svc != nil {
+			btcTreasurySvc = svc
+		}
+	}
+
 	priceWorker := NewPriceWorker(bus)
+	buySendWorker := NewBuySendWorker(bus, db, cfg)
+
+	// Wire BTCFundingRouter: Treasury-first, BingX fallback.
+	// A decisão de roteamento é exclusivamente backend — mobile não sabe qual rota foi usada.
+	btcFundingRouter := NewBTCFundingRouter(
+		btcTreasurySvc,
+		newBuyLiquidityRouter(cfg, buySendWorker.client), // reutiliza o client já criado
+		db,
+		bus,
+		cfg,
+		buySendWorker.client,
+	)
+	if btcFundingRouter.Enabled() {
+		buySendWorker.SetBTCFundingRouter(btcFundingRouter)
+		slog.Info("btc/router: BTCFundingRouter ativado", "treasury", btcTreasurySvc != nil)
+	}
+
 	return &WorkerManager{
 		Bus:                  bus,
 		PriceWorker:          priceWorker,
 		PayoutWorker:         NewPayoutWorker(bus, db, cfg),
-		BuySendWorker:        NewBuySendWorker(bus, db, cfg),
+		BuySendWorker:        buySendWorker,
 		DCAWorker:            NewDCAWorker(bus, db, cfg, priceWorker),
 		OnchainWorker:        NewOnchainWorker(bus, db, cfg),
 		SellExpiryWorker:     NewSellExpiryWorker(db),
