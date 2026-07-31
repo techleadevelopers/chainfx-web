@@ -12,6 +12,16 @@ const (
 	StatusConfirmed = "confirmed"
 	StatusFailed    = "failed"
 
+	StatusCreated            = "created"
+	StatusReserved           = "reserved"
+	StatusSigned             = "signed"
+	StatusSubmitted          = "submitted"
+	StatusSubmitUnknown      = "submit_unknown"
+	StatusFinalized          = "finalized"
+	StatusFailedBeforeSubmit = "failed_before_submit"
+	StatusManualReview       = "manual_review"
+	StatusRebuildRequired    = "rebuild_required"
+
 	DirectionDeposit    = "deposit"
 	DirectionWithdrawal = "withdrawal"
 	DirectionRouter     = "router_delivery"
@@ -42,20 +52,34 @@ type Balance struct {
 }
 
 type Transaction struct {
-	ID            string    `json:"id"`
-	UserID        string    `json:"user_id"`
-	Network       string    `json:"network"`
-	Signature     string    `json:"signature"`
-	Asset         string    `json:"asset"`
-	MintAddress   string    `json:"mint_address,omitempty"`
-	Direction     string    `json:"direction"`
-	AmountRaw     string    `json:"amount_raw"`
-	Decimals      int       `json:"decimals"`
-	Status        string    `json:"status"`
-	Confirmations int       `json:"confirmations"`
-	Slot          int64     `json:"slot"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID                   string     `json:"id"`
+	UserID               string     `json:"user_id"`
+	Network              string     `json:"network"`
+	Signature            string     `json:"signature"`
+	Asset                string     `json:"asset"`
+	MintAddress          string     `json:"mint_address,omitempty"`
+	Direction            string     `json:"direction"`
+	AmountRaw            string     `json:"amount_raw"`
+	Decimals             int        `json:"decimals"`
+	Status               string     `json:"status"`
+	Confirmations        int        `json:"confirmations"`
+	Slot                 int64      `json:"slot"`
+	OperationID          string     `json:"operation_id,omitempty"`
+	IdempotencyKey       string     `json:"idempotency_key,omitempty"`
+	RequestHash          string     `json:"request_hash,omitempty"`
+	SourceAddress        string     `json:"source_address,omitempty"`
+	DestinationAddress   string     `json:"destination_address,omitempty"`
+	FeeLamports          int64      `json:"fee_lamports,omitempty"`
+	ReservedLamports     int64      `json:"reserved_lamports,omitempty"`
+	SignedRawTx          string     `json:"-"`
+	FeePayer             string     `json:"fee_payer,omitempty"`
+	RecentBlockhash      string     `json:"recent_blockhash,omitempty"`
+	LastValidBlockHeight int64      `json:"last_valid_block_height,omitempty"`
+	SignedAt             *time.Time `json:"signed_at,omitempty"`
+	SubmittedAt          *time.Time `json:"submitted_at,omitempty"`
+	ConfirmedAt          *time.Time `json:"confirmed_at,omitempty"`
+	CreatedAt            time.Time  `json:"created_at"`
+	UpdatedAt            time.Time  `json:"updated_at"`
 }
 
 type FeeEstimate struct {
