@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"payment-gateway/internal/models"
-	"payment-gateway/internal/privacy"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -26,14 +25,15 @@ func (s *Server) ensureUserWallet(ctx context.Context, user *models.User) (*mode
 	if user.WalletAddress != nil && strings.TrimSpace(*user.WalletAddress) != "" {
 		return user, nil
 	}
+	return s.ensureGeneratedMobileWallet(ctx, user)
+}
+
+func (s *Server) ensureGeneratedMobileWallet(ctx context.Context, user *models.User) (*models.User, error) {
+	if user == nil {
+		return nil, nil
+	}
 	if s == nil || s.db == nil {
 		return user, nil
-	}
-
-	secret := s.mobileWalletEncryptionSecret()
-	codec, err := privacy.New(secret)
-	if err != nil {
-		return nil, err
 	}
 
 	for attempts := 0; attempts < 3; attempts++ {
@@ -42,13 +42,13 @@ func (s *Server) ensureUserWallet(ctx context.Context, user *models.User) (*mode
 			return nil, err
 		}
 		privateKeyHex := "0x" + hex.EncodeToString(crypto.FromECDSA(key))
-		encryptedKey, err := codec.Encrypt(privateKeyHex)
+		encryptedKey, keyID, version, err := s.encryptMobileWalletPrivateKey(privateKeyHex)
 		if err != nil {
 			return nil, err
 		}
 		address := crypto.PubkeyToAddress(key.PublicKey).Hex()
 
-		updated, err := mobileDB(s.db).AttachSystemWallet(ctx, user.ID, address, encryptedKey)
+		updated, err := mobileDB(s.db).AttachSystemWallet(ctx, user.ID, address, encryptedKey, keyID, version)
 		if err == nil {
 			return updated, nil
 		}
@@ -61,6 +61,9 @@ func (s *Server) ensureUserWallet(ctx context.Context, user *models.User) (*mode
 }
 
 func (s *Server) ensureOwnerMobileWallet(ctx context.Context, user *models.User) (*models.User, error) {
+	if user.WalletAddress != nil && strings.TrimSpace(*user.WalletAddress) != "" {
+		return user, nil
+	}
 	ownerAddress := strings.TrimSpace(envOr("OWNER_MOBILE_WALLET_ADDRESS", defaultOwnerMobileWalletAddress))
 	if !common.IsHexAddress(ownerAddress) {
 		return nil, fmt.Errorf("OWNER_MOBILE_WALLET_ADDRESS invalido")
@@ -77,6 +80,10 @@ func (s *Server) ensureOwnerMobileWallet(ctx context.Context, user *models.User)
 		return user, nil
 	}
 	if err := mobileDB(s.db).UpdateUser(ctx, user.ID, map[string]any{"wallet_address": checksummed}); err != nil {
+		lowerErr := strings.ToLower(err.Error())
+		if strings.Contains(lowerErr, "duplicate") || strings.Contains(lowerErr, "unique") {
+			return s.ensureGeneratedMobileWallet(ctx, user)
+		}
 		return nil, err
 	}
 	return mobileDB(s.db).GetUserByID(ctx, user.ID)
@@ -98,30 +105,9 @@ func (s *Server) ensureOwnerMobileWalletKey(ctx context.Context, userID, expecte
 	if !strings.EqualFold(address, expectedAddress) {
 		return fmt.Errorf("OWNER_MOBILE_WALLET_PRIVATE_KEY nao corresponde a OWNER_MOBILE_WALLET_ADDRESS")
 	}
-	secret := s.mobileWalletEncryptionSecret()
-	codec, err := privacy.New(secret)
+	encryptedKey, keyID, version, err := s.encryptMobileWalletPrivateKey("0x" + hex.EncodeToString(crypto.FromECDSA(key)))
 	if err != nil {
 		return err
 	}
-	encryptedKey, err := codec.Encrypt("0x" + hex.EncodeToString(crypto.FromECDSA(key)))
-	if err != nil {
-		return err
-	}
-	return mobileDB(s.db).UpsertCustodialWalletKey(ctx, userID, expectedAddress, encryptedKey)
-}
-
-func (s *Server) mobileWalletEncryptionSecret() string {
-	if s == nil || s.cfg == nil {
-		return ""
-	}
-	if secret := strings.TrimSpace(envOr("MOBILE_WALLET_ENCRYPTION_SECRET", "")); secret != "" {
-		return secret
-	}
-	if secret := strings.TrimSpace(s.cfg.LGPDSecret); secret != "" {
-		return secret
-	}
-	if secret := strings.TrimSpace(s.cfg.WebhookSecret); secret != "" {
-		return secret
-	}
-	return strings.TrimSpace(s.mcfg.JWTSecret)
+	return mobileDB(s.db).UpsertCustodialWalletKey(ctx, userID, expectedAddress, encryptedKey, keyID, version)
 }
