@@ -124,6 +124,67 @@ func IncNFCReverse() {
 	global.nfcReverseTotal.Add(1)
 }
 
+// RecordMobilePaymentExecution increments the mobile QR Pay execution counter.
+func RecordMobilePaymentExecution(status string) {
+	switch strings.TrimSpace(status) {
+	case "started":
+		global.mobilePaymentExecutionStarted.Add(1)
+	case "completed":
+		global.mobilePaymentExecutionCompleted.Add(1)
+	case "failed":
+		global.mobilePaymentExecutionFailed.Add(1)
+	case "retry":
+		global.mobilePaymentExecutionRetry.Add(1)
+	case "provider_unknown":
+		global.mobilePaymentExecutionProviderUnknown.Add(1)
+	case "reconciled":
+		global.mobilePaymentExecutionReconciled.Add(1)
+	}
+}
+
+func RecordEfiReconcile(status string) {
+	switch strings.TrimSpace(status) {
+	case "not_found":
+		global.efiReconcileNotFound.Add(1)
+	case "ambiguous":
+		global.efiReconcileAmbiguous.Add(1)
+	case "manual_review":
+		global.efiReconcileManualReview.Add(1)
+	case "definitive_failure":
+		global.efiReconcileDefinitiveFailure.Add(1)
+	case "refund_blocked_ambiguous":
+		global.efiRefundBlockedAmbiguous.Add(1)
+	}
+}
+
+func RecordMobilePaymentRefund(status string) {
+	switch strings.TrimSpace(status) {
+	case "created":
+		global.mobilePaymentRefundCreated.Add(1)
+	case "broadcast":
+		global.mobilePaymentRefundBroadcast.Add(1)
+	case "completed":
+		global.mobilePaymentRefundCompleted.Add(1)
+	case "failed":
+		global.mobilePaymentRefundFailed.Add(1)
+	case "unknown":
+		global.mobilePaymentRefundUnknown.Add(1)
+	case "manual_review":
+		global.mobilePaymentRefundManualReview.Add(1)
+	}
+}
+
+func RecordEfiMobileWebhook(status string) {
+	switch strings.TrimSpace(status) {
+	case "received":
+		global.efiMobileWebhookReceived.Add(1)
+	case "duplicate":
+		global.efiMobileWebhookDuplicate.Add(1)
+	case "applied":
+		global.efiMobileWebhookApplied.Add(1)
+	}
+}
+
 // ── Gas Station ───────────────────────────────────────────────────────────────
 
 // IncPaymasterRelay records one successfully submitted relay request.
@@ -258,6 +319,30 @@ type registry struct {
 	nfcIdempotencyReplays  atomic.Int64 // authorize requests answered from idempotency cache
 	nfcCaptureTotal        atomic.Int64
 	nfcReverseTotal        atomic.Int64
+
+	mobilePaymentExecutionStarted         atomic.Int64
+	mobilePaymentExecutionCompleted       atomic.Int64
+	mobilePaymentExecutionFailed          atomic.Int64
+	mobilePaymentExecutionRetry           atomic.Int64
+	mobilePaymentExecutionProviderUnknown atomic.Int64
+	mobilePaymentExecutionReconciled      atomic.Int64
+
+	mobilePaymentRefundCreated      atomic.Int64
+	mobilePaymentRefundBroadcast    atomic.Int64
+	mobilePaymentRefundCompleted    atomic.Int64
+	mobilePaymentRefundFailed       atomic.Int64
+	mobilePaymentRefundUnknown      atomic.Int64
+	mobilePaymentRefundManualReview atomic.Int64
+
+	efiMobileWebhookReceived  atomic.Int64
+	efiMobileWebhookDuplicate atomic.Int64
+	efiMobileWebhookApplied   atomic.Int64
+
+	efiReconcileNotFound          atomic.Int64
+	efiReconcileAmbiguous         atomic.Int64
+	efiReconcileManualReview      atomic.Int64
+	efiReconcileDefinitiveFailure atomic.Int64
+	efiRefundBlockedAmbiguous     atomic.Int64
 
 	penaltyBoxActiveBans           atomic.Int64
 	penaltyBoxBansTotal            atomic.Int64
@@ -643,6 +728,38 @@ func (reg *registry) render() string {
 	b.WriteString("# HELP nfc_reverse_total Successful NFC reversal operations.\n")
 	b.WriteString("# TYPE nfc_reverse_total counter\n")
 	fmt.Fprintf(&b, "nfc_reverse_total %d\n", reg.nfcReverseTotal.Load())
+
+	b.WriteString("# HELP mobile_payment_execution_total Mobile QR Pay provider execution events by status.\n")
+	b.WriteString("# TYPE mobile_payment_execution_total counter\n")
+	fmt.Fprintf(&b, "mobile_payment_execution_total{status=\"started\"} %d\n", reg.mobilePaymentExecutionStarted.Load())
+	fmt.Fprintf(&b, "mobile_payment_execution_total{status=\"completed\"} %d\n", reg.mobilePaymentExecutionCompleted.Load())
+	fmt.Fprintf(&b, "mobile_payment_execution_total{status=\"failed\"} %d\n", reg.mobilePaymentExecutionFailed.Load())
+	fmt.Fprintf(&b, "mobile_payment_execution_total{status=\"retry\"} %d\n", reg.mobilePaymentExecutionRetry.Load())
+	fmt.Fprintf(&b, "mobile_payment_execution_total{status=\"provider_unknown\"} %d\n", reg.mobilePaymentExecutionProviderUnknown.Load())
+	fmt.Fprintf(&b, "mobile_payment_execution_total{status=\"reconciled\"} %d\n", reg.mobilePaymentExecutionReconciled.Load())
+
+	b.WriteString("# HELP mobile_payment_refund_total Mobile QR Pay on-chain refund events by status.\n")
+	b.WriteString("# TYPE mobile_payment_refund_total counter\n")
+	fmt.Fprintf(&b, "mobile_payment_refund_total{status=\"created\"} %d\n", reg.mobilePaymentRefundCreated.Load())
+	fmt.Fprintf(&b, "mobile_payment_refund_total{status=\"broadcast\"} %d\n", reg.mobilePaymentRefundBroadcast.Load())
+	fmt.Fprintf(&b, "mobile_payment_refund_total{status=\"completed\"} %d\n", reg.mobilePaymentRefundCompleted.Load())
+	fmt.Fprintf(&b, "mobile_payment_refund_total{status=\"failed\"} %d\n", reg.mobilePaymentRefundFailed.Load())
+	fmt.Fprintf(&b, "mobile_payment_refund_total{status=\"unknown\"} %d\n", reg.mobilePaymentRefundUnknown.Load())
+	fmt.Fprintf(&b, "mobile_payment_refund_total{status=\"manual_review\"} %d\n", reg.mobilePaymentRefundManualReview.Load())
+
+	b.WriteString("# HELP efi_mobile_webhook_total Efi Pix Send webhook events applied to mobile QR Pay.\n")
+	b.WriteString("# TYPE efi_mobile_webhook_total counter\n")
+	fmt.Fprintf(&b, "efi_mobile_webhook_total{status=\"received\"} %d\n", reg.efiMobileWebhookReceived.Load())
+	fmt.Fprintf(&b, "efi_mobile_webhook_total{status=\"duplicate\"} %d\n", reg.efiMobileWebhookDuplicate.Load())
+	fmt.Fprintf(&b, "efi_mobile_webhook_total{status=\"applied\"} %d\n", reg.efiMobileWebhookApplied.Load())
+
+	b.WriteString("# HELP efi_reconcile_total Efi Pix Send reconciliation safety decisions for mobile QR Pay.\n")
+	b.WriteString("# TYPE efi_reconcile_total counter\n")
+	fmt.Fprintf(&b, "efi_reconcile_total{status=\"not_found\"} %d\n", reg.efiReconcileNotFound.Load())
+	fmt.Fprintf(&b, "efi_reconcile_total{status=\"ambiguous\"} %d\n", reg.efiReconcileAmbiguous.Load())
+	fmt.Fprintf(&b, "efi_reconcile_total{status=\"manual_review\"} %d\n", reg.efiReconcileManualReview.Load())
+	fmt.Fprintf(&b, "efi_reconcile_total{status=\"definitive_failure\"} %d\n", reg.efiReconcileDefinitiveFailure.Load())
+	fmt.Fprintf(&b, "efi_reconcile_total{status=\"refund_blocked_ambiguous\"} %d\n", reg.efiRefundBlockedAmbiguous.Load())
 	b.WriteString("# HELP nfc_settlement_anomalies_total Current open NFC settlement reconciliation anomalies by type.\n")
 	b.WriteString("# TYPE nfc_settlement_anomalies_total gauge\n")
 	for anomalyType, count := range nfcAnomalies {
