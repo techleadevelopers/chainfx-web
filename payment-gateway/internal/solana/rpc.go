@@ -5,7 +5,10 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -13,6 +16,8 @@ import (
 
 	"payment-gateway/internal/httpclient"
 )
+
+var ErrSubmitUnknown = errors.New("solana: submit_unknown")
 
 type RPCClient struct {
 	urls   []string
@@ -134,7 +139,24 @@ func (c *RPCClient) SendTransaction(ctx context.Context, tx []byte) (string, err
 		base64.StdEncoding.EncodeToString(tx),
 		map[string]any{"encoding": "base64", "skipPreflight": false, "preflightCommitment": "confirmed", "maxRetries": 3},
 	}, &sig)
+	if err != nil {
+		if isAmbiguousSubmitError(err) {
+			return "", fmt.Errorf("solana sendTransaction ambiguous: %w", ErrSubmitUnknown)
+		}
+		if isAlreadyProcessedError(err) {
+			localSig, sigErr := SignatureFromSignedTransaction(tx)
+			if sigErr == nil {
+				return localSig, nil
+			}
+		}
+	}
 	return sig, err
+}
+
+func (c *RPCClient) GetBlockHeight(ctx context.Context) (int64, error) {
+	var out int64
+	err := c.call(ctx, "getBlockHeight", []any{map[string]any{"commitment": "confirmed"}}, &out)
+	return out, err
 }
 
 type SignatureInfo struct {
@@ -191,6 +213,8 @@ func (c *RPCClient) GetSignatureStatuses(ctx context.Context, signatures []strin
 		if i < len(out.Value) {
 			if out.Value[i].Err != nil {
 				status = StatusFailed
+			} else if out.Value[i].ConfirmationStatus == "finalized" {
+				status = StatusFinalized
 			} else if out.Value[i].ConfirmationStatus == "confirmed" || out.Value[i].ConfirmationStatus == "finalized" {
 				status = StatusConfirmed
 			}
@@ -198,4 +222,35 @@ func (c *RPCClient) GetSignatureStatuses(ctx context.Context, signatures []strin
 		statuses[sig] = status
 	}
 	return statuses, nil
+}
+
+func isAmbiguousSubmitError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) || errors.Is(err, io.EOF) {
+		return true
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "timeout") ||
+		strings.Contains(msg, "deadline") ||
+		strings.Contains(msg, "eof") ||
+		strings.Contains(msg, "connection reset") ||
+		strings.Contains(msg, "connection refused") ||
+		strings.Contains(msg, "broken pipe")
+}
+
+func isAlreadyProcessedError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "already processed") ||
+		strings.Contains(msg, "already been processed") ||
+		strings.Contains(msg, "already known") ||
+		strings.Contains(msg, "transaction already exists")
 }
