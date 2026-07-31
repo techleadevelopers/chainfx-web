@@ -466,6 +466,26 @@ func (s *Server) writeDegradedMobileBuy(w http.ResponseWriter, r *http.Request, 
 	return true
 }
 
+// normalizeSellSource normalises the sell_source field.
+// Valid values: "internal" (BTC already in ChainFX custodial wallet)
+// or "external" (user will send from an external wallet).
+// Defaults to "external" when empty or unrecognised.
+func normalizeSellSource(s string) string {
+	if strings.EqualFold(strings.TrimSpace(s), "internal") {
+		return "internal"
+	}
+	return "external"
+}
+
+// sellSourceFundingMode maps sell_source to the funding_mode string returned
+// to the mobile client so it knows which post-confirmation UX to show.
+func sellSourceFundingMode(asset, sellSource string) string {
+	if strings.EqualFold(asset, "BTC") && strings.EqualFold(sellSource, "internal") {
+		return "internal_wallet"
+	}
+	return "external_deposit"
+}
+
 // handleMobileSell — POST /api/mobile/order/sell
 // Delegates to existing POST /api/order handler.
 func (s *Server) handleMobileSellQuote(w http.ResponseWriter, r *http.Request) {
@@ -477,6 +497,7 @@ func (s *Server) handleMobileSellQuote(w http.ResponseWriter, r *http.Request) {
 		Asset      string  `json:"asset"`
 		Network    string  `json:"network"`
 		QuoteID    string  `json:"quote_id"`
+		SellSource string  `json:"sell_source"` // "internal" | "external"
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "amount obrigatorio"})
@@ -516,16 +537,18 @@ func (s *Server) handleMobileSellQuote(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	sellSource := normalizeSellSource(req.SellSource)
 	expiresAt := time.Now().UTC().Add(time.Duration(s.mobileRateLockSec()) * time.Second)
 	quoteID, err := s.issueMobileTradeQuote(r.Context(), uid, mobileQuoteClaims{
-		Side:      "sell",
-		Asset:     asset,
-		Network:   network,
-		Amount:    amountCrypto,
-		Rate:      rate,
-		Fee:       spreadBRL,
-		Total:     payoutBRL,
-		ExpiresAt: expiresAt.Unix(),
+		Side:       "sell",
+		Asset:      asset,
+		Network:    network,
+		SellSource: sellSource,
+		Amount:     amountCrypto,
+		Rate:       rate,
+		Fee:        spreadBRL,
+		Total:      payoutBRL,
+		ExpiresAt:  expiresAt.Unix(),
 	})
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro ao assinar cotacao"})
@@ -537,7 +560,8 @@ func (s *Server) handleMobileSellQuote(w http.ResponseWriter, r *http.Request) {
 		"asset":         asset,
 		"network":       network,
 		"btc_network":   mobileBTCNetwork(s),
-		"funding_mode":  mobileSellFundingMode(asset),
+		"sell_source":   sellSource,
+		"funding_mode":  sellSourceFundingMode(asset, sellSource),
 		"fiat":          "BRL",
 		"amount_usdt":   amountCrypto,
 		"amount_btc":    amountCrypto,
@@ -573,6 +597,7 @@ func (s *Server) handleMobileSell(w http.ResponseWriter, r *http.Request) {
 		Asset      string  `json:"asset"`
 		Network    string  `json:"network"`
 		QuoteID    string  `json:"quote_id"`
+		SellSource string  `json:"sell_source"` // "internal" | "external"
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "amount_usdt obrigatório"})
@@ -625,8 +650,14 @@ func (s *Server) handleMobileSell(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "pix_key ou pix_phone obrigatório"})
 		return
 	}
+	sellSource := normalizeSellSource(req.SellSource)
+	// Prefer sell_source carried in the quote claims (set at quote time) when
+	// the create request omits it, to keep the two steps in sync.
+	if claims != nil && claims.SellSource != "" && req.SellSource == "" {
+		sellSource = normalizeSellSource(claims.SellSource)
+	}
 	if req.Asset == "BTC" {
-		s.handleMobileBTCSellCreate(w, r, uid, claims, amountCrypto, amountSats, pixKey, req.PixCpf)
+		s.handleMobileBTCSellCreate(w, r, uid, claims, amountCrypto, amountSats, pixKey, req.PixCpf, sellSource)
 		return
 	}
 	payload := map[string]any{
@@ -661,7 +692,20 @@ func (s *Server) handleMobileSell(w http.ResponseWriter, r *http.Request) {
 	w.Write(body)
 }
 
-func (s *Server) handleMobileBTCSellCreate(w http.ResponseWriter, r *http.Request, uid string, claims *mobileQuoteClaims, amountBTC float64, amountSats int64, pixKey, pixCPF string) {
+// handleMobileBTCSellCreate handles POST /api/mobile/order/sell for BTC.
+//
+// sellSource controls which funding path is taken:
+//   - "internal" — BTC is already held in the user's ChainFX custodial wallet.
+//     The order is created and a btc_sell_fundings record is written with
+//     sell_source='internal' so the worker can credit the funding from the
+//     internal balance rather than waiting for an on-chain deposit.
+//     The response carries funding_mode="internal_wallet" and
+//     awaiting_deposit=false so the mobile client skips the deposit step and
+//     navigates directly to the sell-tracking screen.
+//   - "external" (default) — user sends BTC from their own external wallet.
+//     The custodial receive address is returned as the deposit target and the
+//     blockchain scanner monitors for the incoming UTXO.
+func (s *Server) handleMobileBTCSellCreate(w http.ResponseWriter, r *http.Request, uid string, claims *mobileQuoteClaims, amountBTC float64, amountSats int64, pixKey, pixCPF string, sellSource string) {
 	if s.btcSvc == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"code": "BTC_DISABLED", "error": "rail BTC nativa desabilitada"})
 		return
@@ -670,6 +714,7 @@ func (s *Server) handleMobileBTCSellCreate(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, http.StatusConflict, mobileProductError("QUOTE_EXPIRED", "Cotacao BTC invalida."))
 		return
 	}
+	sellSource = normalizeSellSource(sellSource)
 	if amountSats <= 0 {
 		amountSats = btcToSats(amountBTC)
 	}
@@ -678,7 +723,7 @@ func (s *Server) handleMobileBTCSellCreate(w http.ResponseWriter, r *http.Reques
 		return
 	} else if existingID != "" {
 		if existing, err := s.db.GetOrder(r.Context(), existingID); err == nil && existing != nil {
-			writeJSON(w, http.StatusOK, mobileBTCSellOrderResponse(existing, s, amountSats, "idempotent_replay"))
+			writeJSON(w, http.StatusOK, mobileBTCSellOrderResponse(existing, s, amountSats, "idempotent_replay", sellSource))
 			return
 		}
 	}
@@ -719,6 +764,7 @@ func (s *Server) handleMobileBTCSellCreate(w http.ResponseWriter, r *http.Reques
 		BTCNetwork:      string(cfg.Network),
 		ExpectedSats:    amountSats,
 		QuoteID:         claims.QuoteID,
+		SellSource:      sellSource,
 	}); err != nil {
 		_ = s.db.UpdateOrderStatus(r.Context(), order.ID, "incidente_validacao", map[string]any{"error": err.Error()})
 		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro ao preparar funding BTC"})
@@ -726,12 +772,17 @@ func (s *Server) handleMobileBTCSellCreate(w http.ResponseWriter, r *http.Reques
 	}
 	_ = mobileDB(s.db).TagOrderUser(r.Context(), order.ID, uid)
 	s.attachMobileTradeQuoteOrder(r.Context(), claims.QuoteID, uid, order.ID)
-	writeJSON(w, http.StatusAccepted, mobileBTCSellOrderResponse(order, s, amountSats, "created"))
+	writeJSON(w, http.StatusAccepted, mobileBTCSellOrderResponse(order, s, amountSats, "created", sellSource))
 }
 
-func mobileBTCSellOrderResponse(order *models.Order, s *Server, amountSats int64, result string) map[string]any {
+func mobileBTCSellOrderResponse(order *models.Order, s *Server, amountSats int64, result string, sellSource string) map[string]any {
 	cfg := s.btcSvc.Config()
-	return map[string]any{
+	sellSource = normalizeSellSource(sellSource)
+	fundingMode := sellSourceFundingMode("BTC", sellSource)
+	// For internal-wallet sells the BTC is already in custody, so no external
+	// deposit step is required on the mobile client side.
+	awaitingDeposit := sellSource != "internal"
+	resp := map[string]any{
 		"id":                    order.ID,
 		"order_id":              order.ID,
 		"accessToken":           order.AccessToken,
@@ -740,7 +791,8 @@ func mobileBTCSellOrderResponse(order *models.Order, s *Server, amountSats int64
 		"asset":                 "BTC",
 		"network":               "BITCOIN",
 		"btc_network":           string(cfg.Network),
-		"funding_mode":          "external_deposit",
+		"sell_source":           sellSource,
+		"funding_mode":          fundingMode,
 		"amount_btc":            satsToBTCFloat(amountSats),
 		"amount_sats":           amountSats,
 		"cryptoAmount":          satsToBTCFloat(amountSats),
@@ -748,13 +800,19 @@ func mobileBTCSellOrderResponse(order *models.Order, s *Server, amountSats int64
 		"payout_brl":            order.PayoutBRL,
 		"payoutFiat":            order.PayoutBRL,
 		"rate":                  order.RateLocked,
-		"funding_address":       order.Address,
-		"btc_funding_address":   order.Address,
 		"minimum_confirmations": cfg.MinConfirmations,
 		"funding_status":        "awaiting_deposit",
+		"awaiting_deposit":      awaitingDeposit,
 		"rate_lock_expires_at":  order.RateLockExpiresAt,
 		"result":                result,
 	}
+	// Only expose the deposit address for external-wallet sells so the client
+	// does not accidentally display it for internal sells.
+	if awaitingDeposit {
+		resp["funding_address"] = order.Address
+		resp["btc_funding_address"] = order.Address
+	}
+	return resp
 }
 
 func mobileSellRequestAmount(asset string, amountUSDT, amountBTC float64, amountSats int64) (float64, int64) {
