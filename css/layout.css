@@ -872,7 +872,7 @@
 
 .markets-row {
   display: grid;
-  grid-template-columns: minmax(190px, 1.5fr) minmax(110px, 0.8fr) minmax(160px, 1.1fr) 80px 90px 76px 120px;
+  grid-template-columns: minmax(190px, 1.5fr) minmax(110px, 0.8fr) minmax(160px, 1.1fr) 80px 90px 120px;
   align-items: center;
   gap: 14px;
   min-height: 78px;
