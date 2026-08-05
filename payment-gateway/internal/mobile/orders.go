@@ -273,6 +273,8 @@ func (s *Server) handleMobileBuy(w http.ResponseWriter, r *http.Request) {
 		"paymentMethod": req.PaymentMethod,
 		"rateLocked":    claims.Rate,
 		"feeBRL":        claims.Fee,
+		"surface":       "mobile",
+		"customerName":  customerName,
 		"paymentToken":  firstNonEmptyStr(req.PaymentToken, req.Card.PaymentToken),
 		"cardBrand":     firstNonEmptyStr(req.CardBrand, req.Card.Brand),
 		"installments":  firstPositiveIntMobile(req.Installments, req.Card.Installments, 1),
@@ -367,6 +369,7 @@ func (s *Server) writeDegradedMobileBuy(w http.ResponseWriter, r *http.Request, 
 	totalFiat := roundMoney(amountBRL + fee)
 	cryptoAmount := roundCrypto(amountBRL / rate)
 	buy, err := s.db.CreateBuyOrder(r.Context(), database.BuyOrderInput{
+		Channel:           "mobile",
 		Status:            "payment_provider_pending",
 		AmountBRL:         totalFiat,
 		AmountFiat:        totalFiat,
@@ -661,13 +664,15 @@ func (s *Server) handleMobileSell(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	payload := map[string]any{
-		"amountUSDT": amountCrypto,
-		"pixPhone":   pixKey,
-		"pixCpf":     req.PixCpf,
-		"asset":      req.Asset,
-		"network":    network,
-		"quoteId":    req.QuoteID,
-		"rateLocked": claims.Rate,
+		"amountUSDT":   amountCrypto,
+		"pixPhone":     pixKey,
+		"pixCpf":       req.PixCpf,
+		"asset":        req.Asset,
+		"network":      network,
+		"quoteId":      req.QuoteID,
+		"rateLocked":   claims.Rate,
+		"surface":      "mobile",
+		"customerName": mobileUserString(user.FullName),
 	}
 	resp, err := forwardToInternal(r, "POST", s.internalBase(r)+"/api/order", payload, s.internalAPIKey())
 	if err != nil {
@@ -737,6 +742,7 @@ func (s *Server) handleMobileBTCSellCreate(w http.ResponseWriter, r *http.Reques
 	orderID := database.NewID()
 	order, err := s.db.CreateOrder(r.Context(), database.OrderInput{
 		ID:                orderID,
+		Channel:           "mobile",
 		Status:            "aguardando_deposito",
 		AmountBRL:         claims.Total,
 		AmountUSDT:        amountBTC,

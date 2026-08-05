@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"payment-gateway/internal/config"
+	"payment-gateway/internal/email"
 	"payment-gateway/internal/httpclient"
 	"payment-gateway/internal/metrics"
 	"payment-gateway/internal/security"
@@ -48,6 +49,7 @@ type mobilePaymentRefundWorker struct {
 	store       mobilePaymentRefundStore
 	signer      mobilePaymentRefundSigner
 	verifier    mobilePaymentRefundVerifier
+	mailer      *email.Service
 	pollEvery   time.Duration
 	staleAfter  time.Duration
 	maxAttempts int
@@ -143,6 +145,7 @@ func (s *Server) startMobilePaymentRefundWorker(ctx context.Context) {
 		store:       &mobilePaymentRefundSQLStore{db: s.db.SQL},
 		signer:      newMobilePaymentRefundSignerClient(s.cfg),
 		verifier:    s,
+		mailer:      email.NewService(s.cfg),
 		pollEvery:   time.Duration(envInt("MOBILE_PAYMENT_REFUND_POLL_SEC", 10)) * time.Second,
 		staleAfter:  time.Duration(envInt("MOBILE_PAYMENT_REFUND_STALE_SEC", 180)) * time.Second,
 		maxAttempts: envInt("MOBILE_PAYMENT_REFUND_MAX_ATTEMPTS", 6),
@@ -250,6 +253,7 @@ func (w *mobilePaymentRefundWorker) confirmRefund(ctx context.Context, claim *mo
 		}
 		if errors.Is(err, errMobileRefundReceiptReverted) {
 			_ = w.store.MarkRefundManualReview(ctx, claim, "refund tx reverted")
+			go w.sendRefundStateEmail(ctx, claim, "manual_review", "Reembolso QR Code em revisao", "Seu reembolso precisa de revisao manual antes de ser concluido.", "refund tx reverted", claim.TxHash)
 			return
 		}
 		_ = w.store.MarkRefundUnknown(ctx, claim, err.Error(), w.now().UTC().Add(w.backoff(claim.Attempt)))
@@ -257,6 +261,7 @@ func (w *mobilePaymentRefundWorker) confirmRefund(ctx context.Context, claim *mo
 		return
 	}
 	_ = w.store.CompleteRefund(ctx, claim, receipt)
+	go w.sendRefundStateEmail(ctx, claim, "refunded", "Pagamento QR Code reembolsado", "Seu reembolso foi enviado para sua wallet.", "", receipt.TxHash)
 	metrics.RecordMobilePaymentRefund("completed")
 	slog.Info("mobile payment refund confirmed", "payment_id", claim.PaymentID, "execution_id", claim.ExecutionID,
 		"refund_id", claim.RefundID, "attempt", claim.Attempt, "status_before", statusBefore,
@@ -288,6 +293,7 @@ func (w *mobilePaymentRefundWorker) reconcileRefund(ctx context.Context, claim *
 		}
 		if claim.Attempt >= w.maxAttempts {
 			_ = w.store.MarkRefundManualReview(ctx, claim, err.Error())
+			go w.sendRefundStateEmail(ctx, claim, "manual_review", "Reembolso QR Code em revisao", "Seu reembolso precisa de revisao manual antes de ser concluido.", err.Error(), claim.TxHash)
 			metrics.RecordMobilePaymentRefund("manual_review")
 		} else {
 			_ = w.store.MarkRefundUnknown(ctx, claim, err.Error(), w.now().UTC().Add(w.backoff(claim.Attempt)))
@@ -321,6 +327,7 @@ func (w *mobilePaymentRefundWorker) applyRefundError(ctx context.Context, claim 
 	}
 	if claim.Attempt >= w.maxAttempts {
 		_ = w.store.MarkRefundManualReview(ctx, claim, err.Error())
+		go w.sendRefundStateEmail(ctx, claim, "manual_review", "Reembolso QR Code em revisao", "Seu reembolso precisa de revisao manual antes de ser concluido.", err.Error(), claim.TxHash)
 		metrics.RecordMobilePaymentRefund("manual_review")
 		return
 	}
@@ -336,6 +343,57 @@ func (w *mobilePaymentRefundWorker) backoff(attempt int) time.Duration {
 		seconds = 600
 	}
 	return time.Duration(seconds) * time.Second
+}
+
+func (w *mobilePaymentRefundWorker) sendRefundStateEmail(ctx context.Context, claim *mobilePaymentRefundClaim, status, subject, intro, reason, txHash string) {
+	if w == nil || w.mailer == nil || !w.mailer.Enabled() || claim == nil {
+		return
+	}
+	store, ok := w.store.(*mobilePaymentRefundSQLStore)
+	if !ok || store.db == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	var to string
+	if err := store.db.QueryRowContext(ctx, `SELECT email FROM users WHERE id=$1::uuid`, claim.UserID).Scan(&to); err != nil || strings.TrimSpace(to) == "" {
+		slog.Info("mobile payment refund email sem destinatario", "payment_id", claim.PaymentID, "status", status, "error", err)
+		return
+	}
+	if txHash == "" {
+		txHash = claim.TxHash
+	}
+	cta := "Abrir app"
+	ctaURL := ""
+	if scanURL := mobileScanURL(claim.Network, txHash); scanURL != "" {
+		cta = "Ver Scan"
+		ctaURL = scanURL
+	}
+	details := []email.TransactionDetail{
+		{Label: "Tipo", Value: "QR Pix"},
+		{Label: "Status", Value: status},
+		{Label: "Valor", Value: mobilePayRawToDecimal(claim.AmountRaw, claim.TokenDecimals) + " " + firstNonEmptyStr(claim.Asset, "USDT")},
+		{Label: "Rede", Value: firstNonEmptyStr(claim.Network, "BSC")},
+		{Label: "Wallet", Value: claim.WalletAddress, CopyHint: true},
+		{Label: "Pagamento", Value: claim.PaymentID, CopyHint: true},
+		{Label: "Reembolso", Value: claim.RefundID, CopyHint: true},
+		{Label: "Atualizado em", Value: mobileNowText()},
+	}
+	if strings.TrimSpace(reason) != "" {
+		details = append(details, email.TransactionDetail{Label: "Motivo", Value: truncateMobilePaymentError(reason)})
+	}
+	if strings.TrimSpace(txHash) != "" {
+		details = append(details, email.TransactionDetail{Label: "Hash", Value: txHash, CopyHint: true})
+	}
+	if err := w.mailer.SendTransaction(to, subject, email.TransactionReceipt{
+		Title:   subject,
+		Intro:   intro,
+		CTA:     cta,
+		CTAURL:  ctaURL,
+		Details: details,
+	}); err != nil {
+		slog.Warn("mobile payment refund email failed", "payment_id", claim.PaymentID, "status", status, "error", err)
+	}
 }
 
 type mobilePaymentRefundSQLStore struct {

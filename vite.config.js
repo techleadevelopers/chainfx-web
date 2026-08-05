@@ -4,7 +4,28 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   server: {
     host: '0.0.0.0',
-    allowedHosts: true
+    allowedHosts: true,
+    proxy: {
+      '/api/public/news': {
+        target: 'https://api-production-bc748.up.railway.app',
+        changeOrigin: true,
+      },
+      '/proxy/rss/coindesk': {
+        target: 'https://www.coindesk.com',
+        changeOrigin: true,
+        rewrite: () => '/arc/outboundfeeds/rss/',
+      },
+      '/proxy/rss/cointelegraph': {
+        target: 'https://cointelegraph.com',
+        changeOrigin: true,
+        rewrite: () => '/rss',
+      },
+      '/proxy/rss/decrypt': {
+        target: 'https://decrypt.co',
+        changeOrigin: true,
+        rewrite: () => '/feed',
+      },
+    },
   },
   build: {
     outDir: 'dist',

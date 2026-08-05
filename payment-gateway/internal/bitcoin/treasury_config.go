@@ -10,20 +10,24 @@ import "fmt"
 //   - BTC_XPUB / BTC_ENCRYPTED_SEED  → wallets HD custodiais dos usuários
 //   - SELL_BTC_WALLET_ADDRESS        → endereço de entrada do fluxo SELL web
 //   - BTC_HOT_WALLET_RESERVE_SATS    → reserva do hot wallet custodial (semântica diferente:
-//                                       protege o saldo dos usuários; a Treasury tem sua
-//                                       própria reserva operacional via BTC_TREASURY_MIN_RESERVE_SATS)
+//     protege o saldo dos usuários; a Treasury tem sua
+//     própria reserva operacional via BTC_TREASURY_MIN_RESERVE_SATS)
 //
 // NÃO CONFUNDIR: BTC_HOT_WALLET_RESERVE_SATS != BTC_TREASURY_MIN_RESERVE_SATS
-//   BTC_HOT_WALLET_RESERVE_SATS → mínimo para operações custodiais dos usuários
-//   BTC_TREASURY_MIN_RESERVE_SATS → mínimo operacional da Treasury (independente)
-//   Os dois conceitos coexistem e nunca devem ser mesclados silenciosamente.
+//
+//	BTC_HOT_WALLET_RESERVE_SATS → mínimo para operações custodiais dos usuários
+//	BTC_TREASURY_MIN_RESERVE_SATS → mínimo operacional da Treasury (independente)
+//	Os dois conceitos coexistem e nunca devem ser mesclados silenciosamente.
 type TreasuryConfig struct {
-	Enabled        bool
-	Address        string // bc1q... (mainnet) ou tb1q... (testnet)
-	SignerKeyID    string // identificador auditável da chave (ex: "btc_treasury_main")
-	EncryptedKey   string // hex AES-GCM: 32 bytes raw privkey cifrada
-	EncryptionKey  string // hex 32-byte ou passphrase para AES-GCM (mesmo formato de BTC_ENCRYPTION_KEY)
-	MinReserveSats int64  // sats mínimos mantidos na Treasury (nunca gastar abaixo disso)
+	Enabled            bool
+	Address            string // bc1q... (mainnet) ou tb1q... (testnet)
+	SignerKeyID        string // identificador auditável da chave (ex: "btc_treasury_main")
+	EncryptedKey       string // hex AES-GCM: raw privkey, xpriv ou mnemonic conforme KeyFormat
+	EncryptionKey      string // hex 32-byte ou passphrase para AES-GCM (mesmo formato de BTC_ENCRYPTION_KEY)
+	KeyFormat          string // raw | xpriv | mnemonic; raw preserva o comportamento antigo
+	DerivationPath     string // usado por xpriv/mnemonic; vazio usa o padrão seguro
+	MnemonicPassphrase string // passphrase BIP39 opcional para mnemonic
+	MinReserveSats     int64  // sats mínimos mantidos na Treasury (nunca gastar abaixo disso)
 }
 
 // LoadTreasuryConfig lê as variáveis BTC_TREASURY_* do ambiente.
@@ -45,11 +49,14 @@ func LoadTreasuryConfig() (*TreasuryConfig, error) {
 	}
 
 	return &TreasuryConfig{
-		Enabled:        true,
-		Address:        addr,
-		SignerKeyID:    btcEnvStr("BTC_TREASURY_SIGNER_KEY_ID", "btc_treasury_main"),
-		EncryptedKey:   encKey,
-		EncryptionKey:  encKeyPass,
-		MinReserveSats: int64(btcEnvInt("BTC_TREASURY_MIN_RESERVE_SATS", 100_000)), // default 0.001 BTC
+		Enabled:            true,
+		Address:            addr,
+		SignerKeyID:        btcEnvStr("BTC_TREASURY_SIGNER_KEY_ID", "btc_treasury_main"),
+		EncryptedKey:       encKey,
+		EncryptionKey:      encKeyPass,
+		KeyFormat:          btcEnvStr("BTC_TREASURY_KEY_FORMAT", "raw"),
+		DerivationPath:     btcEnvStr("BTC_TREASURY_DERIVATION_PATH", ""),
+		MnemonicPassphrase: btcEnvStr("BTC_TREASURY_MNEMONIC_PASSPHRASE", ""),
+		MinReserveSats:     int64(btcEnvInt("BTC_TREASURY_MIN_RESERVE_SATS", 100_000)), // default 0.001 BTC
 	}, nil
 }

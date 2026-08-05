@@ -152,7 +152,7 @@ type SendRequest struct {
 	RequestHash    string
 }
 
-// BTCTransactionInput registra um UTXO usado por uma transaÃ§Ã£o BTC.
+// BTCTransactionInput registra um UTXO usado por uma transaçÃ£o BTC.
 type BTCTransactionInput struct {
 	ID              string
 	TransactionID   string
@@ -168,7 +168,7 @@ type BTCTransactionInput struct {
 	ScriptPubKey    string
 }
 
-// BTCTransactionOutput registra um output de uma transaÃ§Ã£o BTC.
+// BTCTransactionOutput registra um output de uma transaçÃ£o BTC.
 type BTCTransactionOutput struct {
 	ID            string
 	TransactionID string

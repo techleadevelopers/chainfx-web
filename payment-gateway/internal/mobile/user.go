@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strings"
 
+	"payment-gateway/internal/email"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -127,6 +129,15 @@ func (s *Server) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
+	s.sendMobileTransactionEmailToAsync(user.Email, "Seguranca ChainFX: conta excluida", email.TransactionReceipt{
+		Title: "Conta excluida",
+		Intro: "Sua conta mobile foi marcada para exclusao e anonimizada.",
+		CTA:   "Abrir app",
+		Details: []email.TransactionDetail{
+			{Label: "Conta", Value: uid, CopyHint: true},
+			{Label: "Quando", Value: mobileNowText()},
+		},
+	})
 	// Invalidate caches so any in-flight token is rejected immediately.
 	s.invalidateUserActiveCache(uid)
 	s.cacheMu.Lock()
@@ -183,8 +194,13 @@ func (s *Server) handleSetPIN(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "pin deve ter no mínimo 4 dígitos"})
 		return
 	}
-	user, _ := mobileDB(s.db).GetUserByID(r.Context(), uid)
-	if user.PinHash != nil && *user.PinHash != "" {
+	user, err := mobileDB(s.db).GetUserByID(r.Context(), uid)
+	if err != nil || user == nil {
+		writeJSON(w, http.StatusNotFound, map[string]any{"error": "usuario nao encontrado"})
+		return
+	}
+	pinAlreadyConfigured := user.PinHash != nil && *user.PinHash != ""
+	if pinAlreadyConfigured {
 		if req.CurrentPIN == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "current_pin obrigatório para alterar o PIN"})
 			return
@@ -196,6 +212,11 @@ func (s *Server) handleSetPIN(w http.ResponseWriter, r *http.Request) {
 	}
 	hash, _ := bcrypt.GenerateFromPassword([]byte(req.PIN), bcrypt.MinCost)
 	_ = mobileDB(s.db).UpdateUser(r.Context(), uid, map[string]any{"pin_hash": string(hash)})
+	if pinAlreadyConfigured {
+		s.sendMobileSecurityEmailAsync(uid, "PIN alterado", "O PIN de seguranca da sua conta foi alterado.")
+	} else {
+		s.sendMobileSecurityEmailAsync(uid, "PIN criado", "Um PIN de seguranca foi criado para sua conta.")
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -210,6 +231,13 @@ func (s *Server) handleSetBiometry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = mobileDB(s.db).UpdateUser(r.Context(), uid, map[string]any{"biometry_enabled": req.Enabled})
+	status := "desativada"
+	intro := "A biometria foi desativada na sua conta."
+	if req.Enabled {
+		status = "ativada"
+		intro = "A biometria foi ativada na sua conta."
+	}
+	s.sendMobileSecurityEmailAsync(uid, "Biometria "+status, intro)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "biometry_enabled": req.Enabled})
 }
 
@@ -234,6 +262,13 @@ func (s *Server) handleSet2FA(w http.ResponseWriter, r *http.Request) {
 	if req.Enabled {
 		resp["setup_secret"] = secret // client shows as QR for TOTP app
 	}
+	status := "desativado"
+	intro := "O 2FA foi desativado na sua conta."
+	if req.Enabled {
+		status = "ativado"
+		intro = "O 2FA foi ativado na sua conta."
+	}
+	s.sendMobileSecurityEmailAsync(uid, "2FA "+status, intro)
 	writeJSON(w, http.StatusOK, resp)
 }
 
@@ -262,6 +297,7 @@ func (s *Server) handleRemoveDevice(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
+	s.sendMobileSecurityEmailAsync(uid, "Dispositivo removido", "Um dispositivo foi removido da sua conta.", email.TransactionDetail{Label: "Dispositivo", Value: req.DeviceID, CopyHint: true})
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 

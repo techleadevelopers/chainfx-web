@@ -13,6 +13,9 @@ func (s *Server) transactionFee(amountFiat float64, fiatCurrency string, rate fl
 }
 
 func (s *Server) transactionFeeMinor(amountFiat money.MoneyMinor, fiatCurrency string, rate money.RateDecimal) money.MoneyMinor {
+	if s.feeFreeMode() {
+		return 0
+	}
 	if strings.EqualFold(fiatCurrency, "BRL") && s.cfg.BuyTier1Bps+s.cfg.BuyTier2Bps+s.cfg.BuyTier3Bps > 0 {
 		_, _, _, _, totalFee, _ := s.buyFeeBreakdownMinor(amountFiat)
 		return totalFee
@@ -130,6 +133,9 @@ func (s *Server) buyProviderWithdrawalFee(asset, network string, rate float64, r
 	feeFiat := round2(fee * rate)
 	if chargedFeeFiat < feeFiat {
 		chargedFeeFiat = feeFiat
+	}
+	if s.feeFreeMode() {
+		chargedFeeFiat = 0
 	}
 	withdrawGross := roundCryptoAmount(receive + fee)
 	minGross := roundCryptoAmount(fee + minAmount)
@@ -250,6 +256,9 @@ func (s *Server) buyMinBRL() float64 {
 }
 
 func (s *Server) buyRate(marketRate float64) float64 {
+	if s.feeFreeMode() {
+		return roundRate(marketRate)
+	}
 	spreadBps := s.cfg.BuyRateSpreadBps
 	if spreadBps < 0 {
 		spreadBps = 0
@@ -356,6 +365,7 @@ func (s *Server) feePolicy(fiatCurrency string, rate float64) map[string]any {
 		"btcBitcoinMinBRL":        s.cfg.BuyBTCBitcoinMinBrl,
 		"btcBitcoinNetworkFeeBRL": s.cfg.BuyBTCBitcoinNetworkFeeBrl,
 		"rateSpreadBps":           s.cfg.BuyRateSpreadBps,
+		"feeFreeMode":             s.feeFreeMode(),
 		"fiatCurrency":            strings.ToUpper(fiatCurrency),
 		"description":             "Tiered BUY fee + network fee + minimum fee + rate spread",
 		"backendEnforced":         true,
@@ -394,6 +404,9 @@ func roundDivInt64(num, den int64) int64 {
 }
 
 func (s *Server) sellRate(marketRate float64) float64 {
+	if s.feeFreeMode() {
+		return roundRate(marketRate)
+	}
 	if s.cfg.SellUsdtBrlRate > 0 {
 		return roundRate(s.cfg.SellUsdtBrlRate)
 	}
@@ -413,6 +426,9 @@ func (s *Server) sellRateForAmount(amountUSDT, marketRate float64) float64 {
 }
 
 func (s *Server) sellSpreadBps(amountUSDT, marketRate float64) int {
+	if s.feeFreeMode() {
+		return 0
+	}
 	if s.cfg.SellUsdtBrlRate > 0 && marketRate > 0 {
 		spread := int(math.Round((1 - s.cfg.SellUsdtBrlRate/marketRate) * 10000))
 		if spread < 0 {
@@ -464,6 +480,9 @@ func (s *Server) sellQuoteForAsset(asset string, amount, marketRate float64) (se
 }
 
 func (s *Server) nonUSDSellRateForAmount(amount, marketRate float64) float64 {
+	if s.feeFreeMode() {
+		return marketRate
+	}
 	if s.cfg.SellRateBps > 0 {
 		bps := s.cfg.SellRateBps
 		if bps > 10000 {
@@ -508,8 +527,13 @@ func (s *Server) sellPolicy(marketRate, sellRate float64) map[string]any {
 		"sellRateBps":      s.cfg.SellRateBps,
 		"spreadBps":        spreadBps,
 		"fixedSellRateBRL": s.cfg.SellUsdtBrlRate > 0,
+		"feeFreeMode":      s.feeFreeMode(),
 		"fiatCurrency":     "BRL",
 		"description":      "Cotacao de venda USDT para PIX BRL",
 		"backendEnforced":  true,
 	}
+}
+
+func (s *Server) feeFreeMode() bool {
+	return s != nil && s.cfg != nil && s.cfg.FeeFreeMode
 }

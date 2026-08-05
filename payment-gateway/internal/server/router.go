@@ -83,6 +83,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /llms.txt", s.handleLLMSTxt)
 	mux.HandleFunc("GET /robots.txt", s.handleRobotsTxt)
 	mux.HandleFunc("GET /sitemap.xml", s.handleSitemap)
+	mux.HandleFunc("GET /api/public/news", handlePublicNews)
 	mux.HandleFunc("GET /marketplace/apis", s.handleMarketplaceAPIs)
 	mux.HandleFunc("GET /marketplace/apis/{id}", s.handleMarketplaceAPI)
 	mux.HandleFunc("GET /marketplace/capabilities", s.handleMarketplaceCapabilities)

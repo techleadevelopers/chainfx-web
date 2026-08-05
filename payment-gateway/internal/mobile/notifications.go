@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"log/slog"
 	"net/http"
+
+	"payment-gateway/internal/email"
 )
 
 // handleListNotifications — GET /api/mobile/notifications
@@ -84,5 +86,6 @@ func (s *Server) handleRegisterPushToken(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "erro interno"})
 		return
 	}
+	s.sendMobileSecurityEmailAsync(uid, "Novo dispositivo", "Um dispositivo foi registrado para notificacoes no app.", email.TransactionDetail{Label: "Dispositivo", Value: firstNonEmptyStr(req.DeviceName, req.DeviceType, "nao informado")})
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }

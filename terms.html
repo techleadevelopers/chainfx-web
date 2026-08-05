@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChainFX — Digital FX Payment</title>
+  <!-- Font & base styles -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+  <style>
+    /* ----- reset & base ----- */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: #f5f9ff;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      color: #1e293b;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .app {
+      max-width: 900px;
+      width: 100%;
+    }
+    /* ----- header ----- */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      padding: 0 4px;
+    }
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #1d63a9;
+      letter-spacing: -0.3px;
+    }
+    .header h1 span {
+      font-weight: 300;
+      color: #4b6a8b;
+    }
+    .header a {
+      color: #1d63a9;
+      font-weight: 600;
+      text-decoration: none;
+      font-size: 0.95rem;
+      border-bottom: 2px solid transparent;
+      transition: border-color 0.2s;
+    }
+    .header a:hover {
+      border-bottom-color: #1d63a9;
+    }
+    /* ----- cards ----- */
+    .swap-card {
+      background: white;
+      border-radius: 24px;
+      padding: 28px 30px;
+      box-shadow: 0 12px 40px rgba(0, 20, 50, 0.08);
+      border: 1px solid #d7e4f3;
+      transition: all 0.2s;
+    }
+    .toggle-container {
+      display: flex;
+      background: #f0f5fe;
+      border-radius: 14px;
+      padding: 4px;
+      margin-bottom: 28px;
+    }
+    .toggle-btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      background: transparent;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #4b6a8b;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .toggle-btn.active {
+      background: #1d63a9;
+      color: white;
+      box-shadow: 0 6px 14px rgba(29, 99, 169, 0.25);
+    }
+    .toggle-btn[data-action="sell"].active {
+      background: #0a0e27;
+      box-shadow: 0 6px 14px rgba(10, 14, 39, 0.25);
+    }
+    .step-content {
+      display: block;
+    }
+    .step-content.hidden {
+      display: none;
+    }
+    /* ----- inputs ----- */
+    .wallet-input {
+      margin-bottom: 18px;
+    }
+    .wallet-input label {
+      display: block;
+      font-weight: 600;
+      font-size: 0.88rem;
+      color: #1d63a9;
+      margin-bottom: 5px;
+    }
+    .input-group {
+      display: flex;
+      gap: 10px;
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 6px 12px;
+      border: 1px solid #e2edf7;
+      transition: border 0.2s;
+      align-items: center;
+    }
+    .input-group:focus-within {
+      border-color: #1d63a9;
+      box-shadow: 0 0 0 3px rgba(29, 99, 169, 0.12);
+    }
+    .input-group input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-size: 1rem;
+      padding: 10px 0;
+      color: #0f2a44;
+      outline: none;
+      min-width: 0;
+    }
+    .input-group input::placeholder {
+      color: #94a9c7;
+      font-weight: 400;
+    }
+    .currency-selector {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: white;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-weight: 600;
+      color: #1d63a9;
+      border: 1px solid #d7e4f3;
+      cursor: default;
+      white-space: nowrap;
+    }
+    .currency-selector img {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+    }
+    /* ----- exchange rate ----- */
+    .exchange-rate {
+      text-align: center;
+      color: #4b6a8b;
+      font-size: 0.9rem;
+      margin: 12px 0 18px;
+      background: #f0f5fe;
+      padding: 10px;
+      border-radius: 12px;
+    }
+    /* ----- continue btn ----- */
+    .continue-btn {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 14px;
+      background: #1d63a9;
+      color: white;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .continue-btn:hover {
+      background: #15508a;
+    }
+    .continue-btn:active {
+      transform: scale(0.98);
+    }
+    .continue-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+    }
+    /* ----- terms microtext ----- */
+    .checkout-terms {
+      margin-top: 18px;
+      text-align: center;
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+    .checkout-terms a {
+      color: #1d63a9;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .checkout-terms a:hover {
+      text-decoration: underline;
+    }
+    /* ----- step2 (sell) extras ----- */
+    .sell-deposit-card {
+      background: #f0f5fe;
+      border-radius: 16px;
+      padding: 16px 18px;
+      margin: 16px 0 10px;
+      border: 1px solid #d7e4f3;
+    }
+    .sell-deposit-card code {
+      display: block;
+      font-size: 0.8rem;
+      color: #1d63a9;
+      word-break: break-all;
+      background: white;
+      padding: 10px 12px;
+      border-radius: 10px;
+      margin-top: 6px;
+      border: 1px solid #e2edf7;
+    }
+    .sell-deposit-card .copy-btn {
+      background: transparent;
+      border: none;
+      color: #1d63a9;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 6px;
+    }
+    /* ----- step3 (payment) ----- */
+    .step3-payment-card {
+      border: 1px solid #d7e4f3;
+      border-radius: 16px;
+      padding: 18px;
+      background: white;
+      display: grid;
+      gap: 14px;
+    }
+    .step3-payment-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      color: #0f2a44;
+    }
+    .step3-payment-head img {
+      width: 32px;
+      height: 32px;
+    }
+    .step3-pix-qr {
+      width: 160px;
+      height: 160px;
+      border-radius: 12px;
+      border: 1px solid #e2edf7;
+      justify-self: center;
+    }
+    .step3-pix-copy-row {
+      display: grid;
+      grid-template-columns: 1fr 44px;
+      gap: 8px;
+      align-items: center;
+    }
+    .step3-pix-copy {
+      background: #f8fafc;
+      border: 1px solid #e2edf7;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.78rem;
+      color: #1d63a9;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .step3-copy-btn {
+      width: 44px;
+      height: 44px;
+      border: none;
+      border-radius: 12px;
+      background: #1d63a9;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+    .step3-copy-btn:hover {
+      background: #15508a;
+    }
+    .step3-total {
+      font-weight: 700;
+      color: #0f2a44;
+    }
+    .step3-total strong {
+      color: #1d63a9;
+    }
+    /* ---- responsive ---- */
+    @media (max-width: 640px) {
+      .swap-card {
+        padding: 20px 16px;
+      }
+      .header h1 {
+        font-size: 1.2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- header -->
+  <header class="header">
+    <h1>CX <span>— Digital FX Payment</span></h1>
+    <a href="/terms">Terms of Service</a>
+  </header>
+
+  <!-- main card -->
+  <div class="swap-card">
+    <!-- toggle buy / sell -->
+    <div class="toggle-container" role="group" aria-label="Tipo de operação">
+      <button class="toggle-btn active" data-action="buy" id="buyToggle">Buy</button>
+      <button class="toggle-btn" data-action="sell" id="sellToggle">Sell</button>
+    </div>
+
+    <!-- ====== STEP 1: BUY ====== -->
+    <div id="step1" class="step-content">
+      <!-- you pay -->
+      <div class="wallet-input">
+        <label>You pay</label>
+        <div class="input-group">
+          <input type="text" placeholder="0,00" id="buyAmount" value="500,00">
+          <div class="currency-selector">
+            <span>BRL</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- you receive -->
+      <div class="wallet-input">
+        <label>You receive</label>
+        <div class="input-group">
+          <input type="text" placeholder="0,0000" id="buyReceive" value="0,00045" readonly>
+          <div class="currency-selector">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='%23f7931a'%3E%3Cpath d='M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z'/%3E%3C/svg%3E" alt="BTC">
+            <span>BTC</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- exchange rate -->
+      <div class="exchange-rate">
+        1 BTC = R$ 586.420,00 <span style="color:#1d63a9;font-weight:600;">•</span> Fee: 0,8%
+      </div>
+
+      <!-- buyer info (email → name → cpf) progressive -->
+      <div id="buyPayerInfo">
+        <div class="wallet-input">
+          <label>E-mail</label>
+          <div class="input-group">
+            <input type="email" placeholder="seu@email.com" id="buyCustomerEmail" required>
+          </div>
+        </div>
+        <div class="wallet-input">
+          <label>Nome completo</label>
+          <div class="input-group">
+            <input type="text" placeholder="Seu nome" id="buyCustomerName">
+          </div>
+        </div>
+        <div class="wallet-input">
+          <label>CPF (apenas números)</label>
+          <div class="input-group">
+            <input type="text" placeholder="000.000.000-00" id="buyCustomerCpf">
+          </div>
+        </div>
+      </div>
+
+      <!-- continue -->
+      <button class="continue-btn" id="buyContinue">
+        <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+        Continue to payment
+      </button>
+
+      <!-- terms microtext (exactly as requested) -->
+      <div class="checkout-terms">
+        <p>
+          By buying, you agree to our
+          <a href="/terms" target="_blank" rel="noopener">
+            terms of service
+          </a>
+        </p>
+      </div>
+    </div>
+
+    <!-- ====== STEP 2: SELL (deposit) ====== -->
+    <div id="step2" class="step-content hidden">
+      <div class="wallet-input">
+        <label>You send (BTC)</label>
+        <div class="input-group">
+          <input type="text" placeholder="0,0000" id="sellAmount" value="0,0012">
+          <div class="currency-selector">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='%23f7931a'%3E%3Cpath d='M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z'/%3E%3C/svg%3E" alt="BTC">
+            <span>BTC</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="wallet-input">
+        <label>You receive (BRL via PIX)</label>
+        <div class="input-group">
+          <input type="text" placeholder="0,00" id="sellReceive" value="703,70" readonly>
+          <div class="currency-selector">
+            <span>BRL</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="exchange-rate">
+        1 BTC = R$ 586.420,00 • Fee: 0,8% • <span style="color:#1d63a9;">network fees apply</span>
+      </div>
+
+      <!-- deposit wallet -->
+      <div class="sell-deposit-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong style="color:#1d63a9;">Deposit BTC to</strong>
+          <span style="font-size:0.7rem;background:#e2edf7;padding:2px 10px;border-radius:20px;">BTC / Mainnet</span>
+        </div>
+        <code id="sellDepositWallet">bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh</code>
+        <button class="copy-btn" id="sellCopyWallet">📋 Copy address</button>
+        <div style="font-size:0.75rem;color:#64748b;margin-top:6px;">
+          ⚠️ Send only BTC on the Bitcoin network. Minimum 3 confirmations required.
+        </div>
+      </div>
+
+      <!-- sell PIX info (cpf/phone) -->
+      <div class="wallet-input">
+        <label>CPF (para PIX)</label>
+        <div class="input-group">
+          <input type="text" placeholder="000.000.000-00" id="pixCpf" value="123.456.789-00">
+        </div>
+      </div>
+      <div class="wallet-input">
+        <label>Telefone PIX (opcional)</label>
+        <div class="input-group">
+          <input type="text" placeholder="(11) 99999-9999" id="pixPhone">
+        </div>
+      </div>
+
+      <button class="continue-btn" id="sellContinue">
+        <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+        Confirm and get PIX
+      </button>
+
+      <div class="checkout-terms">
+        <p>
+          By selling, you agree to our
+          <a href="/terms" target="_blank" rel="noopener">
+            terms of service
+          </a>
+        </p>
+      </div>
+    </div>
+
+    <!-- ====== STEP 3: PAYMENT (PIX QR / card) ====== -->
+    <div id="step3" class="step-content hidden">
+      <div class="step3-payment-card">
+        <div class="step3-payment-head">
+          <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='%231d63a9'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z'/%3E%3C/svg%3E" alt="PIX">
+          <span>Pagamento via PIX</span>
+        </div>
+
+        <!-- QR Code placeholder -->
+        <div class="step3-pix-qr" style="background:#f0f5fe;display:flex;align-items:center;justify-content:center;font-size:0.8rem;color:#4b6a8b;">
+          QR Code PIX
+        </div>
+
+        <!-- copy & paste area -->
+        <div class="step3-pix-copy-row">
+          <div class="step3-pix-copy" id="pixCopyText">00020126330014br.gov.bcb.pix0114+5511999999995204000053039865802BR5925ChainFX Pagamentos6008SaoPaulo62070503***6304E2B8</div>
+          <button class="step3-copy-btn" id="pixCopyBtn">📋</button>
+        </div>
+
+        <div class="step3-total">
+          Total: <strong id="step3Total">R$ 500,00</strong>
+        </div>
+
+        <!-- confirm payment (simulated) -->
+        <button class="continue-btn" id="confirmPaymentBtn" style="margin-top:0;">
+          <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+          Confirm payment (simulate)
+        </button>
+
+        <div style="font-size:0.75rem;color:#64748b;text-align:center;margin-top:4px;">
+          Ao confirmar, você aceita os <a href="/terms" target="_blank" style="color:#1d63a9;text-decoration:none;">termos</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- small footer -->
+  <div style="margin-top:28px;text-align:center;font-size:0.75rem;color:#94a9c7;">
+    ChainFX • Digital FX Payment • <a href="/privacy" style="color:#1d63a9;text-decoration:none;">Privacy</a>
+  </div>
+</div>
+
+<script>
+  (function() {
+    // toggles
+    const buyToggle = document.getElementById('buyToggle');
+    const sellToggle = document.getElementById('sellToggle');
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    const step3 = document.getElementById('step3');
+
+    function setActive(step) {
+      [step1, step2, step3].forEach(el => el.classList.add('hidden'));
+      if (step === 1) step1.classList.remove('hidden');
+      if (step === 2) step2.classList.remove('hidden');
+      if (step === 3) step3.classList.remove('hidden');
+      // toggle active class
+      buyToggle.classList.toggle('active', step === 1 || step === 3);
+      sellToggle.classList.toggle('active', step === 2);
+    }
+
+    buyToggle.addEventListener('click', () => setActive(1));
+    sellToggle.addEventListener('click', () => setActive(2));
+
+    // buy continue → step3
+    document.getElementById('buyContinue').addEventListener('click', (e) => {
+      e.preventDefault();
+      const email = document.getElementById('buyCustomerEmail');
+      if (!email.value || !email.validity.valid) {
+        alert('Por favor, insira um e-mail válido.');
+        return;
+      }
+      const name = document.getElementById('buyCustomerName');
+      if (!name.value.trim()) {
+        alert('Por favor, insira seu nome completo.');
+        return;
+      }
+      const cpf = document.getElementById('buyCustomerCpf');
+      if (cpf.value.replace(/\D/g,'').length < 11) {
+        alert('Por favor, insira um CPF válido (11 dígitos).');
+        return;
+      }
+      // update total
+      const amount = document.getElementById('buyAmount').value.replace(/[^\d,.]/g,'') || '500,00';
+      document.getElementById('step3Total').textContent = 'R$ ' + amount;
+      setActive(3);
+    });
+
+    // sell continue → step3 (simplified)
+    document.getElementById('sellContinue').addEventListener('click', (e) => {
+      e.preventDefault();
+      const cpf = document.getElementById('pixCpf');
+      if (cpf.value.replace(/\D/g,'').length < 11) {
+        alert('Por favor, insira um CPF válido para PIX.');
+        return;
+      }
+      const amount = document.getElementById('sellReceive').value || '703,70';
+      document.getElementById('step3Total').textContent = 'R$ ' + amount;
+      setActive(3);
+    });
+
+    // copy wallet (sell)
+    document.getElementById('sellCopyWallet').addEventListener('click', () => {
+      const code = document.getElementById('sellDepositWallet');
+      navigator.clipboard?.writeText?.(code.textContent) || alert('Copiado: ' + code.textContent);
+    });
+
+    // copy PIX
+    document.getElementById('pixCopyBtn').addEventListener('click', () => {
+      const text = document.getElementById('pixCopyText').textContent;
+      navigator.clipboard?.writeText?.(text) || alert('Copiado!');
+    });
+
+    // confirm payment (simulate)
+    document.getElementById('confirmPaymentBtn').addEventListener('click', () => {
+      alert('✅ Pagamento simulado com sucesso!\n(Em produção, isso iniciaria a verificação on-chain.)');
+    });
+
+    // pre-fill buy email valid for demo
+    document.getElementById('buyCustomerEmail').value = 'cliente@example.com';
+    document.getElementById('buyCustomerName').value = 'João Silva';
+    document.getElementById('buyCustomerCpf').value = '12345678900';
+  })();
+</script>
+
+</body>
+</html>

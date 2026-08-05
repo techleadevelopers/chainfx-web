@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"payment-gateway/internal/email"
 	"payment-gateway/internal/models"
 	"payment-gateway/internal/money"
 )
@@ -77,6 +78,19 @@ func (s *Server) handleDCACreate(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
+	s.sendMobileTransactionEmailAsync(uid, "Estrategia DCA criada na ChainFX", email.TransactionReceipt{
+		Title: "DCA criado",
+		Intro: "Sua estrategia de compra recorrente foi criada.",
+		CTA:   "Abrir app",
+		Details: []email.TransactionDetail{
+			{Label: "Ativo", Value: tokenSymbol},
+			{Label: "Rede", Value: network},
+			{Label: "Valor", Value: "R$ " + amountText},
+			{Label: "Frequencia", Value: string(freq)},
+			{Label: "Estrategia", Value: strategy.ID, CopyHint: true},
+			{Label: "Criado em", Value: mobileNowText()},
+		},
+	})
 	writeJSON(w, http.StatusCreated, strategy)
 }
 
@@ -140,6 +154,29 @@ func (s *Server) handleDCAUpdate(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]any{"error": "estrategia nao encontrada"})
 		return
 	}
+	if req.Active != nil {
+		title := "DCA pausado"
+		intro := "Sua estrategia de compra recorrente foi pausada."
+		subject := "Estrategia DCA pausada na ChainFX"
+		if *req.Active {
+			title = "DCA reativado"
+			intro = "Sua estrategia de compra recorrente foi reativada."
+			subject = "Estrategia DCA reativada na ChainFX"
+		}
+		s.sendMobileTransactionEmailAsync(uid, subject, email.TransactionReceipt{
+			Title: title,
+			Intro: intro,
+			CTA:   "Abrir app",
+			Details: []email.TransactionDetail{
+				{Label: "Ativo", Value: strategy.TokenSymbol},
+				{Label: "Rede", Value: strategy.Network},
+				{Label: "Valor", Value: mobileMoneyBRL(strategy.AmountBRL)},
+				{Label: "Frequencia", Value: string(strategy.Frequency)},
+				{Label: "Estrategia", Value: strategy.ID, CopyHint: true},
+				{Label: "Atualizado em", Value: mobileNowText()},
+			},
+		})
+	}
 	writeJSON(w, http.StatusOK, strategy)
 }
 
@@ -155,6 +192,15 @@ func (s *Server) handleDCADelete(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))
 		return
 	}
+	s.sendMobileTransactionEmailAsync(uid, "Estrategia DCA cancelada na ChainFX", email.TransactionReceipt{
+		Title: "DCA cancelado",
+		Intro: "Sua estrategia de compra recorrente foi cancelada.",
+		CTA:   "Abrir app",
+		Details: []email.TransactionDetail{
+			{Label: "Estrategia", Value: id, CopyHint: true},
+			{Label: "Cancelado em", Value: mobileNowText()},
+		},
+	})
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 

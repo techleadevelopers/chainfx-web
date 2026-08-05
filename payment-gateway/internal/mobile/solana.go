@@ -3,12 +3,14 @@ package mobile
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"payment-gateway/internal/email"
 	"payment-gateway/internal/solana"
 )
 
@@ -178,6 +180,21 @@ func (s *Server) handleSolanaSend(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, status, map[string]any{"code": code, "message": solanaUserMessage(code)})
 		return
 	}
+	s.sendMobileTransactionEmailAsync(userIDFromCtx(r), "Solana enviada pela ChainFX", email.TransactionReceipt{
+		Title:  "Solana enviada",
+		Intro:  "Sua transferencia Solana foi transmitida com sucesso.",
+		CTA:    "Ver Scan",
+		CTAURL: mobileScanURL("SOLANA", result.Signature),
+		Details: []email.TransactionDetail{
+			{Label: "Ativo", Value: "SOL"},
+			{Label: "Valor", Value: fmt.Sprintf("%.9f SOL", float64(result.AmountLamports)/1_000_000_000)},
+			{Label: "Taxa", Value: fmt.Sprintf("%d lamports", result.FeeLamports)},
+			{Label: "Destino", Value: to, CopyHint: true},
+			{Label: "Assinatura", Value: result.Signature, CopyHint: true},
+			{Label: "Status", Value: result.Status},
+			{Label: "Enviado em", Value: mobileNowText()},
+		},
+	})
 	writeJSON(w, http.StatusAccepted, result)
 }
 

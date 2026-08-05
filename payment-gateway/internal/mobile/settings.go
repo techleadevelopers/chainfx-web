@@ -137,6 +137,13 @@ func (s *Server) handleUpdatePreferences(w http.ResponseWriter, r *http.Request)
 	}
 	if req.BiometryEnabled != nil {
 		_ = mobileDB(s.db).UpdateUser(r.Context(), uid, map[string]any{"biometry_enabled": *req.BiometryEnabled})
+		status := "desativada"
+		intro := "A biometria foi desativada na sua conta."
+		if *req.BiometryEnabled {
+			status = "ativada"
+			intro = "A biometria foi ativada na sua conta."
+		}
+		s.sendMobileSecurityEmailAsync(uid, "Biometria "+status, intro)
 	}
 	if err := mobileDB(s.db).UpsertSettings(r.Context(), settings); err != nil {
 		writeJSON(w, http.StatusInternalServerError, mobileProductError("NETWORK_UNAVAILABLE", "Servico indisponivel no momento."))

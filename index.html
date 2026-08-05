@@ -246,6 +246,7 @@ void main() {
             <div class="nav-links" id="primaryNav">
                 <a href="#trade" class="active" data-view="trade">Trade</a>
                 <a href="#markets" data-view="markets">Markets</a>
+                <a href="#news" data-view="news">News</a>
                 <a href="#developers" data-view="developers">Developers</a>
             </div>
         </div>
@@ -662,9 +663,7 @@ void main() {
 
     <button class="confirm-payment-btn" id="confirmPaymentBtn">Ver Scan</button>
 
-    <div class="terms payment-terms-below">
-        By buying, you agree to our <a href="#">terms of service</a>
-    </div>
+
 </div>
 
             <div class="payment-info hidden" id="orderInfoBox" style="margin-top:20px;">
@@ -828,6 +827,20 @@ void main() {
                     <div class="market-actions"><button data-market-action="buy">Buy</button><button data-market-action="sell">Sell</button></div>
                 </div>
                 </div><!-- /.markets-body -->
+            </div>
+        </div>
+    </section>
+
+    <section id="newsView" class="news-view hidden" aria-labelledby="newsTitle">
+        <div class="news-shell">
+            <div class="news-header">
+                <div>
+                    <h2 id="newsTitle">Market News</h2>
+                    <p>Latest updates from the digital asset market</p>
+                </div>
+            </div>
+            <div class="news-cards" id="newsCards">
+                <div class="news-loading">Loading latest news…</div>
             </div>
         </div>
     </section>

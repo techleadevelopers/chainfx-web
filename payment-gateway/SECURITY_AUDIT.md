@@ -1,4 +1,4 @@
-﻿# ChainFX â€” Auditoria Completa de SeguranÃ§a e Produção
+﻿# ChainFX â€” Auditoria Completa de Segurança e Produção
 
 > Data: 2026-07-12  
 > Escopo: `internal/`, `internal/mcp/`, `internal/mobile/`, `internal/workers/`, `internal/webhooks/`, `internal/database/`, `signer/`, `cmd/`
@@ -56,7 +56,7 @@ Controles de hardening HTTP aplicados depois da varredura cloud:
 
 ### C-1 Â· JWT Secret padrÃ£o em produção  
 **Arquivo:** `internal/mobile/server.go`  
-**Risco:** Qualquer pessoa que conheÃ§a o valor padrÃ£o `change_me_at_least_32_chars_secret` pode forjar tokens de acesso para qualquer usuário do app mobile.
+**Risco:** Qualquer pessoa que conheça o valor padrÃ£o `change_me_at_least_32_chars_secret` pode forjar tokens de acesso para qualquer usuário do app mobile.
 
 **Correção aplicada:**
 - `loadMobileConfig()` agora faz `panic()` imediato se `APP_ENV=production` e as vars nÃ£o foram definidas.
@@ -149,7 +149,7 @@ Depois filtrar `ListWebhookSubscriptions` por `agent_api_key_hash = shortMCPSecr
 **Arquivo:** `internal/mcp/tools.go` (linhas 494, 1019)  
 **Risco:** Qualquer agente com MCP pode consultar status de qualquer ordem ou purchase se souber o UUID â€” sem verificação de ownership.
 
-**Status:** âš ï¸ Requer mudanÃ§a de schema (adicionar `agent_wallet` ou `buyer_api_key` Ã s tabelas de orders/purchases) para fix completo. Documentado com TODO no código.
+**Status:** âš ï¸ Requer mudança de schema (adicionar `agent_wallet` ou `buyer_api_key` Ã s tabelas de orders/purchases) para fix completo. Documentado com TODO no código.
 
 **Mitigação imediata recomendada:** rate-limit severo em `toolGetOrderStatus` + alertas de anomalia (muitas consultas de UUIDs distintos por um agente).
 
@@ -328,7 +328,7 @@ ALTER TABLE assets ADD CONSTRAINT chk_symbol_upper CHECK (symbol = UPPER(symbol)
 
 ## Resumo das Correções Aplicadas Nesta Auditoria
 
-| # | Arquivo | MudanÃ§a |
+| # | Arquivo | Mudança |
 |---|---------|---------|
 | C-1 | `internal/mobile/server.go` | Panic em produção com secrets padrÃ£o; warning em dev |
 | C-2 | `internal/mobile/server.go` + `ws.go` | Auth obrigatória em WS /orders e /notifications; broadcast scoped por uid |

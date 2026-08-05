@@ -2,11 +2,15 @@ package bitcoin
 
 import (
 	"context"
+	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"strconv"
+	"strings"
 
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	"golang.org/x/crypto/pbkdf2"
 )
 
 // TreasurySigner assina transações BTC para a Treasury operacional.
@@ -27,8 +31,9 @@ type TreasurySigner interface {
 // AESGCMTreasurySigner implementa TreasurySigner com chave AES-GCM armazenada localmente.
 //
 // Formato da chave: BTC_TREASURY_ENCRYPTED_KEY deve ser o hex AES-GCM de um
-// raw private key de 32 bytes (secp256k1). Este formato é DIFERENTE de
-// BTC_ENCRYPTED_SEED (que cifra um xpriv derivado do HD wallet).
+// raw private key de 32 bytes (secp256k1), xpriv/tpriv ou mnemonic conforme
+// BTC_TREASURY_KEY_FORMAT. Este material é DIFERENTE de BTC_ENCRYPTED_SEED
+// (wallets dos usuários).
 //
 // A separação lógica entre a chave da Treasury e a seed dos usuários é explícita
 // e obrigatória — nunca reutilize BTC_ENCRYPTED_SEED para a Treasury.
@@ -40,7 +45,7 @@ type AESGCMTreasurySigner struct {
 
 // NewAESGCMTreasurySigner cria o signer a partir da configuração da treasury.
 // Retorna erro se a chave não puder ser decifrada ou validada.
-func NewAESGCMTreasurySigner(cfg *TreasuryConfig) (*AESGCMTreasurySigner, error) {
+func NewAESGCMTreasurySigner(cfg *TreasuryConfig, btcCfgOpt ...*Config) (*AESGCMTreasurySigner, error) {
 	if cfg == nil || !cfg.Enabled {
 		return nil, fmt.Errorf("bitcoin/treasury: TreasuryConfig não habilitada")
 	}
@@ -68,8 +73,11 @@ func NewAESGCMTreasurySigner(cfg *TreasuryConfig) (*AESGCMTreasurySigner, error)
 		return nil, fmt.Errorf("bitcoin/treasury: falha ao decifrar chave da treasury: %w", err)
 	}
 
-	// Plaintext esperado: 32 bytes em hex (64 caracteres)
-	privKeyRaw, err := parseTreasuryPrivKey(plaintext)
+	var btcCfg *Config
+	if len(btcCfgOpt) > 0 {
+		btcCfg = btcCfgOpt[0]
+	}
+	privKeyRaw, err := resolveTreasuryPrivKey(cfg, plaintext, btcCfg)
 	if err != nil {
 		return nil, fmt.Errorf("bitcoin/treasury: formato de chave privada inválido: %w", err)
 	}
@@ -78,12 +86,114 @@ func NewAESGCMTreasurySigner(cfg *TreasuryConfig) (*AESGCMTreasurySigner, error)
 	if err != nil {
 		return nil, fmt.Errorf("bitcoin/treasury: erro ao derivar pubkey da treasury: %w", err)
 	}
+	if btcCfg != nil && cfg.Address != "" {
+		derivedAddress, err := P2WPKHAddress(pubKeyBytes, btcCfg.HRP())
+		if err != nil {
+			return nil, fmt.Errorf("bitcoin/treasury: erro ao validar endereço derivado: %w", err)
+		}
+		if !strings.EqualFold(derivedAddress, strings.TrimSpace(cfg.Address)) {
+			return nil, fmt.Errorf("bitcoin/treasury: chave derivada não corresponde a BTC_TREASURY_ADDRESS")
+		}
+	}
 
 	return &AESGCMTreasurySigner{
 		keyID:       cfg.SignerKeyID,
 		privKeyRaw:  privKeyRaw,
 		pubKeyBytes: pubKeyBytes,
 	}, nil
+}
+
+func resolveTreasuryPrivKey(cfg *TreasuryConfig, plaintext []byte, btcCfg *Config) ([]byte, error) {
+	format := strings.ToLower(strings.TrimSpace(cfg.KeyFormat))
+	if format == "" {
+		format = "raw"
+	}
+	switch format {
+	case "raw", "privkey", "hex":
+		return parseTreasuryPrivKey(plaintext)
+	case "xpriv", "tpriv":
+		key, err := ParseXPriv(strings.TrimSpace(string(plaintext)))
+		if err != nil {
+			return nil, err
+		}
+		return deriveTreasuryPrivKeyFromExtendedKey(key, treasuryDerivationPath(cfg, btcCfg, false))
+	case "mnemonic", "seedphrase", "seed_phrase":
+		if btcCfg == nil {
+			return nil, fmt.Errorf("BTC config obrigatória para BTC_TREASURY_KEY_FORMAT=mnemonic")
+		}
+		seed := mnemonicToSeed(strings.TrimSpace(string(plaintext)), cfg.MnemonicPassphrase)
+		master, err := NewMasterKeyForNetwork(seed, btcCfg.Network)
+		if err != nil {
+			return nil, err
+		}
+		return deriveTreasuryPrivKeyFromExtendedKey(master, treasuryDerivationPath(cfg, btcCfg, true))
+	default:
+		return nil, fmt.Errorf("BTC_TREASURY_KEY_FORMAT inválido %q", cfg.KeyFormat)
+	}
+}
+
+func mnemonicToSeed(mnemonic, passphrase string) []byte {
+	salt := []byte("mnemonic" + passphrase)
+	return pbkdf2.Key([]byte(mnemonic), salt, 2048, 64, sha512.New)
+}
+
+func deriveTreasuryPrivKeyFromExtendedKey(key *ExtendedKey, path string) ([]byte, error) {
+	derived, err := deriveExtendedPrivatePath(key, path)
+	if err != nil {
+		return nil, err
+	}
+	return derived.RawPrivKey()
+}
+
+func treasuryDerivationPath(cfg *TreasuryConfig, btcCfg *Config, absoluteDefault bool) string {
+	if strings.TrimSpace(cfg.DerivationPath) != "" {
+		return strings.TrimSpace(cfg.DerivationPath)
+	}
+	if !absoluteDefault {
+		return ""
+	}
+	coin := uint32(0)
+	if btcCfg != nil && (btcCfg.Network == Testnet || btcCfg.Network == Signet || btcCfg.Network == Regtest) {
+		coin = 1
+	}
+	return fmt.Sprintf("m/84'/%d'/0'/0/0", coin)
+}
+
+func deriveExtendedPrivatePath(root *ExtendedKey, path string) (*ExtendedKey, error) {
+	if root == nil {
+		return nil, fmt.Errorf("xpriv ausente")
+	}
+	path = strings.TrimSpace(path)
+	if path == "" || path == "m" {
+		return root, nil
+	}
+	parts := strings.Split(path, "/")
+	start := 0
+	if parts[0] == "m" {
+		start = 1
+	}
+	key := root
+	for _, part := range parts[start:] {
+		if part == "" {
+			return nil, fmt.Errorf("derivation path inválido %q", path)
+		}
+		hardened := strings.HasSuffix(part, "'") || strings.HasSuffix(strings.ToLower(part), "h")
+		part = strings.TrimSuffix(strings.TrimSuffix(part, "'"), "h")
+		part = strings.TrimSuffix(part, "H")
+		n, err := strconv.ParseUint(part, 10, 31)
+		if err != nil {
+			return nil, fmt.Errorf("índice inválido no derivation path %q: %w", path, err)
+		}
+		idx := uint32(n)
+		if hardened {
+			idx += hardenedOffset
+		}
+		key, err = key.PrivateChild(idx)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return key, nil
 }
 
 // KeyID retorna o identificador auditável da chave (não é o segredo).

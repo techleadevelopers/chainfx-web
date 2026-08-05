@@ -87,7 +87,7 @@ func (w *EmailWorker) sendBuyReceipt(ev Event) {
 	if err := w.mailer.SendBuyCompleted(to, email.Receipt{
 		OrderID:      buy.ID,
 		Asset:        buy.Asset,
-		Network:      "BSC",
+		Network:      buy.Network,
 		AmountFiat:   buy.AmountFiat,
 		FeeFiat:      buy.FeeBRL,
 		PayoutFiat:   buy.PayoutBRL,

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"payment-gateway/internal/database"
+	"payment-gateway/internal/email"
 	"payment-gateway/internal/money"
 	"payment-gateway/internal/transactions"
 	"payment-gateway/internal/workers"
@@ -52,6 +53,7 @@ func (s *Server) handleCreateBuy(w http.ResponseWriter, r *http.Request) {
 		QuoteID        string         `json:"quoteId"`
 		RateLocked     float64        `json:"rateLocked"`
 		FeeBRL         float64        `json:"feeBRL"`
+		Surface        string         `json:"surface"`
 		Card           struct {
 			PaymentToken   string         `json:"paymentToken"`
 			Brand          string         `json:"brand"`
@@ -205,6 +207,7 @@ func (s *Server) handleCreateBuy(w http.ResponseWriter, r *http.Request) {
 	status := "aguardando_" + paymentMethod
 	buy, err := s.db.CreateBuyOrder(r.Context(), database.BuyOrderInput{
 		ID:                buyID,
+		Channel:           req.Surface,
 		Status:            status,
 		AmountBRL:         amountBRL,
 		AmountFiat:        totalFiat,
@@ -219,7 +222,7 @@ func (s *Server) handleCreateBuy(w http.ResponseWriter, r *http.Request) {
 		Network:           deliveryNetwork,
 		DestAddress:       strings.TrimSpace(req.Address),
 		RateLocked:        rate,
-		RateLockExpiresAt: time.Now().Add(time.Duration(s.cfg.RateLockSec) * time.Second),
+		RateLockExpiresAt: time.Now().Add(tradeRateLockTTL(req.Surface, s.cfg.RateLockSec)),
 		PixPayload:        paymentPayload,
 		CustomerEmail:     customerInput.Email,
 	})
@@ -229,6 +232,20 @@ func (s *Server) handleCreateBuy(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = s.db.AddBuyEvent(r.Context(), buy.ID, "buy.meta", map[string]any{"requestId": requestID(r), "ip": clientIP(r), "userAgent": r.UserAgent(), "customer": customerAudit, "quoteId": strings.TrimSpace(req.QuoteID)})
 	s.workers.Bus.Publish(workers.Event{Type: "buy.created", OrderID: buy.ID, Payload: map[string]any{"requestId": requestID(r), "amountFiat": totalFiat, "fiatCurrency": fiatCurrency, "paymentMethod": paymentMethod}})
+	go s.email.NotifyOpsOrderCreated(email.OpsOrderCreated{
+		Subject:       "ChainFX: nova ordem de compra",
+		Side:          "buy",
+		Surface:       req.Surface,
+		UserName:      customerInput.Name,
+		OrderID:       buy.ID,
+		AmountBRL:     totalFiat,
+		CryptoAmount:  cryptoAmount,
+		Asset:         asset,
+		Network:       deliveryNetwork,
+		Wallet:        strings.TrimSpace(req.Address),
+		PixKey:        firstNonEmpty(req.PixPhone, req.PixCpf, customerInput.Phone, customerInput.CPF),
+		PaymentMethod: paymentMethod,
+	})
 	contract := transactions.Build(transactions.BuildInput{
 		Side:               transactions.SideBuy,
 		OrderID:            buy.ID,
@@ -250,7 +267,7 @@ func (s *Server) handleCreateBuy(w http.ResponseWriter, r *http.Request) {
 		Status:             transactions.CanonicalBuyStatus(status),
 		Request:            r,
 		Metadata: map[string]any{
-			"surface":               "api",
+			"surface":               defaultString(req.Surface, "api"),
 			"rateLockExpiresAt":     buy.RateLockExpiresAt,
 			"providerPaymentId":     firstNonEmpty(req.ProviderPaymentID, mapString(paymentPayload, "providerPaymentId"), mapString(paymentPayload, "txid")),
 			"quoteId":               strings.TrimSpace(req.QuoteID),

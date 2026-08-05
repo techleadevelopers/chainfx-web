@@ -1765,14 +1765,14 @@ func (q *mobileQueries) GetSellOrderByUser(ctx context.Context, orderID, userID 
 // TagOrderUser sets user_id on an order (used after anonymous order creation).
 func (q *mobileQueries) TagOrderUser(ctx context.Context, orderID, userID string) error {
 	_, err := q.sql.ExecContext(ctx,
-		"UPDATE orders SET user_id=$1::uuid WHERE id=$2::uuid AND user_id IS NULL", userID, orderID)
+		"UPDATE orders SET user_id=$1::uuid, channel='mobile' WHERE id=$2::uuid AND user_id IS NULL", userID, orderID)
 	return err
 }
 
 // TagBuyOrderUser sets user_id on a buy order created through the mobile API.
 func (q *mobileQueries) TagBuyOrderUser(ctx context.Context, orderID, userID string) error {
 	_, err := q.sql.ExecContext(ctx,
-		"UPDATE buy_orders SET user_id=$1::uuid WHERE id=$2::uuid AND user_id IS NULL", userID, orderID)
+		"UPDATE buy_orders SET user_id=$1::uuid, channel='mobile' WHERE id=$2::uuid AND user_id IS NULL", userID, orderID)
 	return err
 }
 

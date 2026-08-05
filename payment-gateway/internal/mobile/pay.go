@@ -564,7 +564,7 @@ LIMIT 1`, userID, rawCode).Scan(
 }
 
 func parseMobilePayCode(raw string) mobilePayParsed {
-	raw = strings.TrimSpace(raw)
+	raw = normalizeMobilePayRawCode(raw)
 	if raw == "" {
 		return mobilePayParsed{Valid: false, Error: "raw_code obrigatorio"}
 	}
@@ -573,10 +573,11 @@ func parseMobilePayCode(raw string) mobilePayParsed {
 	if !strings.Contains(upper, "BR.GOV.BCB.PIX") {
 		return mobilePayParsed{RawCode: raw, Valid: false, Error: "QR Pay mobile aceita somente BR Code Pix"}
 	}
-	if emvTag(emvTag(raw, "26"), "00") != "BR.GOV.BCB.PIX" {
+	merchantAccount := mobilePixMerchantAccountFromBRCode(raw)
+	if merchantAccount == "" {
 		return mobilePayParsed{RawCode: raw, Valid: false, Error: "BR Code Pix invalido"}
 	}
-	if mobilePixKeyFromBRCode(raw) == "" {
+	if mobilePixKeyFromMerchantAccount(merchantAccount) == "" {
 		return mobilePayParsed{RawCode: raw, Valid: false, Error: "chave Pix nao encontrada no BR Code"}
 	}
 	if amount <= 0 {
@@ -595,6 +596,12 @@ func parseMobilePayCode(raw string) mobilePayParsed {
 		RawCode:         raw,
 		Valid:           true,
 	}
+}
+
+func normalizeMobilePayRawCode(raw string) string {
+	raw = strings.TrimSpace(raw)
+	raw = strings.NewReplacer("\r", "", "\n", "", "\t", "").Replace(raw)
+	return strings.TrimSpace(raw)
 }
 
 func parseMobilePixAmount(raw string) float64 {
@@ -632,6 +639,21 @@ func emvTag(raw, tag string) string {
 		i += 4 + size
 	}
 	return ""
+}
+
+func mobilePixMerchantAccountFromBRCode(raw string) string {
+	raw = normalizeMobilePayRawCode(raw)
+	for tag := 26; tag <= 51; tag++ {
+		merchantAccount := emvTag(raw, fmt.Sprintf("%02d", tag))
+		if strings.EqualFold(emvTag(merchantAccount, "00"), "BR.GOV.BCB.PIX") {
+			return merchantAccount
+		}
+	}
+	return ""
+}
+
+func mobilePixKeyFromMerchantAccount(merchantAccount string) string {
+	return strings.TrimSpace(emvTag(merchantAccount, "01"))
 }
 
 func txGetMobilePaymentByIdempotency(r *http.Request, tx *sql.Tx, userID, key string) (id, status string, err error) {

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"payment-gateway/internal/database"
+	"payment-gateway/internal/email"
 	"payment-gateway/internal/models"
 	"payment-gateway/internal/transactions"
 	"payment-gateway/internal/workers"
@@ -16,7 +17,14 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-const sellDepositTTL = 5 * time.Minute
+const webTradeTTL = 15 * time.Minute
+
+func tradeRateLockTTL(surface string, fallbackSec int) time.Duration {
+	if strings.EqualFold(strings.TrimSpace(surface), "mobile") && fallbackSec > 0 {
+		return time.Duration(fallbackSec) * time.Second
+	}
+	return webTradeTTL
+}
 
 func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 	markLegacyRoute(w, r, "/sell")
@@ -30,9 +38,10 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		PixCpf       string  `json:"pixCpf"`
 		PixPhone     string  `json:"pixPhone"`
 		Email        string  `json:"email"`
+		CustomerName string  `json:"customerName"`
 		RateLocked   float64 `json:"rateLocked"`
 		QuoteID      string  `json:"quoteId"`
-		Surface      string `json:"surface"`
+		Surface      string  `json:"surface"`
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "JSON inválido"})
@@ -61,59 +70,59 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 	var depositAddress string
 	var btcFunding *database.BTCSellFundingInput
 	if network == "BITCOIN" {
-	depositAddress = strings.TrimSpace(s.cfg.SellBTCWalletAddress)
+		depositAddress = strings.TrimSpace(s.cfg.SellBTCWalletAddress)
 
-	if depositAddress == "" {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
-			"error": "carteira BTC de deposito nao configurada",
-		})
-		return
-	}
+		if depositAddress == "" {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+				"error": "carteira BTC de deposito nao configurada",
+			})
+			return
+		}
 
-	// SELL WEB:
-	// usa a wallet BTC operacional da ChainFX.
-	// NÃO chama scanner.
-	// NÃO exige wallet cadastrada.
-	if strings.EqualFold(strings.TrimSpace(req.Surface), "web") {
-		btcFunding = nil
+		// SELL WEB:
+		// usa a wallet BTC operacional da ChainFX.
+		// NÃO chama scanner.
+		// NÃO exige wallet cadastrada.
+		if strings.EqualFold(strings.TrimSpace(req.Surface), "web") {
+			btcFunding = nil
+		} else {
+			if s.workers == nil || s.workers.BTCSvc == nil {
+				writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+					"error": "scanner BTC nao esta habilitado",
+				})
+				return
+			}
+
+			btcNetwork := string(s.workers.BTCSvc.Config().Network)
+
+			walletAddress, err := s.db.FindBTCWalletAddressByAddress(
+				ctx,
+				btcNetwork,
+				depositAddress,
+			)
+			if err != nil {
+				writeError(w, err)
+				return
+			}
+
+			if walletAddress == nil {
+				writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+					"error":   "wallet BTC de SELL nao esta cadastrada no scanner",
+					"address": depositAddress,
+					"network": btcNetwork,
+				})
+				return
+			}
+
+			btcFunding = &database.BTCSellFundingInput{
+				UserID:          walletAddress.UserID,
+				WalletAddressID: walletAddress.ID,
+				BTCAddress:      walletAddress.Address,
+				BTCNetwork:      walletAddress.Network,
+				QuoteID:         req.QuoteID,
+			}
+		}
 	} else {
-		if s.workers == nil || s.workers.BTCSvc == nil {
-			writeJSON(w, http.StatusServiceUnavailable, map[string]any{
-				"error": "scanner BTC nao esta habilitado",
-			})
-			return
-		}
-
-		btcNetwork := string(s.workers.BTCSvc.Config().Network)
-
-		walletAddress, err := s.db.FindBTCWalletAddressByAddress(
-			ctx,
-			btcNetwork,
-			depositAddress,
-		)
-		if err != nil {
-			writeError(w, err)
-			return
-		}
-
-		if walletAddress == nil {
-			writeJSON(w, http.StatusServiceUnavailable, map[string]any{
-				"error":   "wallet BTC de SELL nao esta cadastrada no scanner",
-				"address": depositAddress,
-				"network": btcNetwork,
-			})
-			return
-		}
-
-		btcFunding = &database.BTCSellFundingInput{
-			UserID:          walletAddress.UserID,
-			WalletAddressID: walletAddress.ID,
-			BTCAddress:      walletAddress.Address,
-			BTCNetwork:      walletAddress.Network,
-			QuoteID:         req.QuoteID,
-		}
-	}
-} else {
 		depositAddress = strings.TrimSpace(firstNonEmpty(s.cfg.SellWalletAddress, req.Address))
 		if depositAddress == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "endereco EVM de deposito obrigatorio"})
@@ -172,6 +181,7 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 	fee := spread
 	totalBRL := payout
 	order, err := s.db.CreateOrder(ctx, database.OrderInput{
+		Channel:           req.Surface,
 		Status:            string(models.StatusAguardandoDeposito),
 		AmountBRL:         totalBRL,
 		AmountUSDT:        sourceAmount,
@@ -181,7 +191,7 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		Asset:             asset,
 		Network:           network,
 		RateLocked:        rate,
-		RateLockExpiresAt: time.Now().Add(sellDepositTTL),
+		RateLockExpiresAt: time.Now().Add(tradeRateLockTTL(req.Surface, s.cfg.RateLockSec)),
 		RequestID:         requestID(r),
 		PixCpf:            req.PixCpf,
 		PixPhone:          req.PixPhone,
@@ -201,7 +211,19 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = s.db.AddEvent(ctx, order.ID, "order.meta", map[string]any{"requestId": requestID(r), "ip": clientIP(r), "userAgent": r.UserAgent()})
 	s.workers.Bus.Publish(workers.Event{Type: "order.created", OrderID: order.ID, Payload: map[string]any{"requestId": requestID(r), "amountBRL": totalBRL}})
-	go s.email.NotifyOps("ChainFx: nova ordem criada", fmt.Sprintf("Ordem %s criada para %.2f BRL. EndereÃ§o: %s", order.ID, totalBRL, depositAddress))
+	go s.email.NotifyOpsOrderCreated(email.OpsOrderCreated{
+		Subject:      "ChainFX: nova ordem de venda",
+		Side:         "sell",
+		Surface:      req.Surface,
+		UserName:     req.CustomerName,
+		OrderID:      order.ID,
+		AmountBRL:    totalBRL,
+		CryptoAmount: sourceAmount,
+		Asset:        asset,
+		Network:      network,
+		Wallet:       depositAddress,
+		PixKey:       firstNonEmpty(req.PixPhone, req.PixCpf),
+	})
 	contract := transactions.Build(transactions.BuildInput{
 		Side:               transactions.SideSell,
 		OrderID:            order.ID,
@@ -222,7 +244,7 @@ func (s *Server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		Status:             transactions.CanonicalSellStatus(string(order.Status)),
 		Request:            r,
 		Metadata: map[string]any{
-			"surface":           "api",
+			"surface":           defaultString(req.Surface, "api"),
 			"spreadBRL":         spread,
 			"rateLockExpiresAt": order.RateLockExpiresAt,
 		},

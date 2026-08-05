@@ -383,6 +383,11 @@ body.index-page .contact-hero::before {
     padding: 34px 0 38px;
   }
 
+  body.index-page .terms-view {
+    width: min(100%, calc(100vw - 28px));
+    padding: 34px 0 38px;
+  }
+
   body.index-page .developers-hero {
     text-align: center;
   }
@@ -402,6 +407,30 @@ body.index-page .contact-hero::before {
   body.index-page .developers-status-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
+  }
+
+  body.index-page .terms-hero {
+    padding: 22px;
+    border-radius: 12px;
+  }
+
+  body.index-page .terms-grid {
+    grid-template-columns: 1fr;
+  }
+
+  body.index-page .terms-panel {
+    min-height: 0;
+    padding: 18px;
+    border-radius: 8px;
+  }
+
+  body.index-page .terms-footer-panel {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  body.index-page .terms-footer-panel a {
+    margin-left: 0;
   }
 
   body.index-page .developers-status-grid > div {
@@ -605,7 +634,7 @@ body.index-page .contact-hero::before {
   body.index-page #app {
     width: min(100%, calc(100vw - 28px));
     gap: 24px;
-    padding: 36px 0 34px;
+    padding: 36px 0 22px;
   }
 
   body.index-page .content-left {
@@ -853,6 +882,15 @@ body.index-page .contact-hero::before {
   body.index-page .exchange-rate {
     margin: 10px 0;
     font-size: 0.78rem;
+    min-height: 16px;
+    gap: 5px;
+  }
+
+  body.index-page .exchange-rate .loading-spinner {
+    width: 10px;
+    height: 10px;
+    flex-basis: 10px;
+    border-width: 1.5px;
   }
 
   body.index-page .continue-btn,
@@ -958,7 +996,7 @@ body.index-page .contact-hero::before {
 @media (max-width: 420px) {
   body.index-page #app {
     width: min(100%, calc(100vw - 20px));
-    padding-bottom: 24px;
+    padding-bottom: 14px;
   }
 
   body.index-page .hero-title {

@@ -13,6 +13,7 @@ import (
 
 	"payment-gateway/internal/config"
 	"payment-gateway/internal/database"
+	"payment-gateway/internal/email"
 	"payment-gateway/internal/httpclient"
 	"payment-gateway/internal/liquidity"
 	"payment-gateway/internal/money"
@@ -161,6 +162,7 @@ func (dw *DCAWorker) confirmDCAExecution(ctx context.Context, buyOrderID string)
 		"amount_brl":    amountBRLText,
 		"crypto_amount": cryptoAmountText,
 	})
+	go dw.sendDCAExecutionEmail(context.Background(), dcaStrategy{ID: strategyID, ExecutionID: execID}, "completed", "Execucao DCA concluida na ChainFX", "Sua compra recorrente foi concluida.", "", amountBRLText, cryptoAmountText)
 }
 
 type dcaStrategy struct {
@@ -339,6 +341,7 @@ func (dw *DCAWorker) execute(ctx context.Context, s dcaStrategy) {
 			slog.Warn("DCAWorker: erro ao concluir simulacao", "strategy_id", s.ID, "err", err)
 		} else {
 			slog.Info("DCAWorker: DCA simulado concluido", "strategy_id", s.ID)
+			go dw.sendDCAExecutionEmail(context.Background(), s, "completed", "Execucao DCA concluida na ChainFX", "Sua compra recorrente foi concluida.", "", s.amountBRLString(), "")
 		}
 		return
 	}
@@ -451,6 +454,7 @@ func (dw *DCAWorker) execute(ctx context.Context, s dcaStrategy) {
 			SET buy_order_id=$1::uuid, status='provider_unknown', provider_status='quote_expired_after_buy_order',
 			    error_message='quote expirada apos criar buy order DCA', updated_at=NOW()
 			WHERE id=$2::uuid AND status NOT IN ('completed','manual_review')`, buy.ID, s.ExecutionID)
+		go dw.sendDCAExecutionEmail(context.Background(), s, "manual_review", "Execucao DCA em revisao na ChainFX", "Sua execucao DCA precisa de revisao manual.", "quote expirada apos criar buy order DCA", s.amountBRLString(), "")
 		return
 	}
 
@@ -887,6 +891,57 @@ func (dw *DCAWorker) markExecutionFailed(ctx context.Context, execID string, s d
 			"error":       errMsg,
 		},
 	})
+	go dw.sendDCAExecutionEmail(context.Background(), s, "failed", "Execucao DCA falhou na ChainFX", "Sua execucao DCA nao foi concluida e sera tentada novamente quando aplicavel.", errMsg, s.amountBRLString(), "")
+}
+
+func (dw *DCAWorker) sendDCAExecutionEmail(ctx context.Context, s dcaStrategy, status, subject, intro, reason, amountBRL, cryptoAmount string) {
+	if dw == nil || dw.db == nil || dw.db.SQL == nil || dw.cfg == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	var to, userID, tokenSymbol, network, frequency string
+	var amountText sql.NullString
+	err := dw.db.SQL.QueryRowContext(ctx, `
+SELECT u.email, ds.user_id::text, ds.token_symbol, ds.network, ds.frequency, ds.amount_brl::text
+FROM dca_strategies ds
+JOIN users u ON u.id=ds.user_id
+WHERE ds.id=$1::uuid`, s.ID).Scan(&to, &userID, &tokenSymbol, &network, &frequency, &amountText)
+	if err != nil || strings.TrimSpace(to) == "" {
+		slog.Info("DCAWorker: email sem destinatario", "strategy_id", s.ID, "status", status, "error", err)
+		return
+	}
+	if strings.TrimSpace(amountBRL) == "" {
+		amountBRL = amountText.String
+	}
+	mailer := email.NewService(dw.cfg)
+	if !mailer.Enabled() {
+		return
+	}
+	details := []email.TransactionDetail{
+		{Label: "Ativo", Value: tokenSymbol},
+		{Label: "Rede", Value: network},
+		{Label: "Valor", Value: "R$ " + amountBRL},
+		{Label: "Frequencia", Value: frequency},
+		{Label: "Status", Value: status},
+		{Label: "Estrategia", Value: s.ID, CopyHint: true},
+		{Label: "Execucao", Value: s.ExecutionID, CopyHint: true},
+		{Label: "Atualizado em", Value: time.Now().Format("02/01/2006 15:04 MST")},
+	}
+	if strings.TrimSpace(cryptoAmount) != "" {
+		details = append(details, email.TransactionDetail{Label: "Cripto comprada", Value: cryptoAmount + " " + tokenSymbol})
+	}
+	if strings.TrimSpace(reason) != "" {
+		details = append(details, email.TransactionDetail{Label: "Motivo", Value: reason})
+	}
+	if err := mailer.SendTransaction(to, subject, email.TransactionReceipt{
+		Title:   subject,
+		Intro:   intro,
+		CTA:     "Abrir app",
+		Details: details,
+	}); err != nil {
+		slog.Warn("DCAWorker: email failed", "user_id", userID, "strategy_id", s.ID, "status", status, "error", err)
+	}
 }
 
 func (dw *DCAWorker) dcaPairExecutable(s dcaStrategy) bool {

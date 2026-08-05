@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"os"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 	"payment-gateway/internal/config"
 	"payment-gateway/internal/database"
+	"payment-gateway/internal/email"
 	kycengine "payment-gateway/internal/mobile/kyc_engine"
 )
 
@@ -117,16 +119,49 @@ func (w *KYCWorker) processRequest(ctx context.Context, id string, metadata map[
 			return
 		}
 		_, _ = w.db.SQL.ExecContext(ctx, "UPDATE users SET kyc_status='approved', updated_at=NOW() WHERE id=$1", req.UserID)
+		go w.sendKYCStatusEmail(context.Background(), req.UserID, req.Level, id, "approved", "KYC aprovado na ChainFX", "Sua verificacao KYC foi aprovada.")
 		w.bus.Publish(Event{Type: "kyc.approved", Payload: map[string]any{"user_id": req.UserID, "level": req.Level, "request_id": id, "score": result.Score}})
 	case "rejected":
 		_, _ = w.db.SQL.ExecContext(ctx, "UPDATE users SET kyc_status='rejected', updated_at=NOW() WHERE id=$1", req.UserID)
+		go w.sendKYCStatusEmail(context.Background(), req.UserID, req.Level, id, "rejected", "KYC rejeitado na ChainFX", "Nao foi possivel aprovar sua verificacao KYC com os documentos enviados.")
 		w.bus.Publish(Event{Type: "kyc.rejected", Payload: map[string]any{"user_id": req.UserID, "level": req.Level, "request_id": id, "score": result.Score}})
 	default:
 		_, _ = w.db.SQL.ExecContext(ctx, "UPDATE users SET kyc_status='submitted', updated_at=NOW() WHERE id=$1", req.UserID)
+		go w.sendKYCStatusEmail(context.Background(), req.UserID, req.Level, id, "manual_review", "KYC em revisao manual na ChainFX", "Sua verificacao KYC precisa de revisao manual.")
 		w.bus.Publish(Event{Type: "kyc.manual_review", Payload: map[string]any{"user_id": req.UserID, "level": req.Level, "request_id": id, "score": result.Score}})
 	}
 
 	slog.Info("KYCWorker: analise concluida", "request_id", id, "user_id", req.UserID, "decision", result.Decision, "score", result.Score, "latency_ms", result.LatencyMS)
+}
+
+func (w *KYCWorker) sendKYCStatusEmail(ctx context.Context, userID string, level int, requestID, status, subject, intro string) {
+	if w == nil || w.db == nil || w.db.SQL == nil || w.cfg == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	var to string
+	if err := w.db.SQL.QueryRowContext(ctx, `SELECT email FROM users WHERE id=$1::uuid`, userID).Scan(&to); err != nil || strings.TrimSpace(to) == "" {
+		slog.Info("KYCWorker: email sem destinatario", "user_id", userID, "status", status, "error", err)
+		return
+	}
+	mailer := email.NewService(w.cfg)
+	if !mailer.Enabled() {
+		return
+	}
+	if err := mailer.SendTransaction(to, subject, email.TransactionReceipt{
+		Title: subject,
+		Intro: intro,
+		CTA:   "Abrir app",
+		Details: []email.TransactionDetail{
+			{Label: "Nivel", Value: fmt.Sprintf("Level %d", level)},
+			{Label: "Status", Value: status},
+			{Label: "Solicitacao", Value: requestID, CopyHint: true},
+			{Label: "Atualizado em", Value: time.Now().Format("02/01/2006 15:04 MST")},
+		},
+	}); err != nil {
+		slog.Warn("KYCWorker: email failed", "user_id", userID, "status", status, "error", err)
+	}
 }
 
 func (w *KYCWorker) processPending(ctx context.Context) {

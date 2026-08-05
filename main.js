@@ -1671,6 +1671,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const developersView = document.getElementById('developersView');
   const marketsView = document.getElementById('marketsView');
   const contactView = document.getElementById('contactView');
+  const newsView = document.getElementById('newsView');
   const marketFilterButtons = document.querySelectorAll('[data-market-filter]');
   const marketRows = document.querySelectorAll('.markets-row[data-market-category]');
   const marketActionButtons = document.querySelectorAll('[data-market-action]');
@@ -2100,22 +2101,237 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // ── News view ──────────────────────────────────────────────────────────────
+
+  const NEWS_COIN_LOGOS = {
+    BTC:  'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/btc.png',
+    ETH:  'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/eth.png',
+    SOL:  'https://cryptologos.cc/logos/solana-sol-logo.png?v=033',
+    XRP:  'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/xrp.png',
+    USDC: 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/usdc.png',
+    AVAX: 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/avax.png',
+    UNI:  'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/uni.png',
+    DOGE: 'https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons/32/color/doge.png',
+  };
+
+  const NEWS_ASSETS = [
+    { symbol: 'BTC',  name: 'Bitcoin',   keywords: ['bitcoin', 'btc'] },
+    { symbol: 'ETH',  name: 'Ethereum',  keywords: ['ethereum'] },
+    { symbol: 'SOL',  name: 'Solana',    keywords: ['solana'] },
+    { symbol: 'XRP',  name: 'XRP',       keywords: ['xrp', 'ripple'] },
+    { symbol: 'USDC', name: 'USD Coin',  keywords: ['usdc', 'usd coin'] },
+    { symbol: 'AVAX', name: 'Avalanche', keywords: ['avalanche', 'avax'] },
+    { symbol: 'UNI',  name: 'Uniswap',   keywords: ['uniswap'] },
+    { symbol: 'DOGE', name: 'Dogecoin',  keywords: ['dogecoin', 'doge'] },
+  ];
+
+  function classifyNewsAsset(title, tags) {
+    const text = (title + ' ' + (tags || '')).toLowerCase();
+    for (const a of NEWS_ASSETS) {
+      if (a.keywords.some(k => text.includes(k))) return a;
+    }
+    return { symbol: 'BTC', name: 'Bitcoin' };
+  }
+
+  function newsTimeAgo(dateStr) {
+    if (!dateStr) return '';
+    const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+    if (diff < 60)    return `${diff}s ago`;
+    if (diff < 3600)  return `${Math.floor(diff / 60)} min ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+  }
+
+  function newsEscape(str) {
+    return String(str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // Fetch RSS feeds via Vite dev proxy (avoids CORS); parse XML in-browser.
+  const NEWS_RSS_SOURCES = [
+    { proxy: '/proxy/rss/coindesk',       source: 'CoinDesk' },
+    { proxy: '/proxy/rss/cointelegraph',  source: 'CoinTelegraph' },
+    { proxy: '/proxy/rss/decrypt',        source: 'Decrypt' },
+  ];
+
+  function rssTagText(el, tag) {
+    return (el.getElementsByTagName(tag)[0]?.textContent || '').trim();
+  }
+
+  function parseRSSXML(xmlText, sourceName) {
+    try {
+      const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
+      if (doc.documentElement.nodeName === 'parsererror') return [];
+      const result = [];
+      doc.querySelectorAll('item').forEach(item => {
+        const title = rssTagText(item, 'title');
+        let link    = rssTagText(item, 'link');
+        // Some feeds put the URL in an <atom:link href="..."> attribute.
+        if (!link || !link.startsWith('http')) {
+          const atomLink = item.querySelector('[rel="alternate"]') ||
+                           item.getElementsByTagNameNS('http://www.w3.org/2005/Atom', 'link')[0];
+          link = atomLink?.getAttribute('href') || link;
+        }
+        if (!title || !link || !link.startsWith('http')) return;
+        const raw = rssTagText(item, 'description') || rssTagText(item, 'content:encoded');
+        const div = document.createElement('div');
+        div.innerHTML = raw;
+        const summary = (div.textContent || div.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 240);
+        const pubDate = rssTagText(item, 'pubDate');
+        const asset   = classifyNewsAsset(title, summary);
+        result.push({
+          asset:        asset.symbol,
+          asset_name:   asset.name,
+          title,
+          summary,
+          source:       sourceName,
+          source_url:   link,
+          published_at: pubDate ? new Date(pubDate).toISOString() : null,
+        });
+      });
+      return result;
+    } catch (_) { return []; }
+  }
+
+  async function fetchNewsFromRSS() {
+    const results = await Promise.all(
+      NEWS_RSS_SOURCES.map(async ({ proxy, source }) => {
+        try {
+          const res = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
+          if (!res.ok) return [];
+          return parseRSSXML(await res.text(), source);
+        } catch (_) { return []; }
+      })
+    );
+    // Merge, deduplicate by URL, sort newest-first.
+    const seen = new Set();
+    const all  = results.flat().filter(item => {
+      if (seen.has(item.source_url)) return false;
+      seen.add(item.source_url);
+      return true;
+    });
+    all.sort((a, b) => new Date(b.published_at || 0) - new Date(a.published_at || 0));
+    return all.slice(0, 40);
+  }
+
+  const CHAINFX_API_BASE =
+  'https://api-production-bc748.up.railway.app';
+
+async function fetchNews() {
+  try {
+    const response = await fetch(
+      `${CHAINFX_API_BASE}/api/public/news?limit=40`,
+      {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json'
+        },
+        signal: AbortSignal.timeout(8000)
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `News API returned HTTP ${response.status}`
+      );
+    }
+
+    const data = await response.json();
+
+    if (Array.isArray(data.items)) {
+      return data.items;
+    }
+
+    if (Array.isArray(data)) {
+      return data;
+    }
+
+    return [];
+  } catch (error) {
+    console.error(
+      'Failed to load ChainFX news:',
+      error
+    );
+
+    return [];
+  }
+}
+
+  function renderNewsCards(items) {
+    const container = document.getElementById('newsCards');
+    if (!container) return;
+    if (!items || !items.length) {
+      container.innerHTML = '<div class="news-empty">No news available right now. Try again shortly.</div>';
+      return;
+    }
+    container.innerHTML = items.map(item => {
+      const logo    = NEWS_COIN_LOGOS[item.asset] || NEWS_COIN_LOGOS.BTC;
+      const summary = (item.summary || '').trim();
+      const meta    = [item.source, newsTimeAgo(item.published_at)].filter(Boolean).join(' · ');
+      return `<div class="news-card">
+        <img class="news-coin-logo" src="${logo}" alt="${newsEscape(item.asset || 'BTC')}" loading="lazy" />
+        <div class="news-card-content">
+          <h3 class="news-title">${newsEscape(item.title)}</h3>
+          ${summary ? `<p class="news-summary">${newsEscape(summary)}</p>` : ''}
+          <div class="news-meta">
+            <span class="news-source">${newsEscape(meta)}</span>
+            <a class="news-read-more" href="${newsEscape(item.source_url || '#')}" target="_blank" rel="noopener noreferrer">Read more →</a>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  let _newsLoaded = false;
+  let _newsTimer  = null;
+
+  async function loadNews() {
+    if (!_newsLoaded) {
+      const c = document.getElementById('newsCards');
+      if (c) c.innerHTML = '<div class="news-loading">Loading latest news…</div>';
+    }
+    const items = await fetchNews();
+    renderNewsCards(items);
+    _newsLoaded = true;
+  }
+
+  function startNewsRefresh() {
+    if (_newsTimer) return;
+    _newsTimer = setInterval(loadNews, 90_000);
+  }
+
+  function stopNewsRefresh() {
+    clearInterval(_newsTimer);
+    _newsTimer = null;
+  }
+
+  // ── Page view switcher ─────────────────────────────────────────────────────
+
   function setPageView(view) {
     const isDevelopers = view === 'developers';
-    const isMarkets = view === 'markets';
-    const isContact = view === 'contact';
+    const isMarkets    = view === 'markets';
+    const isContact    = view === 'contact';
+    const isNews       = view === 'news';
     document.body.classList.toggle('developers-mode', isDevelopers);
-    document.body.classList.toggle('markets-mode', isMarkets);
-    document.body.classList.toggle('contact-mode', isContact);
+    document.body.classList.toggle('markets-mode',    isMarkets);
+    document.body.classList.toggle('contact-mode',    isContact);
+    document.body.classList.toggle('news-mode',       isNews);
     if (developersView) developersView.classList.toggle('hidden', !isDevelopers);
-    if (marketsView) marketsView.classList.toggle('hidden', !isMarkets);
-    if (contactView) contactView.classList.toggle('hidden', !isContact);
+    if (marketsView)    marketsView.classList.toggle('hidden',    !isMarkets);
+    if (contactView)    contactView.classList.toggle('hidden',    !isContact);
+    if (newsView)       newsView.classList.toggle('hidden',       !isNews);
+    const isNonTrade = isDevelopers || isMarkets || isContact || isNews;
     navViewLinks.forEach(link => {
       const linkView = link.dataset.view || 'trade';
-      link.classList.toggle('active', isDevelopers || isMarkets || isContact ? linkView === view : linkView === 'trade');
+      link.classList.toggle('active', isNonTrade ? linkView === view : linkView === 'trade');
     });
-    if (isDevelopers || isMarkets || isContact) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (isNonTrade) window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (isNews) {
+      loadNews();
+      startNewsRefresh();
+    } else {
+      stopNewsRefresh();
     }
   }
 
@@ -2166,6 +2382,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         setPageView('contact');
         return;
       }
+      if (view === 'news') {
+        event.preventDefault();
+        history.replaceState(null, '', '#news');
+        setPageView('news');
+        return;
+      }
       event.preventDefault();
       history.replaceState(null, '', '#trade');
       setPageView('trade');
@@ -2178,6 +2400,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     setPageView('markets');
   } else if (window.location.hash === '#contact') {
     setPageView('contact');
+  } else if (window.location.hash === '#news') {
+    setPageView('news');
   } else {
     setPageView('trade');
   }

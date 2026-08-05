@@ -79,6 +79,7 @@ func (s OrderStatus) CanTransition(to OrderStatus) bool {
 type Order struct {
 	ID                string      `json:"id" db:"id"` // UUID da ordem
 	AccessToken       string      `json:"accessToken,omitempty" db:"access_token"`
+	Channel           string      `json:"channel" db:"channel"`
 	AmountBRL         float64     `json:"amount_brl" db:"amount_brl"`
 	AmountUSDT        float64     `json:"amount_usdt" db:"amount_usdt"`
 	FeeBRL            float64     `json:"fee_brl" db:"fee_brl"`

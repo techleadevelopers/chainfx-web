@@ -37,8 +37,12 @@ CREATE TABLE IF NOT EXISTS order_private (
 ALTER TABLE order_private ADD COLUMN IF NOT EXISTS email_enc TEXT;
 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS request_id TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS channel TEXT NOT NULL DEFAULT 'web';
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS pix_cpf_hash TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS pix_phone_hash TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id);
+UPDATE orders SET channel = 'web' WHERE channel IS NULL OR channel = '';
+CREATE INDEX IF NOT EXISTS idx_orders_channel_created ON orders(channel, created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_deposit_tx_unique ON orders (deposit_tx) WHERE deposit_tx IS NOT NULL AND deposit_tx <> '';
 
 CREATE TABLE IF NOT EXISTS order_events (
@@ -114,13 +118,17 @@ CREATE TABLE IF NOT EXISTS buy_orders (
 
 ALTER TABLE buy_orders ADD COLUMN IF NOT EXISTS amount_fiat NUMERIC(18,2);
 ALTER TABLE buy_orders ADD COLUMN IF NOT EXISTS request_id TEXT;
+ALTER TABLE buy_orders ADD COLUMN IF NOT EXISTS channel TEXT NOT NULL DEFAULT 'web';
 ALTER TABLE buy_orders ADD COLUMN IF NOT EXISTS fiat_currency VARCHAR(8) NOT NULL DEFAULT 'BRL';
 ALTER TABLE buy_orders ADD COLUMN IF NOT EXISTS payment_method VARCHAR(32) NOT NULL DEFAULT 'pix';
 ALTER TABLE buy_orders ADD COLUMN IF NOT EXISTS provider_payment_id TEXT;
 ALTER TABLE buy_orders ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
 ALTER TABLE buy_orders ADD COLUMN IF NOT EXISTS settled_at TIMESTAMPTZ;
 ALTER TABLE buy_orders ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ;
+ALTER TABLE buy_orders ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id);
 ALTER TABLE buy_orders ADD COLUMN IF NOT EXISTS network TEXT NOT NULL DEFAULT 'BSC';
+UPDATE buy_orders SET channel = 'web' WHERE channel IS NULL OR channel = '';
+CREATE INDEX IF NOT EXISTS idx_buy_orders_channel_created ON buy_orders(channel, created_at DESC);
 UPDATE buy_orders SET amount_fiat = amount_brl WHERE amount_fiat IS NULL;
 
 CREATE TABLE IF NOT EXISTS buy_order_events (

@@ -91,8 +91,11 @@ func (s *Server) handleAdminOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	if limit <= 0 || limit > 500 {
-		limit = 200
+	if limit <= 0 {
+		limit = 500
+	}
+	if limit > 1000 {
+		limit = 1000
 	}
 	transactions, err := s.db.ListAdminTransactions(r.Context(), limit)
 	if err != nil {

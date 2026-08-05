@@ -54,7 +54,7 @@ func (s *Server) legacyHandleEmailTest(w http.ResponseWriter, r *http.Request) {
 		req.Subject = "ChainFX Payments - teste SMTP"
 	}
 	if req.Body == "" {
-		req.Body = "ServiÃ§o de email operacional ativo."
+		req.Body = "Serviço de email operacional ativo."
 	}
 	if err := s.email.Send(email.Message{To: req.To, Subject: req.Subject, Body: req.Body, HTMLBody: req.HTML}); err != nil {
 		slog.Error("internal email test failed", "request_id", requestID(r), "error", err)

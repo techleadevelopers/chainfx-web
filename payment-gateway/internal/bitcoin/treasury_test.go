@@ -2,12 +2,20 @@ package bitcoin_test
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"testing"
 	"time"
 
 	"payment-gateway/internal/bitcoin"
+
+	"golang.org/x/crypto/pbkdf2"
 )
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -183,6 +191,63 @@ func TestNewAESGCMTreasurySigner_InvalidHex(t *testing.T) {
 	}
 }
 
+func TestNewAESGCMTreasurySigner_MnemonicFormat(t *testing.T) {
+	mnemonic := "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+	encKey := sha256.Sum256([]byte("treasury-mnemonic-test"))
+	encrypted := encryptTreasuryForTest(t, encKey[:], []byte(mnemonic))
+	btcCfg := &bitcoin.Config{Enabled: true, Network: bitcoin.Testnet}
+	address := deriveTreasuryAddressForTest(t, mnemonic, "", btcCfg, "m/84'/1'/0'/0/0")
+	cfg := &bitcoin.TreasuryConfig{
+		Enabled:        true,
+		Address:        address,
+		SignerKeyID:    "test",
+		EncryptedKey:   hex.EncodeToString(encrypted),
+		EncryptionKey:  hex.EncodeToString(encKey[:]),
+		KeyFormat:      "mnemonic",
+		DerivationPath: "m/84'/1'/0'/0/0",
+	}
+	if _, err := bitcoin.NewAESGCMTreasurySigner(cfg, btcCfg); err != nil {
+		t.Fatalf("expected mnemonic treasury signer, got %v", err)
+	}
+}
+
+func encryptTreasuryForTest(t *testing.T, key, plaintext []byte) []byte {
+	t.Helper()
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		t.Fatal(err)
+	}
+	return append(nonce, gcm.Seal(nil, nonce, plaintext, nil)...)
+}
+
+func deriveTreasuryAddressForTest(t *testing.T, mnemonic, passphrase string, cfg *bitcoin.Config, path string) string {
+	t.Helper()
+	seed := pbkdf2.Key([]byte(mnemonic), []byte("mnemonic"+passphrase), 2048, 64, sha512.New)
+	key, err := bitcoin.NewMasterKeyForNetwork(seed, cfg.Network)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, part := range []uint32{84 + 0x80000000, 1 + 0x80000000, 0 + 0x80000000, 0, 0} {
+		key, err = key.PrivateChild(part)
+		if err != nil {
+			t.Fatalf("derive %s: %v", path, err)
+		}
+	}
+	address, err := bitcoin.P2WPKHAddress(key.CompressedPubKey(), cfg.HRP())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return address
+}
+
 // ─── SelectUTXOs (reutilizado pela treasury) ──────────────────────────────────
 
 func TestSelectUTXOs_TreasuryScenarios(t *testing.T) {
@@ -285,35 +350,35 @@ func TestTreasuryBalance_ReserveProtection(t *testing.T) {
 	// Garante que a reserva mínima é sempre respeitada
 
 	tests := []struct {
-		name           string
-		confirmed      int64
-		minReserve     int64
-		estimatedFee   int64
-		amountSats     int64
+		name             string
+		confirmed        int64
+		minReserve       int64
+		estimatedFee     int64
+		amountSats       int64
 		expectSufficient bool
 	}{
 		{
-			name:           "treasury não pode zerar (reserva protege)",
-			confirmed:      200_000,
-			minReserve:     100_000,
-			estimatedFee:   1_000,
-			amountSats:     150_000, // spendable = 200k - 100k - 1k = 99k < 150k
+			name:             "treasury não pode zerar (reserva protege)",
+			confirmed:        200_000,
+			minReserve:       100_000,
+			estimatedFee:     1_000,
+			amountSats:       150_000, // spendable = 200k - 100k - 1k = 99k < 150k
 			expectSufficient: false,
 		},
 		{
-			name:           "reserva mínima alta bloqueia todos os gastos",
-			confirmed:      500_000,
-			minReserve:     500_000,
-			estimatedFee:   1_000,
-			amountSats:     1_000, // spendable = 500k - 500k - 1k = negativo → 0
+			name:             "reserva mínima alta bloqueia todos os gastos",
+			confirmed:        500_000,
+			minReserve:       500_000,
+			estimatedFee:     1_000,
+			amountSats:       1_000, // spendable = 500k - 500k - 1k = negativo → 0
 			expectSufficient: false,
 		},
 		{
-			name:           "gasto abaixo do spendable é permitido",
-			confirmed:      500_000,
-			minReserve:     100_000,
-			estimatedFee:   1_000,
-			amountSats:     100_000, // spendable = 399k >= 100k
+			name:             "gasto abaixo do spendable é permitido",
+			confirmed:        500_000,
+			minReserve:       100_000,
+			estimatedFee:     1_000,
+			amountSats:       100_000, // spendable = 399k >= 100k
 			expectSufficient: true,
 		},
 	}
@@ -373,4 +438,3 @@ func testCtx() context.Context {
 	_ = cancel
 	return ctx
 }
-

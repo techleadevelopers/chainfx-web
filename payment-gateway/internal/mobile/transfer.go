@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"payment-gateway/internal/email"
 	"payment-gateway/internal/liquidity"
 	"payment-gateway/internal/security"
 
@@ -189,6 +190,19 @@ func (s *Server) handleWalletTransfer(w http.ResponseWriter, r *http.Request) {
 			SET status = 'failed'
 			WHERE user_id = $1::uuid AND idempotency_key = $2
 		`, user.ID, idempKey)
+			s.sendMobileTransactionEmailAsync(user.ID, "Transferencia mobile falhou na ChainFX", email.TransactionReceipt{
+				Title:  "Transferencia falhou",
+				Intro:  "A transferencia foi registrada, mas nao foi possivel preparar o gas para enviar agora.",
+				CTA:    "Abrir app",
+				CTAURL: s.cfg.EmailSiteURL,
+				Details: []email.TransactionDetail{
+					{Label: "Ativo", Value: asset},
+					{Label: "Rede", Value: network},
+					{Label: "Valor", Value: req.Amount + " " + asset},
+					{Label: "Destino", Value: recipient.Hex(), CopyHint: true},
+					{Label: "Status", Value: "failed"},
+				},
+			})
 			writeJSON(w, http.StatusServiceUnavailable, map[string]any{
 				"error": "gas sponsorship indisponivel",
 				"code":  "GAS_SPONSOR_UNAVAILABLE",
@@ -227,6 +241,19 @@ func (s *Server) handleWalletTransfer(w http.ResponseWriter, r *http.Request) {
 			SET status = 'failed'
 			WHERE user_id = $1::uuid AND idempotency_key = $2
 		`, user.ID, idempKey)
+		s.sendMobileTransactionEmailAsync(user.ID, "Transferencia mobile falhou na ChainFX", email.TransactionReceipt{
+			Title:  "Transferencia falhou",
+			Intro:  "A transferencia foi registrada como pendente, mas o broadcast on-chain falhou.",
+			CTA:    "Abrir app",
+			CTAURL: s.cfg.EmailSiteURL,
+			Details: []email.TransactionDetail{
+				{Label: "Ativo", Value: asset},
+				{Label: "Rede", Value: network},
+				{Label: "Valor", Value: req.Amount + " " + asset},
+				{Label: "Destino", Value: recipient.Hex(), CopyHint: true},
+				{Label: "Status", Value: "failed"},
+			},
+		})
 		writeJSON(w, http.StatusBadGateway, mobileProductError("TRANSACTION_FAILED", "Nao foi possivel transmitir a transacao agora."))
 		return
 	}
@@ -238,6 +265,7 @@ func (s *Server) handleWalletTransfer(w http.ResponseWriter, r *http.Request) {
 		WHERE user_id = $2::uuid AND idempotency_key = $3
 	`, txHash, user.ID, idempKey)
 	if err != nil {
+		s.sendMobileTransferSubmittedEmail(user.ID, asset, network, req.Amount, from, recipient.Hex(), txHash)
 		writeJSON(w, http.StatusAccepted, map[string]any{
 			"mode":        mode,
 			"tx_hash":     txHash,
@@ -247,6 +275,7 @@ func (s *Server) handleWalletTransfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if rows, err := res.RowsAffected(); err == nil && rows == 0 {
+		s.sendMobileTransferSubmittedEmail(user.ID, asset, network, req.Amount, from, recipient.Hex(), txHash)
 		writeJSON(w, http.StatusAccepted, map[string]any{
 			"mode":        mode,
 			"tx_hash":     txHash,
@@ -256,6 +285,7 @@ func (s *Server) handleWalletTransfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.sendMobileTransferSubmittedEmail(user.ID, asset, network, req.Amount, from, recipient.Hex(), txHash)
 	writeJSON(w, http.StatusAccepted, map[string]any{
 		"mode":           mode,
 		"from":           from,
@@ -269,6 +299,25 @@ func (s *Server) handleWalletTransfer(w http.ResponseWriter, r *http.Request) {
 		"amount_raw":     rawAmount.String(),
 		"decimals":       decimals,
 		"status":         "submitted",
+	})
+}
+
+func (s *Server) sendMobileTransferSubmittedEmail(userID, asset, network, amount, from, to, txHash string) {
+	scanURL := mobileScanURL(network, txHash)
+	s.sendMobileTransactionEmailAsync(userID, "Transferencia enviada pela ChainFX", email.TransactionReceipt{
+		Title:  "Transferencia enviada",
+		Intro:  "Sua transferencia on-chain foi transmitida com sucesso.",
+		CTA:    "Ver Scan",
+		CTAURL: scanURL,
+		Details: []email.TransactionDetail{
+			{Label: "Ativo", Value: asset},
+			{Label: "Rede", Value: network},
+			{Label: "Valor", Value: amount + " " + asset},
+			{Label: "Origem", Value: from, CopyHint: true},
+			{Label: "Destino", Value: to, CopyHint: true},
+			{Label: "Hash", Value: txHash, CopyHint: true},
+			{Label: "Enviado em", Value: mobileNowText()},
+		},
 	})
 }
 

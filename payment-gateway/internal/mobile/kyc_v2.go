@@ -11,9 +11,11 @@ package mobile
 //	GET  /api/mobile/kyc/limits         — current daily limits per KYC level
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 
+	"payment-gateway/internal/email"
 	"payment-gateway/internal/models"
 )
 
@@ -103,6 +105,17 @@ func (s *Server) handleKYCSubmit(w http.ResponseWriter, r *http.Request) {
 			"device_fingerprint": req.DeviceFingerprint,
 		}))
 	}
+	s.sendMobileTransactionEmailAsync(uid, "KYC recebido pela ChainFX", email.TransactionReceipt{
+		Title: "KYC recebido",
+		Intro: "Recebemos seus documentos e a analise foi iniciada.",
+		CTA:   "Abrir app",
+		Details: []email.TransactionDetail{
+			{Label: "Nivel solicitado", Value: fmt.Sprintf("Level %d", req.Level)},
+			{Label: "Status", Value: "submitted"},
+			{Label: "Solicitacao", Value: kyc.ID, CopyHint: true},
+			{Label: "Enviado em", Value: mobileNowText()},
+		},
+	})
 
 	writeJSON(w, http.StatusAccepted, map[string]any{
 		"kyc_request":     kyc,

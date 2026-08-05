@@ -19,6 +19,7 @@ import (
 
 	"payment-gateway/internal/certutil"
 	"payment-gateway/internal/config"
+	"payment-gateway/internal/email"
 	"payment-gateway/internal/httpclient"
 	"payment-gateway/internal/metrics"
 )
@@ -52,6 +53,7 @@ type mobilePaymentExecutionWorker struct {
 	ambiguousGrace    time.Duration
 	maxNotFoundChecks int
 	now               func() time.Time
+	mailer            *email.Service
 }
 
 type mobilePaymentExecutionStore interface {
@@ -174,6 +176,7 @@ func (s *Server) startMobilePaymentExecutionWorker(ctx context.Context) {
 			time.Second,
 		maxNotFoundChecks: envInt("MOBILE_PAYMENT_EFI_NOT_FOUND_MIN_RECONCILIATIONS", 3),
 		now:               time.Now,
+		mailer:            email.NewService(s.cfg),
 	}
 	if worker.pollEvery <= 0 {
 		worker.pollEvery = 5 * time.Second
@@ -242,6 +245,7 @@ func (w *mobilePaymentExecutionWorker) processClaim(ctx context.Context, claim *
 	req, err := claim.providerRequest()
 	if err != nil {
 		_ = w.store.FailExecutionForRefund(ctx, claim, err.Error(), mobilePaymentProviderResult{Outcome: mobilePaymentProviderResultFailed, ProviderStatus: "invalid_payload"})
+		go w.sendPaymentStateEmail(context.Background(), claim, "failed", "Pagamento QR Code falhou", "O pagamento QR Code nao pode ser enviado ao provider.", err.Error(), "")
 		metrics.RecordMobilePaymentExecution("failed")
 		slog.Warn("mobile payment execution bloqueado antes do provider",
 			"payment_id", claim.PaymentID, "execution_id", claim.ExecutionID, "provider", claim.Provider,
@@ -287,6 +291,7 @@ func (w *mobilePaymentExecutionWorker) applyProviderError(ctx context.Context, c
 		}
 		if claim.Action == "reconcile" {
 			_ = w.store.MarkManualReview(ctx, claim, "efi_reconcile_definitive_error_without_terminal_status: "+err.Error())
+			go w.sendPaymentStateEmail(context.Background(), claim, "manual_review", "Pagamento QR Code em analise", "O pagamento QR Code precisa de revisao manual.", err.Error(), "")
 			metrics.RecordMobilePaymentExecution("provider_unknown")
 			metrics.RecordEfiReconcile("manual_review")
 			return
@@ -294,14 +299,17 @@ func (w *mobilePaymentExecutionWorker) applyProviderError(ctx context.Context, c
 		result := mobilePaymentProviderResult{Outcome: mobilePaymentProviderResultFailed, ProviderStatus: "definitive_provider_error"}
 		if mobilePaymentCanCreateRefund(claim, result) {
 			_ = w.store.FailExecutionForRefund(ctx, claim, err.Error(), result)
+			go w.sendPaymentStateEmail(context.Background(), claim, "refund_pending", "Reembolso em processamento", "O pagamento QR Code falhou no provider e o reembolso foi iniciado.", err.Error(), "")
 			metrics.RecordMobilePaymentExecution("failed")
 		} else {
 			_ = w.store.MarkManualReview(ctx, claim, "refund_blocked_no_terminal_proof: "+err.Error())
+			go w.sendPaymentStateEmail(context.Background(), claim, "manual_review", "Pagamento QR Code em analise", "O pagamento QR Code precisa de revisao manual antes de qualquer reembolso.", err.Error(), "")
 			metrics.RecordEfiReconcile("refund_blocked_ambiguous")
 		}
 	case mobilePaymentProviderErrorAmbiguous:
 		if claim.Attempt >= w.maxAttempts {
 			_ = w.store.MarkManualReview(ctx, claim, err.Error())
+			go w.sendPaymentStateEmail(context.Background(), claim, "manual_review", "Pagamento QR Code em analise", "Nao foi possivel confirmar o resultado automaticamente.", err.Error(), "")
 		} else {
 			_ = w.store.MarkProviderUnknown(ctx, claim, err.Error(), w.now().UTC().Add(retryAfter))
 			metrics.RecordMobilePaymentExecution("provider_unknown")
@@ -309,6 +317,7 @@ func (w *mobilePaymentExecutionWorker) applyProviderError(ctx context.Context, c
 	default:
 		if claim.Attempt >= w.maxAttempts {
 			_ = w.store.MarkManualReview(ctx, claim, "retryable_provider_error_max_attempts_without_terminal_status: "+err.Error())
+			go w.sendPaymentStateEmail(context.Background(), claim, "manual_review", "Pagamento QR Code em analise", "As tentativas automaticas foram esgotadas.", err.Error(), "")
 			metrics.RecordMobilePaymentExecution("provider_unknown")
 		} else {
 			_ = w.store.RetryExecution(ctx, claim, err.Error(), w.now().UTC().Add(retryAfter))
@@ -326,12 +335,14 @@ func (w *mobilePaymentExecutionWorker) applyProviderResult(ctx context.Context, 
 	case mobilePaymentProviderResultCompleted:
 		_ = w.store.CompleteExecution(ctx, claim, result)
 		metrics.RecordMobilePaymentExecution("completed")
+		go w.sendCompletedReceipt(context.Background(), claim, result)
 		if claim.Action == "reconcile" {
 			metrics.RecordMobilePaymentExecution("reconciled")
 		}
 	case mobilePaymentProviderResultFailed:
 		if mobilePaymentCanCreateRefund(claim, result) {
 			_ = w.store.FailExecutionForRefund(ctx, claim, "provider_rejected", result)
+			go w.sendPaymentStateEmail(context.Background(), claim, "refund_pending", "Reembolso em processamento", "O pagamento QR Code foi recusado pelo provider e o reembolso foi iniciado.", result.ProviderStatus, "")
 			metrics.RecordMobilePaymentExecution("failed")
 			metrics.RecordEfiReconcile("definitive_failure")
 			if claim.Action == "reconcile" {
@@ -339,18 +350,21 @@ func (w *mobilePaymentExecutionWorker) applyProviderResult(ctx context.Context, 
 			}
 		} else {
 			_ = w.store.MarkManualReview(ctx, claim, "provider_failed_without_terminal_failure_status")
+			go w.sendPaymentStateEmail(context.Background(), claim, "manual_review", "Pagamento QR Code em analise", "O provider retornou falha, mas o caso precisa de revisao manual.", result.ProviderStatus, "")
 			metrics.RecordMobilePaymentExecution("provider_unknown")
 			metrics.RecordEfiReconcile("refund_blocked_ambiguous")
 		}
 	case mobilePaymentProviderResultPending:
 		if claim.Attempt >= w.maxAttempts {
 			_ = w.store.MarkManualReview(ctx, claim, "provider_pending_max_attempts")
+			go w.sendPaymentStateEmail(context.Background(), claim, "manual_review", "Pagamento QR Code em analise", "O provider manteve o pagamento pendente ate o limite de tentativas.", result.ProviderStatus, "")
 		} else {
 			_ = w.store.MarkProviderPending(ctx, claim, result, w.now().UTC().Add(retryAfter))
 		}
 	default:
 		if claim.Attempt >= w.maxAttempts {
 			_ = w.store.MarkManualReview(ctx, claim, "provider_unknown_max_attempts")
+			go w.sendPaymentStateEmail(context.Background(), claim, "manual_review", "Pagamento QR Code em analise", "O resultado do provider ficou indeterminado ate o limite de tentativas.", result.ProviderStatus, "")
 		} else {
 			_ = w.store.MarkProviderUnknown(ctx, claim, "provider_unknown", w.now().UTC().Add(retryAfter))
 			metrics.RecordMobilePaymentExecution("provider_unknown")
@@ -405,6 +419,90 @@ func (w *mobilePaymentExecutionWorker) backoff(attempt int) time.Duration {
 		seconds = 300
 	}
 	return time.Duration(seconds) * time.Second
+}
+
+func (w *mobilePaymentExecutionWorker) sendCompletedReceipt(ctx context.Context, claim *mobilePaymentExecutionClaim, result mobilePaymentProviderResult) {
+	if w == nil || w.mailer == nil || w.store == nil || claim == nil {
+		return
+	}
+	store, ok := w.store.(*mobilePaymentSQLStore)
+	if !ok || store.db == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	var to string
+	if err := store.db.QueryRowContext(ctx, `SELECT email FROM users WHERE id=$1::uuid`, claim.UserID).Scan(&to); err != nil || strings.TrimSpace(to) == "" {
+		slog.Info("mobile QR Pay sem email para recibo", "payment_id", claim.PaymentID, "error", err)
+		return
+	}
+	providerID := firstNonEmptyStr(result.ProviderTransactionID, result.ProviderReference, claim.ProviderTransactionID, claim.ProviderReference)
+	if providerID == "" {
+		providerID = "processado"
+	}
+	if err := w.mailer.SendTransaction(to, "Pagamento QR Code concluido na ChainFX", email.TransactionReceipt{
+		Title: "Pagamento QR Code concluido",
+		Intro: "Seu pagamento por QR Code Pix foi confirmado e processado pela ChainFX.",
+		CTA:   "Ver pagamento",
+		Details: []email.TransactionDetail{
+			{Label: "Tipo", Value: "QR Pix"},
+			{Label: "Valor", Value: fmt.Sprintf("R$ %.2f", claim.AmountBRL)},
+			{Label: "USDT debitado", Value: fmt.Sprintf("%.6f USDT", float64(claim.RequiredUSDTMic)/1_000_000)},
+			{Label: "Destino", Value: firstNonEmptyStr(claim.BeneficiaryName, mobilePixKeyFromBRCode(claim.RawCode), "Pagamento Pix")},
+			{Label: "Hash funding", Value: fallbackTxMobilePayment(claim.FundingTxHash), CopyHint: true},
+			{Label: "Comprovante Pix", Value: providerID, CopyHint: true},
+			{Label: "Pagamento", Value: claim.PaymentID, CopyHint: true},
+			{Label: "Concluido em", Value: time.Now().Format("02/01/2006 15:04 MST")},
+		},
+	}); err != nil {
+		slog.Warn("mobile QR Pay: falha ao enviar recibo", "payment_id", claim.PaymentID, "error", err)
+	}
+}
+
+func (w *mobilePaymentExecutionWorker) sendPaymentStateEmail(ctx context.Context, claim *mobilePaymentExecutionClaim, status, subject, intro, reason, txHash string) {
+	if w == nil || w.mailer == nil || w.store == nil || claim == nil {
+		return
+	}
+	store, ok := w.store.(*mobilePaymentSQLStore)
+	if !ok || store.db == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	var to string
+	if err := store.db.QueryRowContext(ctx, `SELECT email FROM users WHERE id=$1::uuid`, claim.UserID).Scan(&to); err != nil || strings.TrimSpace(to) == "" {
+		slog.Info("mobile QR Pay sem email para estado", "payment_id", claim.PaymentID, "status", status, "error", err)
+		return
+	}
+	if txHash == "" {
+		txHash = claim.FundingTxHash
+	}
+	if err := w.mailer.SendTransaction(to, subject, email.TransactionReceipt{
+		Title: subject,
+		Intro: intro,
+		CTA:   "Abrir app",
+		Details: []email.TransactionDetail{
+			{Label: "Tipo", Value: "QR Pix"},
+			{Label: "Valor", Value: fmt.Sprintf("R$ %.2f", claim.AmountBRL)},
+			{Label: "USDT", Value: fmt.Sprintf("%.6f USDT", float64(claim.RequiredUSDTMic)/1_000_000)},
+			{Label: "Destino", Value: firstNonEmptyStr(claim.BeneficiaryName, mobilePixKeyFromBRCode(claim.RawCode), "Pagamento Pix")},
+			{Label: "Status", Value: status},
+			{Label: "Motivo", Value: truncateMobilePaymentError(reason)},
+			{Label: "Hash funding", Value: fallbackTxMobilePayment(txHash), CopyHint: true},
+			{Label: "Pagamento", Value: claim.PaymentID, CopyHint: true},
+			{Label: "Atualizado em", Value: mobileNowText()},
+		},
+	}); err != nil {
+		slog.Warn("mobile QR Pay: falha ao enviar email de estado", "payment_id", claim.PaymentID, "status", status, "error", err)
+	}
+}
+
+func fallbackTxMobilePayment(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "processado"
+	}
+	return value
 }
 
 func (c *mobilePaymentExecutionClaim) providerRequest() (mobilePaymentProviderRequest, error) {
@@ -925,11 +1023,11 @@ func truncateMobilePaymentError(value string) string {
 }
 
 func mobilePixKeyFromBRCode(raw string) string {
-	merchantAccount := emvTag(strings.TrimSpace(raw), "26")
+	merchantAccount := mobilePixMerchantAccountFromBRCode(raw)
 	if merchantAccount == "" {
 		return ""
 	}
-	return strings.TrimSpace(emvTag(merchantAccount, "01"))
+	return mobilePixKeyFromMerchantAccount(merchantAccount)
 }
 
 type mobileEfiPixProvider struct {

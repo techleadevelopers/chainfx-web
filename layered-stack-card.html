@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Layered Stack Card</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      background: #393939;
+      font-family: Arial, sans-serif;
+    }
+
+    .layered-stack-card {
+      width: min(320px, calc(100vw - 32px));
+      min-height: 568px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 8px;
+      background: #222;
+      box-shadow: 0 9px 13px rgba(0, 0, 0, 0.3);
+      transform: scale(1);
+    }
+
+    .menu-trigger,
+    .close-trigger {
+      position: absolute;
+      top: 32px;
+      right: 20px;
+      display: block;
+      width: 42px;
+      height: 42px;
+      cursor: pointer;
+      z-index: 333;
+      border: 0;
+      padding: 0;
+      background: transparent;
+    }
+
+    .close-trigger {
+      top: 42px;
+      z-index: 5;
+    }
+
+    .menu-trigger:hover .menu-trigger-bar::before,
+    .close-trigger:hover .close-trigger-bar::before {
+      width: 100%;
+    }
+
+    .menu-trigger-bar {
+      display: block;
+      width: 100%;
+      height: 4px;
+      margin-bottom: 6px;
+      position: relative;
+      background: #fff;
+      transform: rotate(-45deg);
+    }
+
+    .menu-trigger-bar::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      display: block;
+      width: 0%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.2);
+      transition: all 0.3s cubic-bezier(0.55, 0, 0.1, 1);
+    }
+
+    .menu-trigger-bar.top {
+      width: 50%;
+    }
+
+    .menu-trigger-bar.middle::before {
+      left: auto;
+      right: 0;
+    }
+
+    .menu-trigger-bar.bottom {
+      width: 50%;
+      margin-left: 50%;
+    }
+
+    .close-trigger-bar {
+      display: block;
+      width: 100%;
+      height: 4px;
+      position: relative;
+      background: #222;
+    }
+
+    .close-trigger-bar::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      display: block;
+      width: 0%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.2);
+      transition: all 0.3s cubic-bezier(0.55, 0, 0.1, 1);
+    }
+
+    .close-trigger-bar.left {
+      transform: translateX(100px) translateY(-100px) rotate(-45deg);
+    }
+
+    .close-trigger-bar.right {
+      top: -3px;
+      transform: translateX(-100px) translateY(-100px) rotate(45deg);
+    }
+
+    .defense-icon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      z-index: 10;
+      width: 72px;
+      height: 72px;
+      display: grid;
+      place-items: center;
+      margin: -52px 0 0 -36px;
+      color: #fff;
+    }
+
+    .defense-icon svg {
+      width: 72px;
+      height: 72px;
+      display: block;
+      filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.28));
+    }
+
+    .inner-container,
+    .layer-container {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .inner-container {
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .menu-trigger,
+    .close-trigger {
+      pointer-events: auto;
+    }
+
+    .layer-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .menu-bg {
+      position: absolute;
+      display: block;
+      width: 200%;
+      height: 40%;
+      background: #fff;
+      left: -53%;
+      top: -25%;
+    }
+
+    .menu-bg.middle {
+      top: 29%;
+      left: -53%;
+      transform: rotate(-45deg) scaleY(0);
+    }
+
+    .menu-bg.top {
+      left: -34%;
+      top: 0;
+      transform: rotate(-45deg) translateY(-152%);
+    }
+
+    .menu-bg.bottom {
+      top: 105%;
+      left: -20%;
+      transform: rotate(-45deg) translateY(25%);
+    }
+  </style>
+</head>
+<body>
+  <div class="layered-stack-card">
+    <button class="menu-trigger" type="button" aria-label="Abrir">
+      <i class="menu-trigger-bar top"></i>
+      <i class="menu-trigger-bar middle"></i>
+      <i class="menu-trigger-bar bottom"></i>
+    </button>
+
+    <button class="close-trigger" type="button" aria-label="Fechar">
+      <i class="close-trigger-bar left"></i>
+      <i class="close-trigger-bar right"></i>
+    </button>
+
+    <span class="defense-icon" aria-hidden="true">
+      <svg viewBox="0 0 64 64" fill="none" role="img">
+        <path d="M32 5 54 14v15c0 15.4-9.3 25.6-22 30C19.3 54.6 10 44.4 10 29V14L32 5Z" fill="currentColor"/>
+        <path d="M32 13 47 19v10.6c0 10.2-5.9 17.4-15 21-9.1-3.6-15-10.8-15-21V19l15-6Z" fill="#222"/>
+        <path d="M32 18v27c6.4-3 10-8.2 10-15.3v-7.3L32 18Z" fill="#fff"/>
+      </svg>
+    </span>
+
+    <div class="inner-container">
+      <i class="menu-bg top"></i>
+      <i class="menu-bg middle"></i>
+      <i class="menu-bg bottom"></i>
+      <div class="layer-container"></div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/2.1.3/TweenMax.min.js"></script>
+  <script>
+    var openTrigger = $('.menu-trigger');
+    var openTriggerTop = openTrigger.find('.menu-trigger-bar.top');
+    var openTriggerMiddle = openTrigger.find('.menu-trigger-bar.middle');
+    var openTriggerBottom = openTrigger.find('.menu-trigger-bar.bottom');
+
+    var closeTrigger = $('.close-trigger');
+    var closeTriggerLeft = closeTrigger.find('.close-trigger-bar.left');
+    var closeTriggerRight = closeTrigger.find('.close-trigger-bar.right');
+
+    var defenseIcon = $('.defense-icon');
+    var menuTop = $('.menu-bg.top');
+    var menuMiddle = $('.menu-bg.middle');
+    var menuBottom = $('.menu-bg.bottom');
+
+    var tlOpen = new TimelineMax({ paused: true });
+    var tlClose = new TimelineMax({ paused: true });
+
+    tlOpen.add('preOpen')
+      .to(defenseIcon, 0.4, {
+        scale: 0.8,
+        opacity: 0,
+        ease: Power2.easeOut
+      }, 'preOpen')
+      .to(openTriggerTop, 0.4, {
+        x: '+80px',
+        y: '-80px',
+        delay: 0.1,
+        ease: Power4.easeIn,
+        onComplete: function () {
+          closeTrigger.css('z-index', '25');
+        }
+      }, 'preOpen')
+      .to(openTriggerMiddle, 0.4, {
+        x: '+=80px',
+        y: '-=80px',
+        ease: Power4.easeIn,
+        onComplete: function () {
+          openTrigger.css('visibility', 'hidden');
+        }
+      }, 'preOpen')
+      .to(openTriggerBottom, 0.4, {
+        x: '+=80px',
+        y: '-=80px',
+        delay: 0.2,
+        ease: Power4.easeIn
+      }, 'preOpen')
+      .add('open', '-=0.4')
+      .to(menuTop, 0.8, {
+        y: '13%',
+        ease: Power4.easeInOut
+      }, 'open')
+      .to(menuMiddle, 0.8, {
+        scaleY: 1,
+        ease: Power4.easeInOut
+      }, 'open')
+      .to(menuBottom, 0.8, {
+        y: '-114%',
+        ease: Power4.easeInOut
+      }, 'open')
+      .add('preClose', '-=0.8')
+      .to(closeTriggerLeft, 0.8, {
+        x: '-=100px',
+        y: '+=100px',
+        ease: Power4.easeOut
+      }, 'preClose')
+      .to(closeTriggerRight, 0.8, {
+        x: '+=100px',
+        y: '+=100px',
+        delay: 0.2,
+        ease: Power4.easeOut
+      }, 'preClose');
+
+    tlClose.add('close')
+      .to(menuTop, 0.2, {
+        backgroundColor: '#6295ca',
+        ease: Power4.easeInOut,
+        onComplete: function () {
+          defenseIcon.css('z-index', '26');
+          closeTrigger.css('z-index', '5');
+          openTrigger.css('visibility', 'visible');
+        }
+      }, 'close')
+      .to(menuMiddle, 0.2, {
+        backgroundColor: '#6295ca',
+        ease: Power4.easeInOut
+      }, 'close')
+      .to(menuBottom, 0.2, {
+        backgroundColor: '#6295ca',
+        ease: Power4.easeInOut
+      }, 'close')
+      .to(defenseIcon, 0.8, {
+        scale: 1,
+        opacity: 1,
+        ease: Power4.easeInOut
+      }, 'close', '+=0.2')
+      .to(menuTop, 0.8, {
+        y: '-113%',
+        ease: Power4.easeInOut
+      }, 'close', '+=0.2')
+      .to(menuMiddle, 0.8, {
+        scaleY: 0,
+        ease: Power4.easeInOut
+      }, 'close', '+=0.2')
+      .to(menuBottom, 0.8, {
+        y: '23%',
+        ease: Power4.easeInOut,
+        onComplete: function () {
+          menuTop.css('background-color', '#ffffff');
+          menuMiddle.css('background-color', '#ffffff');
+          menuBottom.css('background-color', '#ffffff');
+        }
+      }, 'close', '+=0.2')
+      .to(closeTriggerLeft, 0.2, {
+        x: '+=100px',
+        y: '-=100px',
+        ease: Power4.easeIn
+      }, 'close')
+      .to(closeTriggerRight, 0.2, {
+        x: '-=100px',
+        y: '-=100px',
+        delay: 0.1,
+        ease: Power4.easeIn
+      }, 'close')
+      .to(openTriggerTop, 1, {
+        x: '-=80px',
+        y: '+=80px',
+        delay: 0.2,
+        ease: Power4.easeOut
+      }, 'close')
+      .to(openTriggerMiddle, 1, {
+        x: '-=80px',
+        y: '+=80px',
+        ease: Power4.easeOut
+      }, 'close')
+      .to(openTriggerBottom, 1, {
+        x: '-=80px',
+        y: '+=80px',
+        delay: 0.1,
+        ease: Power4.easeOut
+      }, 'close');
+
+    openTrigger.on('click', function () {
+      if (tlOpen.progress() < 1) {
+        tlOpen.play();
+      } else {
+        tlOpen.restart();
+      }
+    });
+
+    closeTrigger.on('click', function () {
+      if (tlClose.progress() < 1) {
+        tlClose.play();
+      } else {
+        tlClose.restart();
+      }
+    });
+  </script>
+</body>
+</html>

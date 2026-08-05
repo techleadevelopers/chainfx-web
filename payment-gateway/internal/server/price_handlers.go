@@ -5,7 +5,7 @@ import "net/http"
 func (s *Server) handlePrice(w http.ResponseWriter, r *http.Request) {
 	price := s.workers.PriceWorker.GetCurrentPrice()
 	if price <= 0 {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "preÃ§o ainda não carregado"})
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "preço ainda não carregado"})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{

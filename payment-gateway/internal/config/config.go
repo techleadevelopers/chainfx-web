@@ -39,6 +39,7 @@ type Config struct {
 	FeeFixedUsd                   float64
 	FeePerUsdtUsd                 float64
 	FeeMinBrl                     float64
+	FeeFreeMode                   bool
 	BuyTier1MinBrl                float64
 	BuyTier1MaxBrl                float64
 	BuyTier1Bps                   int
@@ -286,7 +287,7 @@ func LoadConfig() *Config {
 		Port:                          getEnv("PORT", "8080"),
 		OrderMinBrl:                   getEnvAsFloat("ORDER_MIN_BRL", 10.0),
 		OrderMaxBrl:                   getEnvAsFloat("ORDER_MAX_BRL", 10000.0),
-		RateLockSec:                   getEnvAsInt("RATE_LOCK_SEC", 300),
+		RateLockSec:                   getEnvAsInt("RATE_LOCK_SEC", 900),
 		PixChargeExpirySec:            getEnvAsInt("PIX_CHARGE_EXPIRY_SEC", 1800),
 		RateLimitWindowMs:             getEnvAsInt("RATE_LIMIT_WINDOW_MS", 60000),
 		RateLimitMax:                  getEnvAsInt("RATE_LIMIT_MAX", 100),
@@ -304,6 +305,7 @@ func LoadConfig() *Config {
 		FeeFixedUsd:                   getEnvAsFloat("FEE_FIXED_USD", getEnvAsFloat("TRANSACTION_FEE_FIXED_USD", 0)),
 		FeePerUsdtUsd:                 getEnvAsFloat("FEE_PER_USDT_USD", 0.03),
 		FeeMinBrl:                     getEnvAsFloat("FEE_MIN_BRL", 0),
+		FeeFreeMode:                   getEnvAsBool("FEE_FREE_MODE", false),
 		BuyTier1MinBrl:                getEnvAsFloat("FEE_BUY_TIER_1_MIN", 20),
 		BuyTier1MaxBrl:                getEnvAsFloat("FEE_BUY_TIER_1_MAX", 100),
 		BuyTier1Bps:                   getEnvPercentAsBps("FEE_BUY_TIER_1_PERCENT", getEnvAsInt("FEE_BUY_TIER_1_BPS", 750)),
@@ -425,10 +427,10 @@ func LoadConfig() *Config {
 		SMTPFromName:        getEnv("SMTP_FROM_NAME", "ChainFX"),
 		OpsEmail:            getEnv("OPS_EMAIL", getEnv("SMTP_FROM_EMAIL", "")),
 		EmailBrandName:      getEnv("EMAIL_BRAND_NAME", "ChainFX"),
-		EmailLogoURL:        getEnv("EMAIL_LOGO_URL", "https://res.cloudinary.com/limpeja/image/upload/v1783623705/Green_Modern_Marketing_Logo-removebg-preview_1_yivrrc.png"),
+		EmailLogoURL:        getEnv("EMAIL_LOGO_URL", "https://res.cloudinary.com/limpeja/image/upload/v1785713180/ChatGPT_Image_22_de_jul._de_2026_08_43_40-Photoroom_1_xbvult.png"),
 		EmailSiteURL:        strings.TrimRight(getEnv("EMAIL_SITE_URL", "https://www.chainfx.store"), "/"),
 		EmailAddress:        getEnv("EMAIL_COMPANY_ADDRESS", "ChainFX Payments"),
-		SupportEmail:        getEnv("SUPPORT_EMAIL", getEnv("SMTP_FROM_EMAIL", "")),
+		SupportEmail:        getEnv("SUPPORT_EMAIL", "support@chainfx.store"),
 		LGPDSecret:          getEnv("LGPD_SECRET", ""),
 		WebhooksEnabled:     getEnvAsBool("WEBHOOKS_ENABLED", true),
 		WebhooksMaxRetries:  getEnvAsInt("WEBHOOKS_MAX_RETRIES", 5),

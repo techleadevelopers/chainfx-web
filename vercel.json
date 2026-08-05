@@ -13,6 +13,18 @@
       "destination": "/admin.html"
     },
     {
+      "source": "/terms",
+      "destination": "/terms.html"
+    },
+    {
+      "source": "/terms/",
+      "destination": "/terms.html"
+    },
+    {
+      "source": "/terms.html",
+      "destination": "/terms.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

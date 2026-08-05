@@ -6,6 +6,7 @@ chainfx-kyc-provider/
 .mcpregistry_*_token
 .gocache
 .gocache/
+.gomodcache/
 # Binários compilados pelo Go (Executáveis)
 /dist/
 /bin/

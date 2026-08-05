@@ -98,6 +98,7 @@ func (s *Server) processNextCommerceOutbox(ctx context.Context) {
 	if isPaymentEngineCommerceProduct(order.ProductType) && order.ProviderSlug == "bitrefill" {
 		if order.Status == "provider_unknown" && strings.TrimSpace(order.ProviderReference) == "" {
 			_ = s.markGiftCardPaymentExecutionManualReview(ctx, order.ID, "provider_unknown_without_reference")
+			s.sendCommerceOrderStateEmailAsync(order, "manual_review", "Pedido em revisao na ChainFX", "Seu pedido precisa de revisao manual antes de continuar.", "provider_unknown_without_reference")
 			_ = s.markCommerceOutboxProcessed(ctx, event.ID)
 			return
 		}
@@ -146,6 +147,7 @@ func (s *Server) processNextCommerceOutbox(ctx context.Context) {
 			return
 		}
 		_ = s.failCommerceOrderAndRelease(ctx, order, commerceProviderErrorCode(err))
+		s.sendCommerceOrderStateEmailAsync(order, "failed", "Pedido nao concluido na ChainFX", "Nao foi possivel concluir seu pedido. Se houve reserva de saldo, ela foi liberada ou encaminhada para reembolso.", commerceProviderErrorCode(err))
 		_ = s.markCommerceOutboxProcessed(ctx, event.ID)
 		return
 	}
@@ -458,6 +460,18 @@ WHERE id=$1 AND status NOT IN ('delivered','failed','funds_released','refunded')
 	}
 	if status == "delivered" {
 		s.sendCommerceProviderOrderEmailAsync(order, result)
+	} else if status == "failed" {
+		s.sendCommerceOrderStateEmailAsync(order, "failed", "Pedido nao concluido na ChainFX", "Nao foi possivel concluir seu pedido. Se houve reserva de saldo, ela foi liberada ou encaminhada para reembolso.", firstNonEmptyStr(result.ErrorMessage, result.ProviderStatus, "failed"))
+		if order.FundingMethod != "internal_usdt" {
+			s.sendCommerceOrderStateEmailAsync(order, "refund_pending", "Reembolso do pedido pendente", "Seu pedido nao foi concluido e o reembolso foi iniciado.", firstNonEmptyStr(result.ErrorMessage, result.ProviderStatus, "refund_pending"))
+		}
+	} else if status == "refunded" {
+		if order.FundingMethod != "internal_usdt" {
+			s.sendCommerceOrderStateEmailAsync(order, "refund_pending", "Reembolso do pedido pendente", "O provider retornou reembolso e estamos finalizando a devolucao.", firstNonEmptyStr(result.ErrorMessage, result.ProviderStatus, "refund_pending"))
+		}
+		s.sendCommerceOrderStateEmailAsync(order, "refunded", "Pedido reembolsado na ChainFX", "Seu pedido foi marcado como reembolsado.", firstNonEmptyStr(result.ErrorMessage, result.ProviderStatus, "refunded"))
+	} else if status == "manual_review" {
+		s.sendCommerceOrderStateEmailAsync(order, "manual_review", "Pedido em revisao na ChainFX", "Seu pedido precisa de revisao manual antes de continuar.", firstNonEmptyStr(result.ErrorMessage, result.ProviderStatus, "manual_review"))
 	}
 	return nil
 }
@@ -650,4 +664,26 @@ UPDATE mobile_gift_card_orders
 SET email_status=$2, updated_at=NOW()
 WHERE id=$1`, order.ID, status)
 	}()
+}
+
+func (s *Server) sendCommerceOrderStateEmailAsync(order commerceOrderForProvider, status, subject, intro, reason string) {
+	if s == nil || strings.TrimSpace(order.UserEmail) == "" {
+		return
+	}
+	title := firstNonEmptyStr(order.Title, order.Brand, "Pedido")
+	s.sendMobileTransactionEmailToAsync(order.UserEmail, subject, email.TransactionReceipt{
+		Title: subject,
+		Intro: intro,
+		CTA:   "Abrir app",
+		Details: []email.TransactionDetail{
+			{Label: "Produto", Value: title},
+			{Label: "Tipo", Value: firstNonEmptyStr(order.ProductType, "gift_card")},
+			{Label: "Status", Value: status},
+			{Label: "Valor", Value: "R$ " + brlMinorString(order.AmountBRLMinor)},
+			{Label: "USDT", Value: usdtMicroString(order.RequiredUSDTMicro) + " USDT"},
+			{Label: "Ordem", Value: order.ID, CopyHint: true},
+			{Label: "Motivo", Value: truncateMobilePaymentError(reason)},
+			{Label: "Atualizado em", Value: mobileNowText()},
+		},
+	})
 }

@@ -49,7 +49,7 @@ func NewTreasuryService(btcCfg *Config, db *sql.DB) (*TreasuryService, error) {
 		return nil, fmt.Errorf("bitcoin/treasury: BTC_TREASURY_ADDRESS inválido para rede %s: %w", btcCfg.Network, err)
 	}
 
-	signer, err := NewAESGCMTreasurySigner(tcfg)
+	signer, err := NewAESGCMTreasurySigner(tcfg, btcCfg)
 	if err != nil {
 		return nil, fmt.Errorf("bitcoin/treasury: falha ao inicializar signer: %w", err)
 	}
@@ -146,6 +146,7 @@ func (ts *TreasuryService) AvailableBalance(ctx context.Context, amountSats int6
 //  7. Reservar UTXOs atomicamente (ErrDoubleSpend se race condition)
 //  8. Assinar tx
 //  9. Persistir tx assinada (status = signed)
+//
 // 10. Broadcast
 // 11. Handle broadcast_unknown (NUNCA fallback BingX a partir daqui)
 // 12. Marcar UTXOs como spent

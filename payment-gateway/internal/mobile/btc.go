@@ -2,12 +2,14 @@ package mobile
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"payment-gateway/internal/bitcoin"
+	"payment-gateway/internal/email"
 )
 
 // btcSvcOrErr retorna o serviço BTC ou escreve 503 e retorna nil.
@@ -272,6 +274,21 @@ func (s *Server) handleBTCSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.sendMobileTransactionEmailAsync(uid, "BTC enviado pela ChainFX", email.TransactionReceipt{
+		Title:  "BTC enviado",
+		Intro:  "Seu envio Bitcoin foi transmitido com sucesso.",
+		CTA:    "Ver Scan",
+		CTAURL: mobileScanURL("BITCOIN", result.TxID),
+		Details: []email.TransactionDetail{
+			{Label: "Ativo", Value: "BTC"},
+			{Label: "Valor", Value: fmt.Sprintf("%.8f BTC", float64(result.AmountSats)/100000000)},
+			{Label: "Taxa", Value: fmt.Sprintf("%d sats", result.FeeSats)},
+			{Label: "Destino", Value: req.ToAddress, CopyHint: true},
+			{Label: "TxID", Value: result.TxID, CopyHint: true},
+			{Label: "Status", Value: result.Status},
+			{Label: "Enviado em", Value: mobileNowText()},
+		},
+	})
 	writeJSON(w, http.StatusOK, result)
 }
 

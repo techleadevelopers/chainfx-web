@@ -416,6 +416,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		"accessToken":  access,
 		"refreshToken": refresh,
 	})
+	s.sendMobileSecurityEmailAsync(user.ID, "Novo login", "Um login foi realizado na sua conta mobile.", email.TransactionDetail{Label: "Dispositivo", Value: firstNonEmptyStr(req.DeviceID, "nao informado"), CopyHint: strings.TrimSpace(req.DeviceID) != ""})
 }
 
 func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {

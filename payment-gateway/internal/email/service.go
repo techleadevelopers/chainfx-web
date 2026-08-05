@@ -144,7 +144,17 @@ func (s *Service) NotifyOps(subject, body string) {
 	if s.cfg.OpsEmail == "" {
 		return
 	}
-	if err := s.Send(Message{To: s.cfg.OpsEmail, Subject: subject, Body: body}); err != nil {
+	if err := s.Send(BuildOpsMessage(s.cfg.OpsEmail, subject, body, s.brand())); err != nil {
+		slog.Warn("Falha ao enviar email operacional", "error", err)
+	}
+}
+
+func (s *Service) NotifyOpsOrderCreated(receipt OpsOrderCreated) {
+	if s.cfg.OpsEmail == "" {
+		return
+	}
+	receipt.Brand = s.brand()
+	if err := s.Send(BuildOpsOrderCreatedMessage(s.cfg.OpsEmail, receipt)); err != nil {
 		slog.Warn("Falha ao enviar email operacional", "error", err)
 	}
 }
@@ -177,7 +187,7 @@ func (s *Service) brand() Brand {
 		LogoURL:      firstNonEmpty(s.cfg.EmailLogoURL, "https://www.chainfx.store/logo.png"),
 		SiteURL:      firstNonEmpty(s.cfg.EmailSiteURL, "https://www.chainfx.store"),
 		Address:      firstNonEmpty(s.cfg.EmailAddress, "ChainFX Payments"),
-		SupportEmail: firstNonEmpty(s.cfg.SupportEmail, s.cfg.SMTPFromEmail),
+		SupportEmail: firstNonEmpty(s.cfg.SupportEmail, "support@chainfx.store"),
 		Year:         time.Now().Year(),
 	}
 }
