@@ -796,14 +796,16 @@
     margin-top: -33px;
 }
 
-.markets-header h1 {
+.markets-header h1,
+.markets-header h2 {
   margin: 0 0 8px;
-  font-size: clamp(1.82rem, 3.5vw, 3.36rem);
+  font-size: clamp(1.456rem, 2.8vw, 2.688rem);
   line-height: 1;
-  background: linear-gradient(135deg, #06b6d4 0%, #1150a8 100%);
+  background: linear-gradient(90deg, #11c7df 0%, #0746f496 50%, #14bfe6 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 
 .markets-header p {
@@ -1444,12 +1446,13 @@ body.news-mode .news-view {
 
 .news-header h2 {
   margin: 0 0 8px;
-  font-size: clamp(1.82rem, 3.5vw, 3.36rem);
+  font-size: clamp(1.456rem, 2.8vw, 2.688rem);
   line-height: 1;
-  background: linear-gradient(135deg, #06b6d4 0%, #1150a8 100%);
+  background: linear-gradient(90deg, #11c7df 0%, #0746f496 50%, #14bfe6 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 
 .news-header p {

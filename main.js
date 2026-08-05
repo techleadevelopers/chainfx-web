@@ -2150,9 +2150,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Fetch RSS feeds via Vite dev proxy (avoids CORS); parse XML in-browser.
   const NEWS_RSS_SOURCES = [
-    { proxy: '/proxy/rss/coindesk',       source: 'CoinDesk' },
-    { proxy: '/proxy/rss/cointelegraph',  source: 'CoinTelegraph' },
-    { proxy: '/proxy/rss/decrypt',        source: 'Decrypt' },
+    { proxy: '/proxy/rss/coindesk',      source: 'CoinDesk' },
+    { proxy: '/proxy/rss/cointelegraph', source: 'CoinTelegraph' },
+    { proxy: '/proxy/rss/decrypt',       source: 'Decrypt' },
+    { proxy: '/proxy/rss/theblock',      source: 'The Block' },
+    { proxy: '/proxy/rss/beincrypto',    source: 'BeInCrypto' },
+    { proxy: '/proxy/rss/newsbtc',       source: 'NewsBTC' },
+    { proxy: '/proxy/rss/utoday',        source: 'U.Today' },
+    { proxy: '/proxy/rss/cryptoslate',   source: 'CryptoSlate' },
   ];
 
   function rssTagText(el, tag) {
@@ -2212,7 +2217,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return true;
     });
     all.sort((a, b) => new Date(b.published_at || 0) - new Date(a.published_at || 0));
-    return all.slice(0, 40);
+    return all.slice(0, 80);
   }
 
   const CHAINFX_API_BASE =
@@ -2227,7 +2232,7 @@ async function fetchNews() {
         headers: {
           Accept: 'application/json'
         },
-        signal: AbortSignal.timeout(8000)
+        signal: AbortSignal.timeout(3000)
       }
     );
 
@@ -2239,22 +2244,18 @@ async function fetchNews() {
 
     const data = await response.json();
 
-    if (Array.isArray(data.items)) {
+    if (Array.isArray(data.items) && data.items.length) {
       return data.items;
     }
 
-    if (Array.isArray(data)) {
+    if (Array.isArray(data) && data.length) {
       return data;
     }
 
-    return [];
+    throw new Error('Empty response from news API');
   } catch (error) {
-    console.error(
-      'Failed to load ChainFX news:',
-      error
-    );
-
-    return [];
+    console.warn('ChainFX news API unavailable, falling back to RSS:', error.message);
+    return fetchNewsFromRSS();
   }
 }
 
