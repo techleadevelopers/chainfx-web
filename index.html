@@ -839,8 +839,50 @@ void main() {
                     <p>Latest updates from the digital asset market</p>
                 </div>
             </div>
-            <div class="news-cards" id="newsCards">
-                <div class="news-loading">Loading latest news…</div>
+            <div class="news-panel">
+                <div class="news-toolbar" id="newsToolbar">
+                    <div class="news-search-wrap">
+                        <svg class="news-search-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                            <circle cx="8.5" cy="8.5" r="5" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M13 13l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                        <input
+                            type="search"
+                            id="newsSearch"
+                            class="news-search-input"
+                            placeholder="Search news…"
+                            autocomplete="off"
+                            aria-label="Search news"
+                        />
+                    </div>
+                    <div class="news-filter-wrap">
+                        <button class="news-filter-btn" id="newsFilterBtn" type="button" aria-label="Filter news" aria-expanded="false" aria-controls="newsFilterDropdown">
+                            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                <path d="M3 5h14M6 10h8M9 15h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            <span class="news-filter-badge hidden" id="newsFilterBadge"></span>
+                        </button>
+                        <div class="news-filter-dropdown hidden" id="newsFilterDropdown" role="menu">
+                            <p class="news-filter-label">Source</p>
+                            <label class="news-filter-option"><input type="checkbox" name="news-source" value="CoinDesk" checked /> CoinDesk</label>
+                            <label class="news-filter-option"><input type="checkbox" name="news-source" value="CoinTelegraph" checked /> CoinTelegraph</label>
+                            <label class="news-filter-option"><input type="checkbox" name="news-source" value="Decrypt" checked /> Decrypt</label>
+                            <div class="news-filter-divider"></div>
+                            <p class="news-filter-label">Asset</p>
+                            <div class="news-filter-assets" id="newsFilterAssets">
+                                <label class="news-filter-option"><input type="checkbox" name="news-asset" value="ALL" checked /> All</label>
+                                <label class="news-filter-option"><input type="checkbox" name="news-asset" value="BTC" /> BTC</label>
+                                <label class="news-filter-option"><input type="checkbox" name="news-asset" value="ETH" /> ETH</label>
+                                <label class="news-filter-option"><input type="checkbox" name="news-asset" value="SOL" /> SOL</label>
+                                <label class="news-filter-option"><input type="checkbox" name="news-asset" value="XRP" /> XRP</label>
+                            </div>
+                            <button class="news-filter-clear" id="newsFilterClear" type="button">Reset filters</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="news-cards" id="newsCards">
+                    <div class="news-loading">Loading latest news…</div>
+                </div>
             </div>
         </div>
     </section>

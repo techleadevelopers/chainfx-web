@@ -2285,6 +2285,96 @@ async function fetchNews() {
 
   let _newsLoaded = false;
   let _newsTimer  = null;
+  let _newsAllItems = [];
+
+  // ── News toolbar: search + filter ─────────────────────────────────────────
+
+  function getNewsFilterState() {
+    const sources = [...document.querySelectorAll('[name="news-source"]')]
+      .filter(el => el.checked).map(el => el.value);
+    const assetChecks = [...document.querySelectorAll('[name="news-asset"]')]
+      .filter(el => el.checked).map(el => el.value);
+    const allAssets = assetChecks.includes('ALL');
+    const query = (document.getElementById('newsSearch')?.value || '').trim().toLowerCase();
+    return { sources, assetChecks, allAssets, query };
+  }
+
+  function applyNewsFilters() {
+    const { sources, assetChecks, allAssets, query } = getNewsFilterState();
+    let filtered = _newsAllItems.filter(item => {
+      if (sources.length && !sources.includes(item.source)) return false;
+      if (!allAssets && assetChecks.length && !assetChecks.includes(item.asset)) return false;
+      if (query) {
+        const hay = (item.title + ' ' + (item.summary || '') + ' ' + (item.source || '')).toLowerCase();
+        if (!hay.includes(query)) return false;
+      }
+      return true;
+    });
+    renderNewsCards(filtered);
+    // badge: show dot if any filter is narrowed
+    const badge = document.getElementById('newsFilterBadge');
+    if (badge) {
+      const allSources = document.querySelectorAll('[name="news-source"]').length;
+      const narrowed = sources.length < allSources || !allAssets || query;
+      badge.classList.toggle('hidden', !narrowed);
+    }
+  }
+
+  function initNewsToolbar() {
+    const searchEl = document.getElementById('newsSearch');
+    const filterBtn = document.getElementById('newsFilterBtn');
+    const dropdown = document.getElementById('newsFilterDropdown');
+    const clearBtn = document.getElementById('newsFilterClear');
+
+    if (!searchEl || !filterBtn || !dropdown) return;
+
+    // live search
+    searchEl.addEventListener('input', applyNewsFilters);
+
+    // toggle dropdown
+    filterBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = dropdown.classList.toggle('hidden') === false;
+      filterBtn.setAttribute('aria-expanded', String(open));
+    });
+
+    // close on outside click
+    document.addEventListener('click', (e) => {
+      if (!dropdown.contains(e.target) && e.target !== filterBtn) {
+        dropdown.classList.add('hidden');
+        filterBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // re-filter on any checkbox change
+    dropdown.addEventListener('change', (e) => {
+      // "All" asset logic: checking All unchecks individual assets, checking any specific one unchecks All
+      if (e.target.name === 'news-asset') {
+        const allBox = dropdown.querySelector('[name="news-asset"][value="ALL"]');
+        const specificBoxes = [...dropdown.querySelectorAll('[name="news-asset"]:not([value="ALL"])')];
+        if (e.target.value === 'ALL' && allBox.checked) {
+          specificBoxes.forEach(b => b.checked = false);
+        } else if (e.target.value !== 'ALL') {
+          if (allBox) allBox.checked = false;
+          // if nothing checked, re-check All
+          if (!specificBoxes.some(b => b.checked)) allBox.checked = true;
+        }
+      }
+      applyNewsFilters();
+    });
+
+    // reset
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        document.querySelectorAll('[name="news-source"]').forEach(el => el.checked = true);
+        const allBox = dropdown.querySelector('[name="news-asset"][value="ALL"]');
+        if (allBox) allBox.checked = true;
+        dropdown.querySelectorAll('[name="news-asset"]:not([value="ALL"])').forEach(b => b.checked = false);
+        if (searchEl) searchEl.value = '';
+        applyNewsFilters();
+      });
+    }
+  }
 
   async function loadNews() {
     if (!_newsLoaded) {
@@ -2292,7 +2382,9 @@ async function fetchNews() {
       if (c) c.innerHTML = '<div class="news-loading">Loading latest news…</div>';
     }
     const items = await fetchNews();
-    renderNewsCards(items);
+    _newsAllItems = items;
+    applyNewsFilters();
+    if (!_newsLoaded) initNewsToolbar();
     _newsLoaded = true;
   }
 
