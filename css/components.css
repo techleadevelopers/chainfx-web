@@ -550,7 +550,6 @@
   max-width: 120px;  /* ajuste o tamanho conforme quiser */
   height: auto;
   display: block;
-
 }
 
 .swap-card:has(#step3:not(.hidden)) {
