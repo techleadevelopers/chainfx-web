@@ -430,6 +430,133 @@
       font-size: 13px;
     }
 
+    .kpi[data-kpi-detail],
+    .metric-box[data-kpi-detail] {
+      cursor: pointer;
+      outline: none;
+    }
+
+    .kpi[data-kpi-detail] label::after,
+    .metric-box[data-kpi-detail] label::after {
+      content: "detalhes";
+      float: right;
+      padding: 3px 7px;
+      border: 1px solid rgba(148, 163, 184, 0.38);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .kpi[data-kpi-detail]:focus-visible,
+    .metric-box[data-kpi-detail]:focus-visible {
+      border-color: rgba(34, 211, 238, 0.72);
+      box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.18), var(--shadow);
+    }
+
+    .detail-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 22px;
+      background: rgba(2, 6, 23, 0.68);
+      backdrop-filter: blur(12px);
+    }
+
+    .detail-overlay.open {
+      display: flex;
+    }
+
+    .detail-modal {
+      width: min(960px, 100%);
+      max-height: min(760px, calc(100vh - 44px));
+      overflow: hidden;
+      border: 1px solid rgba(96, 165, 250, 0.28);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 24px 70px rgba(2, 6, 23, 0.45);
+    }
+
+    .detail-modal-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .detail-modal-head h2 {
+      margin: 0;
+      color: var(--ink);
+      font-size: 20px;
+    }
+
+    .detail-modal-head p {
+      margin: 6px 0 0;
+      color: var(--muted);
+    }
+
+    .detail-close {
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .detail-modal-body {
+      max-height: calc(min(760px, 100vh - 44px) - 76px);
+      overflow: auto;
+      padding: 18px;
+    }
+
+    .detail-summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .detail-stat {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .detail-stat label {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .detail-stat strong {
+      display: block;
+      margin-top: 7px;
+      color: var(--ink);
+      font-family: var(--mono);
+      font-size: 20px;
+    }
+
+    .detail-section-title {
+      margin: 18px 0 8px;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
     .status-dot {
       width: 9px;
       height: 9px;
@@ -2416,6 +2543,75 @@
       }
     }
     /* ══ / MOBILE ADMIN DASHBOARD ════════════════════════════════════ */
+    /* Admin operacional: testes internos fora da UI de produção. */
+    .nav [data-section="tests"],
+    .nav [data-section="signer"],
+    .nav [data-section="eips"],
+    #tests,
+    #signer,
+    #eips {
+      display: none !important;
+    }
+
+    #overview > .panel,
+    #mobile-users > .panel {
+      border-radius: 6px;
+      box-shadow: none;
+    }
+
+    #overview .grid.kpis {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(180px, 1fr));
+      gap: 10px;
+    }
+
+    #overview .metric-box,
+    #mobile-users .metric-box {
+      border-radius: 6px;
+      background: rgba(3, 12, 24, 0.42);
+      border: 1px solid rgba(90, 148, 214, 0.22);
+      border-left: 3px solid rgba(0, 229, 255, 0.58);
+      padding: 12px 14px;
+      min-height: 78px;
+    }
+
+    #overview .metric-box strong,
+    #mobile-users .metric-box strong {
+      font-size: 24px;
+      line-height: 1.1;
+    }
+
+    #overview .table-wrap,
+    #mobile-users .table-wrap {
+      border-radius: 6px;
+    }
+
+    #mobile-users .panel-head h2::before {
+      content: "Aprovação mobile";
+      display: block;
+      margin-bottom: 5px;
+      color: var(--accent, #00e5ff);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    #kycJson {
+      display: none;
+    }
+
+    @media (max-width: 980px) {
+      #overview .grid.kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      #overview .grid.kpis {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body class="admin-page">
@@ -2473,9 +2669,7 @@
           <div class="nav-children">
             <button class="nav-child" data-section="operations" type="button">Workers</button>
             <button class="nav-child" data-section="mobile-ops" type="button">Mobile Operacional</button>
-            <button class="nav-child" data-section="mobile-users" type="button">KYC Mobile</button>
-            <button class="nav-child" data-section="tests" type="button">Mobile Tests</button>
-            <button class="nav-child" data-section="signer" type="button">Signer</button>
+            <button class="nav-child" data-section="mobile-users" type="button">Aprovar usuários</button>
             <button class="nav-child" data-section="telemetry" type="button">Observability</button>
             <button class="nav-child" data-section="infrastructure" type="button">Saúde</button>
             <button class="nav-child" data-section="security" type="button">Security</button>
@@ -2536,13 +2730,6 @@
           <button class="nav-main" data-section="agent-funnel" type="button" aria-expanded="false">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16l-6 7v5l-4 2v-7L4 5Z"/><path d="M7 5V3h10v2"/><path d="M8 21h8"/></svg>
             Agent Funnel
-            <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
-          </button>
-        </section>
-        <section class="nav-group" data-nav-group="eips">
-          <button class="nav-main" data-section="eips" type="button" aria-expanded="false">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12l3 5-9 13L3 8l3-5Z"/><path d="M3 8h18"/><path d="m8 8 4 13 4-13"/><path d="m6 3 2 5 4-5 4 5 2-5"/></svg>
-            EIPs
             <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
           </button>
         </section>
@@ -2648,17 +2835,17 @@
           <strong id="backendStatus">--</strong>
           <span id="backendDetail">Aguardando verificacao</span>
         </div>
-        <div class="panel kpi">
+        <div class="panel kpi" data-kpi-detail="volume" role="button" tabindex="0" aria-label="Abrir detalhes do volume BRL">
           <label>Volume BRL</label>
           <strong id="kpiBrl">R$ 0,00</strong>
           <span id="kpiCount">0 transacoes</span>
         </div>
-        <div class="panel kpi">
+        <div class="panel kpi" data-kpi-detail="usdt" role="button" tabindex="0" aria-label="Abrir detalhes do USDT liquidado">
           <label>USDT liquidado</label>
           <strong id="kpiUsdt">0.000000</strong>
           <span id="kpiSent">0 envios</span>
         </div>
-        <div class="panel kpi">
+        <div class="panel kpi" data-kpi-detail="alerts" role="button" tabindex="0" aria-label="Abrir detalhes dos alertas">
           <label>Alertas</label>
           <strong id="kpiAlerts">0</strong>
           <span id="kpiAlertText">Sem alertas locais</span>
@@ -2725,15 +2912,15 @@
           <div class="panel-head">
             <div>
               <h2>Centro de controle</h2>
-              <p>Aprovacoes, pagamentos manuais, KYC e ultimas compras para operar o dia sem misturar tudo no financeiro.</p>
+              <p>Aprovacoes mobile, pagamentos manuais e operacoes recentes em uma tela objetiva.</p>
             </div>
             <span class="badge info" id="overviewUpdatedAt">Aguardando dados</span>
           </div>
           <div class="grid kpis" style="margin-top:16px">
             <div class="metric-box"><label>Payout manual SELL</label><strong id="overviewManualPayoutCount">0</strong><span id="overviewManualPayoutValue">R$ 0,00 aguardando</span></div>
-            <div class="metric-box"><label>KYC Mobile</label><strong id="overviewKycPending">0</strong><span>pendentes de aprovacao</span></div>
+            <div class="metric-box"><label>Aprovar usuarios</label><strong id="overviewKycPending">0</strong><span>KYC mobile pendente</span></div>
             <div class="metric-box"><label>Mobile pendente</label><strong id="overviewMobilePending">0</strong><span>funding/provider/manual review</span></div>
-            <div class="metric-box"><label>Compras recentes</label><strong id="overviewRecentPurchases">0</strong><span>BUY web + mobile</span></div>
+            <div class="metric-box"><label>Operacoes recentes</label><strong id="overviewRecentPurchases">0</strong><span>BUY, SELL e mobile</span></div>
           </div>
         </div>
 
@@ -2765,19 +2952,19 @@
         <div class="panel">
           <div class="panel-head">
             <div>
-              <h2>Ultimas compras</h2>
-              <p>Resumo curto para acompanhamento. O detalhe fica em Financeiro Web ou Mobile Operacional.</p>
+              <h2>Ultimas operacoes</h2>
+              <p>Compras, vendas e pedidos mobile recentes com quantidade cripto visivel.</p>
             </div>
           </div>
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th>Data</th><th>Origem</th><th>Produto</th><th>Status</th><th>Valor</th><th>Referencia</th></tr>
+                <tr><th>Data</th><th>Origem</th><th>Produto</th><th>Status</th><th>Valor</th><th>Qtd cripto</th><th>Referencia</th></tr>
               </thead>
               <tbody id="overviewPurchasesBody"></tbody>
             </table>
           </div>
-          <div class="empty" id="overviewPurchasesEmpty">Nenhuma compra carregada.</div>
+          <div class="empty" id="overviewPurchasesEmpty">Nenhuma operacao carregada.</div>
         </div>
 
         <div class="panel">
@@ -2973,15 +3160,15 @@
           <div class="panel-head">
             <div>
               <h2>Financeiro Web</h2>
-              <p>BUY e SELL do produto web. PIX de entrada em BUY fica aqui; payout ao cliente sai pela tela Payout Manual.</p>
+              <p>Compras BUY do site e vendas SELL do produto web. BUY registra o PIX/cartao de entrada; SELL registra o PIX solicitado pelo cliente e o payout manual.</p>
             </div>
             <span class="badge info" id="webFinanceStatus">Aguardando dados</span>
           </div>
           <div class="grid kpis" style="margin-top:16px">
-            <div class="metric-box"><label>Volume BUY</label><strong id="webFinanceBuyVolume">R$ 0,00</strong><span id="webFinanceBuyCount">0 ordens</span></div>
-            <div class="metric-box"><label>Volume SELL</label><strong id="webFinanceSellVolume">R$ 0,00</strong><span id="webFinanceSellCount">0 ordens</span></div>
-            <div class="metric-box"><label>Payout pendente</label><strong id="webFinancePendingPayout">0</strong><span id="webFinancePendingPayoutValue">R$ 0,00</span></div>
-            <div class="metric-box"><label>Concluidas</label><strong id="webFinanceCompleted">0</strong><span>BUY/SELL liquidadas</span></div>
+            <div class="metric-box" data-kpi-detail="web-buy" role="button" tabindex="0" aria-label="Abrir detalhes das compras BUY web"><label>Compras BUY</label><strong id="webFinanceBuyVolume">R$ 0,00</strong><span id="webFinanceBuyCount">0 ordens</span></div>
+            <div class="metric-box" data-kpi-detail="web-sell" role="button" tabindex="0" aria-label="Abrir detalhes das vendas SELL web"><label>Vendas SELL</label><strong id="webFinanceSellVolume">R$ 0,00</strong><span id="webFinanceSellCount">0 ordens</span></div>
+            <div class="metric-box" data-kpi-detail="web-payout" role="button" tabindex="0" aria-label="Abrir detalhes do PIX SELL pendente"><label>PIX SELL pendente</label><strong id="webFinancePendingPayout">0</strong><span id="webFinancePendingPayoutValue">R$ 0,00</span></div>
+            <div class="metric-box" data-kpi-detail="web-completed" role="button" tabindex="0" aria-label="Abrir detalhes das ordens web concluidas"><label>Concluidas</label><strong id="webFinanceCompleted">0</strong><span>BUY/SELL liquidadas</span></div>
           </div>
           <div class="toolbar">
             <div class="field">
@@ -3006,14 +3193,15 @@
                   <th>Valor BRL</th>
                   <th>Cripto</th>
                   <th>Rede</th>
-                  <th>PIX / Wallet</th>
+                  <th>Canal</th>
+                  <th>PIX SELL / Wallet BUY</th>
                   <th>Referencia</th>
                 </tr>
               </thead>
               <tbody id="webFinanceBody"></tbody>
             </table>
           </div>
-          <div class="empty" id="webFinanceEmpty">Nenhum BUY/SELL web carregado.</div>
+          <div class="empty" id="webFinanceEmpty">Nenhuma compra BUY ou venda SELL web carregada.</div>
         </div>
       </section>
 
@@ -3143,8 +3331,8 @@
         <div class="panel">
           <div class="panel-head">
             <div>
-              <h2>Mobile Users / KYC Manual</h2>
-              <p>Aprovacao manual de cadastro e documentacao enviada pelo app mobile.</p>
+              <h2>Aprovar usuarios mobile</h2>
+              <p>Aprovacao manual de cadastro e documentacao enviada pelo app.</p>
             </div>
             <span class="badge info" id="kycReviewStatus">Aguardando dados</span>
           </div>
@@ -3812,6 +4000,19 @@
     </main>
   </div>
 
+  <div class="detail-overlay" id="kpiDetailOverlay" aria-hidden="true">
+    <section class="detail-modal" role="dialog" aria-modal="true" aria-labelledby="kpiDetailTitle">
+      <div class="detail-modal-head">
+        <div>
+          <h2 id="kpiDetailTitle">Detalhes</h2>
+          <p id="kpiDetailSubtitle">Resumo consolidado do backend.</p>
+        </div>
+        <button class="detail-close" id="kpiDetailClose" type="button" aria-label="Fechar">×</button>
+      </div>
+      <div class="detail-modal-body" id="kpiDetailBody"></div>
+    </section>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script type="module">
@@ -3848,10 +4049,14 @@
         wallets: { wallets: [], networkPolicy: [], signer: {} },
         kycRequests: [],
         settlement: null,
+        adminMetrics: null,
+        rates: null,
         events: [],
         telemetry: [],
         alerts: [],
         navExpanded: null,
+        tradeSoundArmed: false,
+        tradeSoundContext: null,
         tests: {
           running: false,
           stop: false,
@@ -3908,6 +4113,7 @@
         bindLogin();
         bindNavigation();
         bindActions();
+        bindTradeSoundUnlock();
         initTestCharts();
         initSignerCharts();
         initEipCharts();
@@ -3920,12 +4126,12 @@
         } else {
           setLocked(true);
         }
-        // Auto-refresh "Últimas Vendas" a cada 30s quando conectado
+        // Auto-refresh admin trade ledger while the console is open.
         setInterval(() => {
-          if (document.body.dataset.adminSection === 'recent-sales') {
-            fetchRecentSales();
+          if (state.apiKey && state.apiKey !== 'dev-preview') {
+            fetchRecentSales(false, { notifyNewTrades: true });
           }
-        }, 30000);
+        }, 10000);
       });
 
       function bindLogin() {
@@ -3982,12 +4188,14 @@
         $('adminLoginBtn').disabled = true;
         $('adminLoginBtn').textContent = 'Validando...';
         try {
-          const data = await request('/api/admin/overview?limit=50');
+          const data = await request('/api/admin/overview?limit=1000');
           if (data.adminUser) state.adminUser = data.adminUser;
           persistAdminKey();
           setLocked(false);
           if (data.readiness) $('readyJson').textContent = JSON.stringify(data.readiness, null, 2);
-          if (Array.isArray(data.transactions)) mergeTransactions(data.transactions.map(normalizeRecord).filter(Boolean));
+          if (Array.isArray(data.transactions)) {
+            replaceTransactions(data.transactions.map(normalizeRecord).filter(Boolean));
+          }
           if (Array.isArray(data.events)) mergeEvents(data.events);
           if (data.wallets) state.wallets = data.wallets;
           fetchKycRequests(false);
@@ -4146,6 +4354,7 @@
         $('statusFilter').addEventListener('change', renderTransactions);
         if ($('webFinanceStatusFilter')) $('webFinanceStatusFilter').addEventListener('change', renderWebFinance);
         if ($('mobileOpsStatusFilter')) $('mobileOpsStatusFilter').addEventListener('change', renderMobileOps);
+        bindKpiDetailCards();
         $('clearDataBtn').addEventListener('click', () => {
           state.transactions = [];
           state.events = [];
@@ -4219,18 +4428,22 @@
       async function tryFetchAdminCollections() {
         const started = performance.now();
         try {
-          const data = await request('/api/admin/overview?limit=200');
+          const data = await request('/api/admin/overview?limit=1000');
           if (data.readiness) {
             $('readyJson').textContent = JSON.stringify(data.readiness, null, 2);
             state.alerts = Array.isArray(data.operationalGaps)
               ? data.operationalGaps.map((item) => ({ type: 'operational_gap', item, at: data.generatedAt || new Date().toISOString() }))
               : [];
           }
-          if (Array.isArray(data.transactions)) mergeTransactions(data.transactions.map(normalizeRecord).filter(Boolean));
+          if (Array.isArray(data.transactions)) {
+            replaceTransactions(data.transactions.map(normalizeRecord).filter(Boolean));
+          }
           if (Array.isArray(data.events)) mergeEvents(data.events);
           if (data.wallets) state.wallets = data.wallets;
           state.settlement = data.settlement || data.settlementReconciliation || null;
           state.agentFunnel = data.agentFunnel || null;
+          state.adminMetrics = data.metrics || null;
+          state.rates = data.rates || null;
           if (data.metrics) $('rawJson').textContent = JSON.stringify({ metrics: data.metrics, rates: data.rates, agentFunnel: data.agentFunnel }, null, 2);
           logTelemetry('/api/admin/overview', 'ok', performance.now() - started);
           persist();
@@ -4241,6 +4454,8 @@
           state.transactions = [];
           state.events = [];
           state.agentFunnel = null;
+          state.adminMetrics = null;
+          state.rates = null;
           state.alerts = [{ type: 'admin_overview', item: error.message, at: new Date().toISOString() }];
           $('rawJson').textContent = JSON.stringify({ error: error.message }, null, 2);
           renderAll();
@@ -5582,18 +5797,64 @@
         return headers;
       }
 
+      function bindTradeSoundUnlock() {
+        const unlock = () => {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContextClass) return;
+          try {
+            const ctx = state.tradeSoundContext || new AudioContextClass();
+            state.tradeSoundContext = ctx;
+            if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+          } catch (_) {}
+          window.removeEventListener('pointerdown', unlock);
+          window.removeEventListener('keydown', unlock);
+        };
+        window.addEventListener('pointerdown', unlock, { once: true });
+        window.addEventListener('keydown', unlock, { once: true });
+      }
+
+      function readNumeric(input, keys) {
+        for (const key of keys) {
+          const value = input?.[key];
+          if (value == null || value === '') continue;
+          const parsed = Number(value);
+          if (Number.isFinite(parsed)) return parsed;
+        }
+        return 0;
+      }
+
       function normalizeRecord(input, forcedType) {
         if (!input || !input.id) return null;
         const source = String(input.source || '').toLowerCase();
-        const type = forcedType || (source === 'sell' ? 'order' : source) || (input.dest_address || input.crypto_amount ? 'buy' : 'order');
+        const rawSide = String(input.side || input.Side || '').toLowerCase();
+        const type = forcedType
+          || (rawSide === 'buy' ? 'buy' : '')
+          || (rawSide === 'sell' ? 'order' : '')
+          || (rawSide === 'commerce' ? 'commerce' : '')
+          || (source === 'sell' ? 'order' : source)
+          || (input.dest_address || input.destAddress || input.crypto_amount || input.cryptoAmount ? 'buy' : 'order');
+        const side = String(rawSide || (source === 'commerce' ? 'commerce' : (type === 'buy' ? 'buy' : 'sell')) || '').toLowerCase();
+        const channel = String(input.channel || input.Channel || (source === 'commerce' ? 'mobile' : 'web')).toLowerCase();
         const fiat = Number(input.amount_fiat ?? input.amountFiat ?? input.amount_brl ?? input.amountBRL ?? 0);
         const brl = Number(input.amount_brl ?? input.amountBRL ?? (input.fiat_currency === 'BRL' ? fiat : 0));
         const fee = Number(input.fee_brl ?? input.feeBRL ?? 0);
         const payout = Number(input.payout_brl ?? input.payoutBRL ?? Math.max(brl - fee, 0));
-        const crypto = Number(input.crypto_amount ?? input.amount_usdt ?? input.amountUSDT ?? input.btcAmount ?? 0);
+        const crypto = readNumeric(input, [
+          'crypto_amount',
+          'cryptoAmount',
+          'amount_usdt',
+          'amountUSDT',
+          'required_usdt',
+          'requiredUSDT',
+          'requiredUsdt',
+          'btc_amount',
+          'btcAmount'
+        ]);
         return {
           id: input.id,
           type,
+          side,
+          channel,
           product: valueOrString(input.product || input.title || input.brand),
           productType: valueOrString(input.product_type || input.productType || input.order_type || input.orderType),
           status: String(input.status || ''),
@@ -5631,6 +5892,53 @@
         state.transactions = Array.from(map.values()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       }
 
+      function tradeKey(record) {
+        return `${record.side || record.type || record.raw?.source || ''}:${record.id}`;
+      }
+
+      function replaceTransactions(records, options = {}) {
+        const previousTradeKeys = new Set(
+          state.transactions
+            .filter((row) => isBuyRow(row) || isSellRow(row))
+            .map(tradeKey)
+        );
+        const next = records.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        const newTrades = next.filter((row) => (isBuyRow(row) || isSellRow(row)) && !previousTradeKeys.has(tradeKey(row)));
+        state.transactions = next;
+        if (options.notifyNewTrades && state.tradeSoundArmed && newTrades.length) {
+          playTradeNotification(newTrades[0]);
+        }
+        state.tradeSoundArmed = true;
+      }
+
+      function playTradeNotification(row) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        try {
+          const ctx = state.tradeSoundContext || new AudioContextClass();
+          state.tradeSoundContext = ctx;
+          if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+          const now = ctx.currentTime;
+          const gain = ctx.createGain();
+          gain.gain.setValueAtTime(0.0001, now);
+          gain.gain.exponentialRampToValueAtTime(0.16, now + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+          gain.connect(ctx.destination);
+
+          const baseFreq = isBuyRow(row) ? 880 : 660;
+          [0, 0.13].forEach((offset, index) => {
+            const osc = ctx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(baseFreq + index * 220, now + offset);
+            osc.connect(gain);
+            osc.start(now + offset);
+            osc.stop(now + offset + 0.18);
+          });
+        } catch (_) {
+          // Audio can be blocked until the user interacts with the page.
+        }
+      }
+
       function mergeEvents(events) {
         const map = new Map(state.events.map((event) => [event.id || `${event.orderId}:${event.type}:${event.createdAt}`, event]));
         events.forEach((event) => map.set(event.id || `${event.orderId}:${event.type}:${event.createdAt}`, event));
@@ -5657,7 +5965,7 @@
         renderOperationalUX();
       }
 
-      async function fetchRecentSales(showToast = false) {
+      async function fetchRecentSales(showToast = false, options = {}) {
         const liveEl = $('recentSalesLive');
         const btn = $('refreshRecentSalesBtn');
         const realKey = state.apiKey && state.apiKey !== 'dev-preview';
@@ -5669,13 +5977,11 @@
         if (btn) btn.disabled = true;
         if (liveEl) liveEl.textContent = '⟳ Buscando...';
         try {
-          const data = await request('/api/admin/transactions?limit=20');
+          const data = await request('/api/admin/transactions?limit=1000');
           const list = Array.isArray(data.transactions) ? data.transactions
                       : Array.isArray(data) ? data : [];
           const normalized = list.map((item) => normalizeRecord(item)).filter(Boolean);
-          // remove seed fictício e substitui por dados reais
-          state.transactions = state.transactions.filter((t) => t.id !== 'prod-first-sale-20260727');
-          mergeTransactions(normalized);
+          replaceTransactions(normalized, { notifyNewTrades: Boolean(options.notifyNewTrades || showToast) });
           renderAll();
           if (showToast) toast(`${normalized.length} venda(s) carregada(s).`);
         } catch (err) {
@@ -5955,15 +6261,23 @@
       }
 
       function isBuyRow(row) {
-        return row.type === 'buy';
+        return row.type === 'buy' || row.side === 'buy' || String(row.raw?.source || '').toLowerCase() === 'buy';
       }
 
       function isSellRow(row) {
-        return row.type === 'sell' || row.type === 'order';
+        return row.type === 'sell' || row.type === 'order' || row.side === 'sell' || String(row.raw?.source || '').toLowerCase() === 'sell';
       }
 
       function isCommerceRow(row) {
-        return row.type === 'commerce';
+        return row.type === 'commerce' || row.side === 'commerce' || String(row.raw?.source || '').toLowerCase() === 'commerce';
+      }
+
+      function isMobileRow(row) {
+        return row.channel === 'mobile' || isCommerceRow(row);
+      }
+
+      function isWebTradeRow(row) {
+        return (isBuyRow(row) || isSellRow(row)) && (row.channel || 'web') === 'web';
       }
 
       function normalizedStatus(row) {
@@ -6015,6 +6329,267 @@
         });
       }
 
+      function bindKpiDetailCards() {
+        document.querySelectorAll('[data-kpi-detail]').forEach((card) => {
+          card.addEventListener('click', () => openKpiDetail(card.dataset.kpiDetail));
+          card.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              openKpiDetail(card.dataset.kpiDetail);
+            }
+          });
+        });
+        if ($('kpiDetailClose')) $('kpiDetailClose').addEventListener('click', closeKpiDetail);
+        if ($('kpiDetailOverlay')) {
+          $('kpiDetailOverlay').addEventListener('click', (event) => {
+            if (event.target === $('kpiDetailOverlay')) closeKpiDetail();
+          });
+        }
+        window.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && $('kpiDetailOverlay')?.classList.contains('open')) closeKpiDetail();
+        });
+      }
+
+      function openKpiDetail(kind) {
+        const overlay = $('kpiDetailOverlay');
+        if (!overlay) return;
+        const detail = kpiDetail(kind);
+        $('kpiDetailTitle').textContent = detail.title;
+        $('kpiDetailSubtitle').textContent = detail.subtitle;
+        $('kpiDetailBody').innerHTML = `
+          <div class="detail-summary">
+            ${detail.stats.map((item) => `
+              <div class="detail-stat">
+                <label>${escapeHtml(item.label)}</label>
+                <strong>${escapeHtml(item.value)}</strong>
+              </div>
+            `).join('')}
+          </div>
+          ${detail.breakdown.length ? `<div class="detail-section-title">Breakdown</div>${detailTable(['Item', 'Valor'], detail.breakdown)}` : ''}
+          ${detail.rows.length ? `<div class="detail-section-title">Transacoes</div>${transactionDetailTable(detail.rows)}` : '<div class="empty">Sem transacoes carregadas para este detalhe.</div>'}
+        `;
+        overlay.classList.add('open');
+        overlay.setAttribute('aria-hidden', 'false');
+        $('kpiDetailClose')?.focus();
+      }
+
+      function closeKpiDetail() {
+        const overlay = $('kpiDetailOverlay');
+        if (!overlay) return;
+        overlay.classList.remove('open');
+        overlay.setAttribute('aria-hidden', 'true');
+      }
+
+      function kpiDetail(kind) {
+        const rows = state.transactions;
+        const metrics = state.adminMetrics || {};
+        const totalBRL = Number(metrics.grossBRL ?? rows.reduce((sum, row) => sum + Number(row.amountBRL || 0), 0));
+        const feesBRL = Number(metrics.feesBRL ?? rows.reduce((sum, row) => sum + Number(row.feeBRL || 0), 0));
+        const payoutBRL = Number(metrics.netBRL ?? rows.reduce((sum, row) => sum + Number(row.payoutBRL || 0), 0));
+        const totalCrypto = Number(metrics.cryptoAmount ?? rows.reduce((sum, row) => sum + Number(row.cryptoAmount || 0), 0));
+        const webRows = rows.filter(isWebTradeRow);
+        const buyRows = webRows.filter(isBuyRow);
+        const sellRows = webRows.filter(isSellRow);
+        const webPendingPayoutRows = webRows.filter(isManualPayoutReady);
+        const webCompletedRows = webRows.filter(isCompletedStatus);
+        const liquidRows = rows.filter(isCompletedStatus);
+        const errorRows = rows.filter((row) => /erro|failed|rejeit/.test(normalizedStatus(row)));
+        const alertRows = state.alerts.map((alert, idx) => ({
+          id: `alert-${idx + 1}`,
+          type: alert.type || 'alerta',
+          status: 'alerta',
+          createdAt: alert.at || new Date().toISOString(),
+          amountBRL: 0,
+          cryptoAmount: 0,
+          asset: '',
+          network: '',
+          raw: alert
+        }));
+
+        if (kind === 'web-buy') {
+          const volume = buyRows.reduce((sum, row) => sum + Number(row.amountBRL || 0), 0);
+          const crypto = buyRows.reduce((sum, row) => sum + Number(row.cryptoAmount || 0), 0);
+          const fees = buyRows.reduce((sum, row) => sum + Number(row.feeBRL || 0), 0);
+          return {
+            title: 'Financeiro Web - Compras BUY',
+            subtitle: 'Compras BUY do site retornadas pelo payment-gateway em /api/admin/overview.',
+            stats: [
+              { label: 'Compras BUY', value: money.format(volume) },
+              { label: 'Ordens de compra', value: String(buyRows.length) },
+              { label: 'Cripto comprado', value: num.format(crypto) }
+            ],
+            breakdown: [
+              ['Taxas BUY', money.format(fees)],
+              ...objectBreakdown(groupBy(buyRows, (row) => row.status || '--')).map((item) => [`Status ${item[0]}`, item[1]]),
+              ...objectBreakdown(groupBy(buyRows, (row) => row.asset || 'USDT')).map((item) => [`Ativo ${item[0]}`, item[1]]),
+              ...objectBreakdown(groupBy(buyRows, (row) => row.network || '--')).map((item) => [`Rede ${item[0]}`, item[1]])
+            ],
+            rows: buyRows.slice(0, 20)
+          };
+        }
+
+        if (kind === 'web-sell') {
+          const volume = sellRows.reduce((sum, row) => sum + Number(row.amountBRL || 0), 0);
+          const payout = sellRows.reduce((sum, row) => sum + Number(row.payoutBRL || row.amountBRL || 0), 0);
+          const crypto = sellRows.reduce((sum, row) => sum + Number(row.depositAmount || row.cryptoAmount || 0), 0);
+          return {
+            title: 'Financeiro Web - Vendas SELL',
+            subtitle: 'Vendas SELL web com funding cripto e PIX solicitado pelo cliente.',
+            stats: [
+              { label: 'Vendas SELL', value: money.format(volume) },
+              { label: 'Ordens de venda', value: String(sellRows.length) },
+              { label: 'Payout previsto', value: money.format(payout) }
+            ],
+            breakdown: [
+              ['Cripto recebido', num.format(crypto)],
+              ...objectBreakdown(groupBy(sellRows, (row) => row.status || '--')).map((item) => [`Status ${item[0]}`, item[1]]),
+              ...objectBreakdown(groupBy(sellRows, (row) => row.asset || 'USDT')).map((item) => [`Ativo ${item[0]}`, item[1]]),
+              ...objectBreakdown(groupBy(sellRows, (row) => row.network || '--')).map((item) => [`Rede ${item[0]}`, item[1]])
+            ],
+            rows: sellRows.slice(0, 20)
+          };
+        }
+
+        if (kind === 'web-payout') {
+          const value = webPendingPayoutRows.reduce((sum, row) => sum + Number(row.payoutBRL || row.amountBRL || 0), 0);
+          const blockedRows = sellRows.filter((row) => isPendingStatus(row) && !isManualPayoutReady(row) && !isCompletedStatus(row));
+          return {
+            title: 'Financeiro Web - PIX SELL pendente',
+            subtitle: 'SELLs prontas para pagar PIX ao cliente depois de funding on-chain confirmado.',
+            stats: [
+              { label: 'Pendentes', value: String(webPendingPayoutRows.length) },
+              { label: 'Valor a pagar', value: money.format(value) },
+              { label: 'Bloqueadas', value: String(blockedRows.length) }
+            ],
+            breakdown: [
+              ...objectBreakdown(groupBy(webPendingPayoutRows, (row) => row.status || '--')).map((item) => [`Status ${item[0]}`, item[1]]),
+              ...objectBreakdown(groupBy(blockedRows, (row) => row.status || '--')).map((item) => [`Bloqueada ${item[0]}`, item[1]])
+            ],
+            rows: webPendingPayoutRows.concat(blockedRows).slice(0, 20)
+          };
+        }
+
+        if (kind === 'web-completed') {
+          const value = webCompletedRows.reduce((sum, row) => sum + Number(row.amountBRL || 0), 0);
+          const crypto = webCompletedRows.reduce((sum, row) => sum + Number(row.depositAmount || row.cryptoAmount || 0), 0);
+          return {
+            title: 'Financeiro Web - Concluidas',
+            subtitle: 'BUY/SELL web com status liquidado, entregue, confirmado ou pago.',
+            stats: [
+              { label: 'Concluidas', value: String(webCompletedRows.length) },
+              { label: 'Volume concluido', value: money.format(value) },
+              { label: 'Cripto concluido', value: num.format(crypto) }
+            ],
+            breakdown: [
+              ...objectBreakdown(groupBy(webCompletedRows, (row) => isBuyRow(row) ? 'BUY' : 'SELL')).map((item) => [`Fluxo ${item[0]}`, item[1]]),
+              ...objectBreakdown(groupBy(webCompletedRows, (row) => row.status || '--')).map((item) => [`Status ${item[0]}`, item[1]]),
+              ...objectBreakdown(groupBy(webCompletedRows, (row) => row.network || '--')).map((item) => [`Rede ${item[0]}`, item[1]])
+            ],
+            rows: webCompletedRows.slice(0, 20)
+          };
+        }
+
+        if (kind === 'usdt') {
+          return {
+            title: 'USDT liquidado',
+            subtitle: 'Quantidade cripto consolidada das ordens carregadas pelo backend.',
+            stats: [
+              { label: 'Total cripto', value: num.format(totalCrypto) },
+              { label: 'Liquidadas', value: String(liquidRows.length) },
+              { label: 'Taxa media USDT/BRL', value: state.rates?.USDT_BRL ? money.format(state.rates.USDT_BRL) : '--' }
+            ],
+            breakdown: [
+              ...objectBreakdown(groupBy(rows, (row) => row.asset || 'USDT')),
+              ...objectBreakdown(groupBy(rows, (row) => row.network || '--')).map((item) => [`Rede ${item[0]}`, item[1]])
+            ],
+            rows: liquidRows.slice(0, 12)
+          };
+        }
+
+        if (kind === 'alerts') {
+          return {
+            title: 'Alertas',
+            subtitle: 'Erros de transacao e gaps operacionais reportados pelo backend.',
+            stats: [
+              { label: 'Alertas backend', value: String(state.alerts.length) },
+              { label: 'Transacoes com erro', value: String(errorRows.length) },
+              { label: 'Pendentes', value: String(metrics.pending ?? rows.filter(isPendingStatus).length) }
+            ],
+            breakdown: [
+              ...state.alerts.map((alert) => [alert.type || 'operational_gap', valueOrString(alert.item || alert.message || alert.error || '')]),
+              ...objectBreakdown(groupBy(errorRows, (row) => row.status || 'erro')).map((item) => [`Status ${item[0]}`, item[1]])
+            ],
+            rows: [...errorRows, ...alertRows].slice(0, 12)
+          };
+        }
+
+        return {
+          title: 'Volume BRL',
+          subtitle: 'Volume bruto e componentes financeiros das ordens BUY/SELL/mobile carregadas.',
+          stats: [
+            { label: 'Volume bruto', value: money.format(totalBRL) },
+            { label: 'Transacoes', value: String(metrics.count ?? rows.length) },
+            { label: 'Taxas', value: money.format(feesBRL) }
+          ],
+          breakdown: [
+            ['BUY', `${money.format(buyRows.reduce((sum, row) => sum + Number(row.amountBRL || 0), 0))} / ${buyRows.length} ordens`],
+            ['SELL', `${money.format(sellRows.reduce((sum, row) => sum + Number(row.amountBRL || 0), 0))} / ${sellRows.length} ordens`],
+            ['Payout liquido', money.format(payoutBRL)],
+            ...objectBreakdown(metrics.bySource || groupBy(rows, (row) => row.type || '--')).map((item) => [`Origem ${item[0]}`, item[1]]),
+            ...objectBreakdown(metrics.byStatus || groupBy(rows, (row) => row.status || '--')).map((item) => [`Status ${item[0]}`, item[1]])
+          ],
+          rows: rows.slice(0, 12)
+        };
+      }
+
+      function groupBy(rows, picker) {
+        return rows.reduce((acc, row) => {
+          const key = picker(row);
+          acc[key] = (acc[key] || 0) + 1;
+          return acc;
+        }, {});
+      }
+
+      function objectBreakdown(input) {
+        return Object.entries(input || {}).sort((a, b) => Number(b[1]) - Number(a[1])).map(([key, value]) => [key, String(value)]);
+      }
+
+      function detailTable(headers, rows) {
+        return `
+          <div class="table-wrap">
+            <table>
+              <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
+              <tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      function transactionDetailTable(rows) {
+        return `
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Data</th><th>Tipo</th><th>ID</th><th>Status</th><th>BRL</th><th>Cripto</th><th>Referencia</th></tr></thead>
+              <tbody>${rows.map((row) => {
+                const rawAlert = row.raw && !row.raw.id && (row.raw.item || row.raw.message || row.raw.error);
+                const cryptoQty = Number(row.depositAmount || row.cryptoAmount || 0);
+                return `
+                  <tr>
+                    <td>${formatDate(row.createdAt)}</td>
+                    <td>${escapeHtml(row.type || '--')}</td>
+                    <td><code>${escapeHtml(shorten(row.id || '--'))}</code></td>
+                    <td><span class="badge ${badgeClass(row.status || '')}">${escapeHtml(row.status || '--')}</span></td>
+                    <td>${row.amountBRL ? money.format(row.amountBRL) : '--'}</td>
+                    <td>${cryptoQty > 0 ? `${formatAmount(cryptoQty)} ${escapeHtml(row.asset || 'USDT')}` : '--'}</td>
+                    <td><code>${escapeHtml(shorten(rawAlert || rowReference(row) || row.requestId || '--'))}</code></td>
+                  </tr>
+                `;
+              }).join('')}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
       function bindManualPixButtons(scope) {
         document.querySelectorAll(`${scope} [data-manual-pix]`).forEach((button) => {
           button.addEventListener('click', async (event) => {
@@ -6026,13 +6601,13 @@
 
       function renderOverviewControl() {
         const rows = state.transactions;
-        const manualReady = rows.filter(isManualPayoutReady);
+        const manualReady = rows.filter((row) => isWebTradeRow(row) && isManualPayoutReady(row));
         const manualValue = manualReady.reduce((sum, row) => sum + Number(row.payoutBRL || row.amountBRL || 0), 0);
         const kycRows = Array.isArray(state.kycRequests) ? state.kycRequests : [];
         const kycPending = kycRows.filter((row) => ['pending', 'pending_processing', 'in_review'].includes(String(row.status || '').toLowerCase())).length;
-        const mobileRows = rows.filter(isCommerceRow);
+        const mobileRows = rows.filter(isMobileRow);
         const mobilePending = mobileRows.filter((row) => isPendingStatus(row) && !isCompletedStatus(row)).length;
-        const purchases = rows.filter((row) => isBuyRow(row) || isCommerceRow(row)).slice(0, 8);
+        const purchases = rows.filter((row) => isBuyRow(row) || isSellRow(row) || isCommerceRow(row)).slice(0, 8);
 
         setText('overviewManualPayoutCount', String(manualReady.length));
         setText('overviewManualPayoutValue', `${money.format(manualValue)} aguardando`);
@@ -6066,16 +6641,22 @@
 
         const purchasesBody = $('overviewPurchasesBody');
         if (purchasesBody) {
-          purchasesBody.innerHTML = purchases.map((row) => `
-            <tr data-key="${escapeHtml(row.type + ':' + row.id)}">
-              <td>${formatDate(row.createdAt)}</td>
-              <td><span class="badge info">${isCommerceRow(row) ? 'MOBILE' : 'WEB'}</span></td>
-              <td>${escapeHtml(displayProduct(row))}</td>
-              <td><span class="badge ${badgeClass(row.status)}">${escapeHtml(row.status || '--')}</span></td>
-              <td>${money.format(row.amountBRL || row.amountFiat || 0)}</td>
-              <td><code>${escapeHtml(shorten(rowReference(row) || row.id))}</code></td>
-            </tr>
-          `).join('');
+          purchasesBody.innerHTML = purchases.map((row) => {
+            const source = isMobileRow(row) ? 'MOBILE' : (isSellRow(row) ? 'SELL' : 'BUY');
+            const cryptoQty = Number(row.depositAmount || row.cryptoAmount || 0);
+            const cryptoText = cryptoQty > 0 ? `${formatAmount(cryptoQty)} ${row.asset || 'USDT'}` : '--';
+            return `
+              <tr data-key="${escapeHtml(row.type + ':' + row.id)}">
+                <td>${formatDate(row.createdAt)}</td>
+                <td><span class="badge info">${source}</span></td>
+                <td>${escapeHtml(displayProduct(row))}</td>
+                <td><span class="badge ${badgeClass(row.status)}">${escapeHtml(row.status || '--')}</span></td>
+                <td>${money.format(row.amountBRL || row.amountFiat || 0)}</td>
+                <td>${escapeHtml(cryptoText)}</td>
+                <td><code>${escapeHtml(shorten(rowReference(row) || row.id))}</code></td>
+              </tr>
+            `;
+          }).join('');
         }
         if ($('overviewPurchasesEmpty')) $('overviewPurchasesEmpty').style.display = purchases.length ? 'none' : 'block';
         bindRowsToRawJson('#overviewPurchasesBody tr', purchases);
@@ -6095,7 +6676,7 @@
         setText('webFinancePendingPayout', String(pendingPayouts.length));
         setText('webFinancePendingPayoutValue', money.format(pendingPayouts.reduce((sum, row) => sum + Number(row.payoutBRL || row.amountBRL || 0), 0)));
         setText('webFinanceCompleted', String(allRows.filter(isCompletedStatus).length));
-        setText('webFinanceStatus', allRows.length ? `${allRows.length} ordens web` : 'Sem dados');
+        setText('webFinanceStatus', allRows.length ? `${allRows.length} ordens BUY/SELL` : 'Sem dados');
 
         const body = $('webFinanceBody');
         if (!body) return;
@@ -6104,6 +6685,8 @@
           const pixOrWallet = isBuyRow(row)
             ? (row.pixCode ? `PIX ${shorten(row.pixCode)}` : row.providerPaymentId || '--')
             : (row.pixKey || row.address || '--');
+          const cryptoQty = Number(row.depositAmount || row.cryptoAmount || 0);
+          const cryptoText = cryptoQty > 0 ? `${formatAmount(cryptoQty)} ${escapeHtml(row.asset || 'USDT')}` : '--';
           return `
             <tr data-key="${escapeHtml(row.type + ':' + row.id)}">
               <td>${formatDate(row.createdAt)}</td>
@@ -6111,8 +6694,9 @@
               <td><code>${escapeHtml(row.id)}</code></td>
               <td><span class="badge ${badgeClass(row.status)}">${escapeHtml(row.status || '--')}</span></td>
               <td>${money.format(row.amountBRL || row.amountFiat || 0)}</td>
-              <td>${formatAmount(row.depositAmount || row.cryptoAmount)} ${escapeHtml(row.asset || 'USDT')}</td>
+              <td>${cryptoText}</td>
               <td><span class="badge info">${escapeHtml(row.network || '--')}</span></td>
+              <td><span class="badge ${row.channel === 'mobile' ? 'warn' : 'info'}">${escapeHtml((row.channel || 'web').toUpperCase())}</span></td>
               <td><code>${escapeHtml(shorten(pixOrWallet))}</code></td>
               <td><code title="${escapeHtml(rowReference(row))}">${escapeHtml(shorten(rowReference(row) || '--'))}</code></td>
             </tr>
@@ -6123,12 +6707,12 @@
       }
 
       function renderManualPayouts() {
-        const rows = state.transactions.filter(isSellRow).filter((row) => {
+        const rows = state.transactions.filter((row) => isWebTradeRow(row) && isSellRow(row)).filter((row) => {
           const status = normalizedStatus(row);
           return status === 'aguardando_pix_manual' || status === 'concluida' || status.includes('manual') || status.includes('payout');
         });
         const ready = rows.filter(isManualPayoutReady);
-        const blocked = state.transactions.filter(isSellRow).filter((row) => isPendingStatus(row) && !isManualPayoutReady(row) && !isCompletedStatus(row));
+        const blocked = state.transactions.filter((row) => isWebTradeRow(row) && isSellRow(row)).filter((row) => isPendingStatus(row) && !isManualPayoutReady(row) && !isCompletedStatus(row));
         setText('manualPayoutReady', String(ready.length));
         setText('manualPayoutBRL', money.format(ready.reduce((sum, row) => sum + Number(row.payoutBRL || row.amountBRL || 0), 0)));
         setText('manualPayoutCompleted', String(rows.filter(isCompletedStatus).length));
@@ -6163,7 +6747,7 @@
 
       function renderMobileOps() {
         const filter = $('mobileOpsStatusFilter') ? $('mobileOpsStatusFilter').value : '';
-        const allRows = state.transactions.filter(isCommerceRow);
+        const allRows = state.transactions.filter(isMobileRow);
         const rows = allRows.filter((row) => !filter || normalizedStatus(row).includes(filter));
         const kycRows = Array.isArray(state.kycRequests) ? state.kycRequests : [];
         const kycPending = kycRows.filter((row) => ['pending', 'pending_processing', 'in_review'].includes(String(row.status || '').toLowerCase())).length;
