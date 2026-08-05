@@ -2,6 +2,11 @@
 .vercel
 node_modules
 dist
+.gocache
+.gomodcache
+.cache
+tmp
+temp
 
 # Local backend/services not used by the Vite frontend deployment
 payment-gateway
