@@ -1951,3 +1951,158 @@
     top: 50%;
     transform: translateY(-50%);
 }
+
+/* =========================================================
+   MARKETS — FINTECH PREMIUM HOVER
+   ========================================================= */
+
+body.index-page .markets-body .markets-row {
+
+  transition:
+    transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+/* Hover principal da linha. */
+@media (hover: hover) and (pointer: fine) {
+  body.index-page .markets-body .markets-row:hover {
+    z-index: 2;
+    transform: translateY(-1px);
+
+    background:
+      linear-gradient(
+        90deg,
+        rgba(37, 99, 235, 0.045) 0%,
+        rgba(6, 182, 212, 0.018) 48%,
+        rgba(255, 255, 255, 0.04) 100%
+      );
+
+    box-shadow:
+      0 8px 24px rgba(37, 99, 235, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+
+  body.index-page .markets-body .markets-row:hover::before {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+
+  /* Micro animação da logo. */
+  body.index-page .markets-body .markets-row:hover .market-asset img {
+    transform: scale(1.03);
+    filter:
+      saturate(1.04)
+      drop-shadow(0 5px 10px rgba(37, 99, 235, 0.12));
+  }
+
+  /* Ticker ganha azul de forma sutil. */
+  body.index-page .markets-body .markets-row:hover .market-asset strong {
+    color: #1767b7;
+  }
+
+  /* Preço recebe mais presença visual. */
+  body.index-page .markets-body .markets-row:hover .market-price {
+    color: #0f3f6f;
+    font-weight: 800;
+  }
+
+  /* Botões ficam um pouco mais vivos. */
+  body.index-page .markets-body .markets-row:hover .market-actions button {
+    filter: brightness(1.03) saturate(1.04);
+  }
+
+  body.index-page .markets-body .markets-row:hover .market-actions button:first-child {
+    box-shadow:
+      0 7px 18px rgba(17, 103, 183, 0.14);
+  }
+
+  body.index-page .markets-body .markets-row:hover .market-actions button:last-child {
+    border-color: rgba(37, 99, 235, 0.28);
+    background: rgba(37, 99, 235, 0.035);
+  }
+}
+
+/* Transições dos elementos internos. */
+body.index-page .market-asset img {
+  transition:
+    transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    filter 200ms ease;
+}
+
+body.index-page .market-asset strong,
+body.index-page .market-price {
+  transition:
+    color 200ms ease,
+    font-weight 200ms ease;
+}
+
+body.index-page .market-actions button {
+  transition:
+    filter 200ms ease,
+    background-color 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    transform 160ms ease;
+}
+
+/* Feedback ao pressionar. */
+body.index-page .markets-body .markets-row:active {
+  transform: translateY(0) scale(0.998);
+}
+
+/* Acessibilidade por teclado. */
+body.index-page .markets-body .markets-row:focus-visible {
+  z-index: 3;
+  border-left-color: #2563eb;
+  background: rgba(37, 99, 235, 0.045);
+  box-shadow:
+    0 0 0 3px rgba(37, 99, 235, 0.12),
+    0 8px 24px rgba(37, 99, 235, 0.08);
+}
+
+body.index-page .markets-body .markets-row:focus-visible::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+/* Modal: entrada premium em 200 ms. */
+body.index-page .market-modal,
+body.index-page .market-detail-modal,
+body.index-page .markets-modal {
+  animation:
+    marketModalBackdropIn 200ms ease both;
+}
+
+body.index-page .market-modal-content,
+body.index-page .market-detail-modal-content,
+body.index-page .markets-modal-content {
+  transform-origin: center;
+  animation:
+    marketModalCardIn 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes marketModalBackdropIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+
+  to {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
+}
+
+@keyframes marketModalCardIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}

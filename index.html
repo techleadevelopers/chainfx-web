@@ -718,7 +718,6 @@ void main() {
                     <span>1 USDT = —</span>
                     <span class="market-change">—</span>
                     <span>BSC</span>
-                    <span><em class="market-status">Live</em></span>
                     <div class="market-actions"><button data-market-action="buy">Buy</button><button data-market-action="sell">Sell</button></div>
                 </div>
 
@@ -731,7 +730,6 @@ void main() {
                     <span>1 EURUSD = —</span>
                     <span class="market-change">—</span>
                     <span>BSC</span>
-                    <span><em class="market-status">Live</em></span>
                     <div class="market-actions"><button data-market-action="buy">Buy</button><button data-market-action="sell">Sell</button></div>
                 </div>
 
@@ -744,7 +742,6 @@ void main() {
                     <span>1 BTC = —</span>
                     <span class="market-change">—</span>
                     <span>Bitcoin</span>
-                    <span><em class="market-status">Live</em></span>
                     <div class="market-actions"><button data-market-action="buy">Buy</button><button data-market-action="sell">Sell</button></div>
                 </div>
 
@@ -757,7 +754,6 @@ void main() {
                     <span>1 ETH = —</span>
                     <span class="market-change">—</span>
                     <span>Ethereum</span>
-                    <span><em class="market-status">Live</em></span>
                     <div class="market-actions"><button data-market-action="buy">Buy</button><button data-market-action="sell">Sell</button></div>
                 </div>
 
@@ -770,7 +766,6 @@ void main() {
                     <span>1 BNB = —</span>
                     <span class="market-change">—</span>
                     <span>BSC</span>
-                    <span><em class="market-status">Live</em></span>
                     <div class="market-actions"><button data-market-action="buy">Buy</button><button data-market-action="sell">Sell</button></div>
                 </div>
 
@@ -783,7 +778,6 @@ void main() {
                     <span>1 SOL = —</span>
                     <span class="market-change">—</span>
                     <span>Solana</span>
-                    <span><em class="market-status">Live</em></span>
                     <div class="market-actions"><button data-market-action="buy">Buy</button><button data-market-action="sell">Sell</button></div>
                 </div>
 
@@ -796,7 +790,6 @@ void main() {
                     <span>1 XRP = —</span>
                     <span class="market-change">—</span>
                     <span>XRP Ledger</span>
-                    <span><em class="market-status">Live</em></span>
                     <div class="market-actions"><button data-market-action="buy">Buy</button><button data-market-action="sell">Sell</button></div>
                 </div>
 
@@ -809,7 +802,6 @@ void main() {
                     <span>1 LINK = —</span>
                     <span class="market-change">—</span>
                     <span>Ethereum</span>
-                    <span><em class="market-status">Live</em></span>
                     <div class="market-actions"><button data-market-action="buy">Buy</button><button data-market-action="sell">Sell</button></div>
                 </div>
 
@@ -822,7 +814,6 @@ void main() {
                     <span>1 AVAX = —</span>
                     <span class="market-change">—</span>
                     <span>Avalanche</span>
-                    <span><em class="market-status">Live</em></span>
                     <div class="market-actions"><button data-market-action="buy">Buy</button><button data-market-action="sell">Sell</button></div>
                 </div>
                 </div><!-- /.markets-body -->
@@ -834,7 +825,7 @@ void main() {
         <div class="news-shell">
             <div class="news-header">
                 <div>
-                    <h2 id="newsTitle">Market News</h2>
+                    <h2 id="newsTitle">Crypto News</h2>
                     <p>Latest updates from the digital asset market</p>
                 </div>
             </div>
@@ -1666,5 +1657,52 @@ Response 402
 
 
 </body>
+
+<!-- Token Detail Overlay -->
+<div id="tokenOverlay" class="token-overlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="tokenOverlayName">
+  <div class="token-overlay-backdrop"></div>
+  <div class="token-overlay-card">
+    <button class="token-overlay-close" aria-label="Fechar">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M13.5 4.5L4.5 13.5M4.5 4.5L13.5 13.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+
+    <div class="token-overlay-header">
+      <img id="tokenOverlayIcon" class="token-overlay-icon" src="" alt="" />
+      <div class="token-overlay-meta">
+        <span id="tokenOverlayName" class="token-overlay-name"></span>
+        <span id="tokenOverlayTicker" class="token-overlay-ticker"></span>
+      </div>
+      <span id="tokenOverlayBadge" class="token-overlay-badge">Live</span>
+    </div>
+
+    <div class="token-overlay-price-row">
+      <span id="tokenOverlayPrice" class="token-overlay-price"></span>
+      <span class="token-overlay-currency">BRL</span>
+    </div>
+    <div id="tokenOverlayChange" class="token-overlay-change-pill"></div>
+
+    <div class="token-overlay-chart-wrap">
+      <canvas id="tokenOverlayCanvas" class="token-overlay-canvas"></canvas>
+      <div id="tokenOverlayLoader" class="token-overlay-loader">
+        <div class="token-overlay-spinner"></div>
+      </div>
+    </div>
+
+    <div class="token-overlay-ranges" id="tokenOverlayRanges">
+      <button class="tok-range active" data-days="1">1D</button>
+      <button class="tok-range" data-days="7">1W</button>
+      <button class="tok-range" data-days="30">1M</button>
+      <button class="tok-range" data-days="365">1Y</button>
+      <button class="tok-range" data-days="max">ALL</button>
+    </div>
+
+    <div class="token-overlay-actions">
+      <button id="tokenOverlaySellBtn" class="tok-action-sell">Vender</button>
+      <button id="tokenOverlayBuyBtn" class="tok-action-buy">Comprar</button>
+    </div>
+  </div>
+</div>
+
 </html>
+
 

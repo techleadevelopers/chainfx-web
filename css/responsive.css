@@ -37,7 +37,7 @@
   }
 
   body.index-page .markets-row {
-    grid-template-columns: minmax(180px, 1.4fr) minmax(110px, 0.8fr) minmax(150px, 1fr) 70px 80px 70px 116px;
+    grid-template-columns: minmax(180px, 1.4fr) minmax(110px, 0.8fr) minmax(150px, 1fr) 70px 80px 116px;
     gap: 10px;
   }
 

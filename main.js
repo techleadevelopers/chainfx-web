@@ -3945,6 +3945,258 @@ startSellOrderTimer();
   //     });
   // });
 
+  // ===== TOKEN DETAIL OVERLAY =====
+  (function initTokenOverlay() {
+    const overlay    = document.getElementById('tokenOverlay');
+    const backdrop   = overlay?.querySelector('.token-overlay-backdrop');
+    const closeBtn   = overlay?.querySelector('.token-overlay-close');
+    const iconEl     = document.getElementById('tokenOverlayIcon');
+    const nameEl     = document.getElementById('tokenOverlayName');
+    const tickerEl   = document.getElementById('tokenOverlayTicker');
+    const priceEl    = document.getElementById('tokenOverlayPrice');
+    const changeEl   = document.getElementById('tokenOverlayChange');
+    const canvasEl   = document.getElementById('tokenOverlayCanvas');
+    const loaderEl   = document.getElementById('tokenOverlayLoader');
+    const rangesEl   = document.getElementById('tokenOverlayRanges');
+    const sellBtn    = document.getElementById('tokenOverlaySellBtn');
+    const buyBtn     = document.getElementById('tokenOverlayBuyBtn');
+    if (!overlay || !canvasEl) return;
+
+    // Only assets with a direct CoinGecko BRL history feed; EURUSD omitted (no matching instrument)
+    const CGID = {
+      BTC: 'bitcoin', ETH: 'ethereum', BNB: 'binancecoin',
+      SOL: 'solana', XRP: 'ripple', LINK: 'chainlink',
+      AVAX: 'avalanche-2', USDT: 'tether'
+    };
+
+    const FULL_NAMES = {
+      BTC: 'Bitcoin', ETH: 'Ethereum', BNB: 'BNB Chain',
+      SOL: 'Solana', XRP: 'Ripple', LINK: 'Chainlink',
+      AVAX: 'Avalanche', USDT: 'Tether USD', EURUSD: 'Digital Euro Dollar'
+    };
+
+    let currentAsset = null;
+    let chartCache   = {};
+    let loadSeq      = 0; // incremented on every load; guards against stale responses
+
+    function openOverlay() {
+      overlay.classList.add('is-open');
+      overlay.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeOverlay() {
+      overlay.classList.remove('is-open');
+      overlay.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+
+    closeBtn?.addEventListener('click', closeOverlay);
+    backdrop?.addEventListener('click', closeOverlay);
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && overlay.classList.contains('is-open')) closeOverlay();
+    });
+
+    function populateHeader(asset, row) {
+      const img   = row.querySelector('.market-asset img');
+      const price = row.querySelector('.market-price')?.textContent?.trim() || '—';
+      const chEl  = row.querySelector('.market-change');
+      const chTxt = chEl?.textContent?.trim() || '';
+      const isPos = chEl?.classList.contains('positive');
+      const isNeg = chEl?.classList.contains('negative');
+
+      iconEl.src           = img?.src || '';
+      iconEl.alt           = asset;
+      nameEl.textContent   = FULL_NAMES[asset] || asset;
+      tickerEl.textContent = asset + ' / BRL';
+      priceEl.textContent  = price;
+
+      changeEl.textContent = chTxt || '—';
+      changeEl.className   = 'token-overlay-change-pill' +
+        (isPos ? ' positive' : isNeg ? ' negative' : '');
+    }
+
+    function setLoader(visible) {
+      loaderEl?.classList.toggle('hidden', !visible);
+    }
+
+    function drawChartUnavailable() {
+      const dpr = window.devicePixelRatio || 1;
+      const w   = canvasEl.offsetWidth  || 372;
+      const h   = canvasEl.offsetHeight || 160;
+      canvasEl.width  = w * dpr;
+      canvasEl.height = h * dpr;
+      const ctx = canvasEl.getContext('2d');
+      ctx.scale(dpr, dpr);
+      ctx.fillStyle = '#f7fbff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#94b0cd';
+      ctx.font      = '600 13px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Gráfico indisponível', w / 2, h / 2);
+    }
+
+    function drawChart(prices, isPositive) {
+      const dpr  = window.devicePixelRatio || 1;
+      const w    = canvasEl.offsetWidth  || 372;
+      const h    = canvasEl.offsetHeight || 160;
+      canvasEl.width  = w * dpr;
+      canvasEl.height = h * dpr;
+      const ctx = canvasEl.getContext('2d');
+      ctx.scale(dpr, dpr);
+
+      if (!prices || prices.length < 2) {
+        drawChartUnavailable();
+        return;
+      }
+
+      const vals   = prices.map(p => p[1]);
+      const minV   = Math.min(...vals);
+      const maxV   = Math.max(...vals);
+      const range  = maxV - minV || 1;
+      const padX   = 8;
+      const padY   = 14;
+      const chartW = w - padX * 2;
+      const chartH = h - padY * 2;
+
+      const toX = i => padX + (i / (vals.length - 1)) * chartW;
+      const toY = v => padY + chartH - ((v - minV) / range) * chartH;
+
+      const lineColor = isPositive !== false ? '#1767b7' : '#bd4753';
+      const grad = ctx.createLinearGradient(0, padY, 0, h);
+      if (isPositive !== false) {
+        grad.addColorStop(0, 'rgba(23, 103, 183, 0.2)');
+        grad.addColorStop(1, 'rgba(23, 103, 183, 0)');
+      } else {
+        grad.addColorStop(0, 'rgba(189, 71, 83, 0.16)');
+        grad.addColorStop(1, 'rgba(189, 71, 83, 0)');
+      }
+
+      ctx.clearRect(0, 0, w, h);
+
+      // filled area
+      ctx.beginPath();
+      ctx.moveTo(toX(0), toY(vals[0]));
+      for (let i = 1; i < vals.length; i++) {
+        const cpx = (toX(i - 1) + toX(i)) / 2;
+        ctx.bezierCurveTo(cpx, toY(vals[i - 1]), cpx, toY(vals[i]), toX(i), toY(vals[i]));
+      }
+      ctx.lineTo(toX(vals.length - 1), h);
+      ctx.lineTo(toX(0), h);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // line stroke
+      ctx.beginPath();
+      ctx.moveTo(toX(0), toY(vals[0]));
+      for (let i = 1; i < vals.length; i++) {
+        const cpx = (toX(i - 1) + toX(i)) / 2;
+        ctx.bezierCurveTo(cpx, toY(vals[i - 1]), cpx, toY(vals[i]), toX(i), toY(vals[i]));
+      }
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth   = 2;
+      ctx.lineJoin    = 'round';
+      ctx.lineCap     = 'round';
+      ctx.stroke();
+    }
+
+    async function loadChart(asset, days) {
+      const cacheKey = `${asset}-${days}`;
+
+      // Stale-request guard: each call owns its own sequence number
+      const seq = ++loadSeq;
+
+      if (chartCache[cacheKey]) {
+        if (seq !== loadSeq) return; // superseded
+        setLoader(false); // ensure spinner is hidden for cached draws
+        const c = chartCache[cacheKey];
+        drawChart(c.prices, c.isPositive);
+        return;
+      }
+
+      setLoader(true);
+      const cgId = CGID[asset];
+
+      // Asset has no supported chart feed (e.g. EURUSD) — show unavailable state
+      if (!cgId) {
+        setLoader(false);
+        drawChartUnavailable();
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          `https://api.coingecko.com/api/v3/coins/${cgId}/market_chart?vs_currency=brl&days=${days}`,
+          { cache: 'no-store' }
+        );
+        if (!res.ok) throw new Error('CG ' + res.status);
+        const data  = await res.json();
+        const pts   = data.prices || [];
+
+        if (seq !== loadSeq) return; // response arrived after user switched asset/range
+
+        if (pts.length < 2) {
+          drawChartUnavailable();
+          return;
+        }
+
+        const first = pts[0]?.[1] ?? 0;
+        const last  = pts[pts.length - 1]?.[1] ?? 0;
+        const isPos = last >= first;
+        chartCache[cacheKey] = { prices: pts, isPositive: isPos };
+        drawChart(pts, isPos);
+      } catch {
+        // Network error or rate-limit — show unavailable, do not simulate data
+        if (seq !== loadSeq) return;
+        drawChartUnavailable();
+      } finally {
+        if (seq === loadSeq) setLoader(false);
+      }
+    }
+
+    rangesEl?.querySelectorAll('.tok-range').forEach(btn => {
+      btn.addEventListener('click', () => {
+        rangesEl.querySelectorAll('.tok-range').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (currentAsset) loadChart(currentAsset, btn.dataset.days);
+      });
+    });
+
+    function goToTrade(action) {
+      closeOverlay();
+      let targetRow = null;
+      document.querySelectorAll('.markets-row[data-market-category]').forEach(r => {
+        if (r.querySelector('.market-asset strong')?.textContent?.trim() === currentAsset) {
+          targetRow = r;
+        }
+      });
+      targetRow?.querySelector(`[data-market-action="${action}"]`)?.click();
+    }
+
+    sellBtn?.addEventListener('click', () => goToTrade('sell'));
+    buyBtn?.addEventListener('click',  () => goToTrade('buy'));
+
+    document.querySelectorAll('.markets-row[data-market-category]').forEach(row => {
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', e => {
+        if (e.target.closest('.market-actions')) return;
+        const asset = row.querySelector('.market-asset strong')?.textContent?.trim();
+        if (!asset) return;
+
+        currentAsset = asset;
+        populateHeader(asset, row);
+
+        rangesEl?.querySelectorAll('.tok-range').forEach(b => b.classList.remove('active'));
+        rangesEl?.querySelector('[data-days="1"]')?.classList.add('active');
+
+        openOverlay();
+        loadChart(asset, '1');
+      });
+    });
+  })();
+
 });
 
 // --- Helper function for visual feedback on payment method selection (from first block) ---
