@@ -1864,23 +1864,57 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function syncBuyPayerSubStepUI() {
-    const isPixDetails = state.action === 'buy' && state.currentStep === 3 && selectedPaymentRail().method === 'pix';
-    if (!isPixDetails || !buyPayerInfo) return;
+  const isPixDetails =
+    state.action === 'buy' &&
+    state.currentStep === 3 &&
+    selectedPaymentRail().method === 'pix';
 
-    const emailGroup = buyCustomerEmailInput?.closest('.wallet-input');
-    const nameGroup  = buyCustomerNameInput?.closest('.wallet-input');
-    const cpfGroup   = buyCustomerCpfInput?.closest('.wallet-input');
+  if (!buyPayerInfo) return;
 
-    // Email always visible once payer form is shown; nome/cpf revealed progressively
-    if (emailGroup) emailGroup.classList.remove('hidden');
-    if (nameGroup)  nameGroup.classList.toggle('hidden',  state.buyPayerSubStep < 2);
-    if (cpfGroup)   cpfGroup.classList.toggle('hidden',   state.buyPayerSubStep < 3);
+  const emailGroup =
+    buyCustomerEmailInput?.closest('.wallet-input');
 
-    // Button label: "Continuar" until CPF step is reached, then "Buy Now"
-    if (continueBtn && selectedPaymentRail().paymentMethod !== 'credit_card') {
-      continueBtn.textContent = state.buyPayerSubStep >= 3 ? 'Buy Now' : 'Next';
-    }
+  const nameGroup =
+    buyCustomerNameInput?.closest('.wallet-input');
+
+  const cpfGroup =
+    buyCustomerCpfInput?.closest('.wallet-input');
+
+  if (!isPixDetails) {
+    buyPayerInfo.classList.add('hidden');
+
+    emailGroup?.classList.add('hidden');
+    nameGroup?.classList.add('hidden');
+    cpfGroup?.classList.add('hidden');
+
+    return;
   }
+
+  buyPayerInfo.classList.remove('hidden');
+
+  const subStep = state.buyPayerSubStep || 1;
+
+  // Mostra exatamente um campo por vez.
+  emailGroup?.classList.toggle(
+    'hidden',
+    subStep !== 1,
+  );
+
+  nameGroup?.classList.toggle(
+    'hidden',
+    subStep !== 2,
+  );
+
+  cpfGroup?.classList.toggle(
+    'hidden',
+    subStep !== 3,
+  );
+
+  if (continueBtn) {
+    continueBtn.textContent =
+      subStep === 3 ? 'Buy Now' : 'Next';
+  }
+}
 
   function syncBuyPayerInfo() {
     syncBuyPixDetailsStep();
@@ -3419,9 +3453,28 @@ if (sellFinalReceiveAmount) {
     throw lastError || new Error('cotacao indisponivel');
   }
 
+  // Always supplement with CoinGecko for 24h changes + altcoin prices the backend omits.
+  async function enrichWithCoinGecko(snapshot) {
+    try {
+      const cgUrl = 'https://api.coingecko.com/api/v3/simple/price' +
+        '?ids=tether,bitcoin,binancecoin,solana,ethereum,chainlink,avalanche-2,ripple' +
+        '&vs_currencies=brl,usd,eur&include_24hr_change=true';
+      const cgData = await fetchJson(cgUrl);
+      const cg = normalizePriceSnapshot(cgData, 'coingecko');
+      // Merge: CG 24h changes always win; CG prices fill any zeros from primary source
+      const rates = { ...snapshot.rates };
+      ['SOLBRL','SOLBRL','LINKBRL','AVAXBRL','XRPBRL','SOLUSDT','LINKUSDT','AVAXUSDT','XRPUSDT'].forEach(k => {
+        if (!(rates[k] > 0) && cg.rates[k] > 0) rates[k] = cg.rates[k];
+      });
+      return { ...snapshot, rates, changes: { ...cg.changes } };
+    } catch (_) {
+      return snapshot;
+    }
+  }
+
   // Fetch prices and update every UI surface from one snapshot.
   try {
-    const snapshot = await fetchPriceWithFallback();
+    const snapshot = await enrichWithCoinGecko(await fetchPriceWithFallback());
     applyPriceSnapshot(snapshot);
     updateRateLabel();
     syncMarketsFromPriceState();

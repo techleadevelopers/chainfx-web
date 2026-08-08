@@ -6,6 +6,12 @@ export default defineConfig({
     host: '0.0.0.0',
     allowedHosts: true,
     proxy: {
+      // Route all SWAPPED_API calls server-side to avoid CORS
+      '/swapped-api': {
+        target: 'https://api-production-bc748.up.railway.app',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/swapped-api/, ''),
+      },
       '/api/public/news': {
         target: 'https://api-production-bc748.up.railway.app',
         changeOrigin: true,
